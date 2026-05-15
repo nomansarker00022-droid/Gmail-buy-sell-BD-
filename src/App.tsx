@@ -3617,7 +3617,7 @@ export default function App() {
                         </div>
                         <button 
                           onClick={() => {
-                            navigator.clipboard.writeText(`https://ais-pre-l7dvqkyypwoucilhqhgqqi-886784280898.asia-southeast1.run.app?ref=${user?.uid}`);
+                            navigator.clipboard.writeText(`${window.location.origin}/?ref=${user?.uid}`);
                             alert('Link Copied!');
                           }}
                           className="bg-white text-indigo-600 px-4 py-2 rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-[#FFEB3B] hover:text-slate-900 transition-all active:scale-95 shrink-0"
