@@ -1,0 +1,322 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny - Rejects everything that isn't explicitly allowed below
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Admins have full access to everything
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Connectivity Test
+    match /test/connection {
+      allow read: if true;
+    }
+
+    // --- Helper Primitives ---
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    
+    // Robust Admin Check
+    function isAdmin() { 
+      return isSignedIn() && (
+        request.auth.token.email in [
+          'ashrafulislambhuiyan8@gmail.com'
+        ] ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+    
+    // System Admin (Hardcoded List)
+    function isSystemAdmin() {
+      return isSignedIn() && request.auth.token.email in [
+        'ashrafulislambhuiyan8@gmail.com'
+      ];
+    }
+
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // --- Validation Helpers ---
+    function isValidHeadline(data) {
+      return data.text is string && data.text.size() <= 1000 &&
+             data.speed is number && data.speed >= 1 && data.speed <= 200;
+    }
+
+    function isValidPricing(data) {
+      return data.keys().size() <= 50; 
+    }
+    
+    function isValidProfile(data) {
+      return (!('email' in data) || (data.email is string && data.email.size() <= 256)) &&
+             (!('balance' in data) || data.balance is number) &&
+             (!('totalSales' in data) || data.totalSales is number) &&
+             (!('totalOrders' in data) || data.totalOrders is number) &&
+             (!('totalSpent' in data) || data.totalSpent is number) &&
+             (!('totalEarned' in data) || data.totalEarned is number) &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100)) &&
+             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1000000)) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 30)) &&
+             (!('bkashNumber' in data) || (data.bkashNumber is string && data.bkashNumber.size() <= 30)) &&
+             (!('nagadNumber' in data) || (data.nagadNumber is string && data.nagadNumber.size() <= 30)) &&
+             (!('firstName' in data) || (data.firstName is string && data.firstName.size() <= 100)) &&
+             (!('lastName' in data) || (data.lastName is string && data.lastName.size() <= 100)) &&
+             (!('age' in data) || (data.age is number || data.age == null)) &&
+             (!('address' in data) || (data.address is string || data.address == null)) &&
+             (!('hasSeenWelcome' in data) || (data.hasSeenWelcome is bool)) &&
+             (!('numericId' in data) || (data.numericId is string && data.numericId.size() <= 15)) &&
+             (!('role' in data) || (data.role in ['user', 'admin'])) &&
+             (!('uid' in data) || (data.uid is string)) &&
+             (!('referredBy' in data) || (data.referredBy is string || data.referredBy == null)) &&
+             (!('successfulReferrals' in data) || (data.successfulReferrals is number)) &&
+             (!('hasTransacted' in data) || (data.hasTransacted is bool)) &&
+             (!('createdAt' in data) || (data.createdAt is timestamp)) &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp));
+    }
+
+    function isValidWithdrawal(data) {
+      return data.userId == request.auth.uid &&
+             data.userEmail is string &&
+             data.amount is number && data.amount >= 0 &&
+             data.status in ['pending', 'approved', 'rejected'] &&
+             (!('bkashNumber' in data) || data.bkashNumber is string) &&
+             (!('type' in data) || data.type is string) &&
+             (data.createdAt is timestamp);
+    }
+
+    function isValidReport(data) {
+      return (data.buyerId == request.auth.uid || isAdmin()) &&
+             data.buyerEmail is string &&
+             data.sellerId is string &&
+             data.listingId is string &&
+             (!('purchaseId' in data) || data.purchaseId is string) &&
+             data.message is string && data.message.size() <= 2000 &&
+             data.status in ['pending', 'resolved', 'dismissed'] &&
+             (data.createdAt is timestamp);
+    }
+
+    function isValidListing(data) {
+      return data.gmailAccount is string && data.gmailAccount.size() <= 128 &&
+             data.type is string && data.type.size() <= 128 &&
+             data.price is number && data.price >= 0 &&
+             data.status in ['Available', 'Pending', 'Approved', 'Refunded', 'Dispute', 'SellRequest', 'Sold', 'Deleted', 'Rejected'] &&
+             (!('sellerId' in data) || (data.sellerId is string)) &&
+             (!('sellerNumericId' in data) || (data.sellerNumericId is string)) &&
+             (!('bkashNumber' in data) || (data.bkashNumber is string)) &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 2000)) &&
+             (!('soldTo' in data) || (data.soldTo is string)) &&
+             (!('soldPrice' in data) || (data.soldPrice is number)) &&
+             (!('createdAt' in data) || (data.createdAt is timestamp)) &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp));
+    }
+
+    function isValidCredential(data) {
+      return data.email is string && data.email.size() <= 128 &&
+             data.password is string && data.password.size() <= 128 &&
+             (!('recoveryEmail' in data) || (data.recoveryEmail is string)) &&
+             (!('recovery' in data) || (data.recovery is string)) &&
+             (!('twoFactor' in data) || (data.twoFactor is string));
+    }
+
+    function isValidPurchase(data) {
+      return data.userId == request.auth.uid &&
+             (!('userEmail' in data) || (data.userEmail is string)) &&
+             data.price is number && data.price >= 0 &&
+             data.listingId is string &&
+             data.gmailAccount is string &&
+             (!('sellerId' in data) || (data.sellerId is string)) &&
+             (!('sellerBkash' in data) || (data.sellerBkash is string)) &&
+             (!('description' in data) || (data.description is string)) &&
+             (!('status' in data) || (data.status is string)) &&
+             (!('purchasedAt' in data) || (data.purchasedAt is timestamp)) &&
+             (!('credentials' in data) || (data.credentials is map || data.credentials == null));
+    }
+
+    function isValidPayment(data) {
+      return data.userId == request.auth.uid &&
+             data.senderNumber is string && data.senderNumber.size() <= 64 &&
+             data.trxId is string && data.trxId.size() <= 128 &&
+             data.amount is number && data.amount >= 0 &&
+             data.status in ['pending', 'verified', 'rejected'] &&
+             (!('listingId' in data) || (data.listingId is string)) &&
+             (!('userEmail' in data) || (data.userEmail is string)) &&
+             (!('itemIds' in data) || (data.itemIds is list)) &&
+             (!('itemCount' in data) || (data.itemCount is number)) &&
+             (!('createdAt' in data) || (data.createdAt is timestamp)) &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp));
+    }
+
+    function isValidTrxRegistration(data) {
+      return data.userId == request.auth.uid &&
+             (data.createdAt is timestamp);
+    }
+
+    function isValidReview(data) {
+      return data.userId == request.auth.uid &&
+             data.text is string && data.text.size() <= 2000 &&
+             (!('photo' in data) || (data.photo is string && data.photo.size() <= 1000000)) &&
+             (!('userName' in data) || data.userName is string) &&
+             (!('userPhoto' in data) || data.userPhoto is string) &&
+             (data.createdAt is timestamp);
+    }
+
+    function isValidNotification(data) {
+      return data.toUserId is string &&
+             (data.fromUserId == request.auth.uid || data.fromUserId == 'system') &&
+             data.message is string && data.message.size() <= 3000 &&
+             data.type in ["system", "info", "warning", "success", "error"] &&
+             (!('read' in data) || (data.read is bool)) &&
+             (data.createdAt is timestamp);
+    }
+
+    // --- Collections ---
+
+    // Registries for uniqueness
+    match /used_trx_ids/{trxId} {
+      allow get: if isSignedIn() && isValidId(trxId);
+      allow create: if isSignedIn() && isValidTrxRegistration(incoming());
+    }
+
+    // Settings
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Profiles
+    match /profiles/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(userId) && isValidProfile(incoming());
+      
+      allow update: if isSignedIn() && (
+        isAdmin() || 
+        // Relational Update: Buyer/Seller stats transfer during purchase
+        // We trust these specific keys because they are only updated in transactions
+        (incoming().diff(existing()).affectedKeys().hasOnly([
+          'totalSales', 'totalEarned', 'updatedAt', 'balance', 'totalOrders', 
+          'totalSpent', 'successfulReferrals', 'hasTransacted'
+        ])) ||
+        // Owner updates own profile (Self care)
+        (isOwner(userId) && isValidProfile(incoming()) && (
+          // Basic fields update
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'displayName', 'photoURL', 'phone', 'bkashNumber', 'nagadNumber',
+            'firstName', 'lastName', 'age', 'address', 'hasSeenWelcome',
+            'updatedAt', 'totalOrders', 'totalSpent', 'balance', 'email', 'numericId',
+            'successfulReferrals', 'hasTransacted', 'referredBy', 'totalSales', 'totalEarned', 'role'
+          ]) &&
+          (!('balance' in incoming()) || isAdmin() || incoming().balance <= existing().balance) &&
+          (!('email' in incoming()) || incoming().email == existing().email)
+        ))
+      );
+    }
+
+    // Withdrawals
+    match /withdrawals/{withdrawalId} {
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidWithdrawal(incoming());
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Reports
+    match /reports/{reportId} {
+      allow list: if isSignedIn() && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid || isAdmin());
+      allow get: if isSignedIn() && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidReport(incoming());
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Listings
+    match /listings/{listingId} {
+      allow list: if true;
+      allow get: if true; 
+
+      allow create: if isSignedIn() && (
+        (isAdmin() && isValidListing(incoming())) ||
+        (!isAdmin() && isValidListing(incoming()) && incoming().status == 'SellRequest' && incoming().sellerId == request.auth.uid)
+      );
+
+      allow update: if isSignedIn() && isValidListing(incoming()) && (
+        isAdmin() || 
+        // Seller can update their own listing before it's sold
+        (isOwner(existing().sellerId) && 
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'price', 'gmailAccount', 'type', 'description', 'bkashNumber'])) ||
+        // Buyer flow: User marks it as Pending (Available -> Pending)
+        (existing().status == 'Available' && 
+          incoming().status == 'Pending' && 
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])) ||
+        // Buyer flow: User marks it as Sold to themselves (Available -> Sold)
+        (existing().status == 'Available' && 
+          incoming().status == 'Sold' && 
+          incoming().soldTo == request.auth.uid &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'soldTo', 'updatedAt', 'soldPrice']))
+      );
+      
+      allow delete: if isAdmin();
+
+      // Nested credentials
+      match /private/credentials {
+        allow get: if isSignedIn() && (
+          isAdmin() ||
+          isOwner(get(/databases/$(database)/documents/listings/$(listingId)).data.sellerId) ||
+          exists(/databases/$(database)/documents/purchases/$(request.auth.uid + '_' + listingId)) ||
+          existsAfter(/databases/$(database)/documents/purchases/$(request.auth.uid + '_' + listingId)) ||
+          get(/databases/$(database)/documents/listings/$(listingId)).data.soldTo == request.auth.uid ||
+          getAfter(/databases/$(database)/documents/listings/$(listingId)).data.soldTo == request.auth.uid
+        );
+        allow write: if isAdmin() || (isSignedIn() && isOwner(get(/databases/$(database)/documents/listings/$(listingId)).data.sellerId) && isValidCredential(incoming()));
+      }
+    }
+
+    // Purchases
+    match /purchases/{purchaseId} {
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidPurchase(incoming()) && purchaseId == (request.auth.uid + '_' + incoming().listingId);
+      allow update: if isAdmin() || (isSignedIn() && isOwner(existing().userId) && incoming().diff(existing()).affectedKeys().hasOnly(['credentials', 'status']));
+      allow delete: if isAdmin();
+    }
+
+    // Payments
+    match /payments/{paymentId} {
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidPayment(incoming());
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow list: if isSignedIn() && (resource.data.toUserId == request.auth.uid || isAdmin());
+      allow get: if isSignedIn() && (resource.data.toUserId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidNotification(incoming());
+      allow update: if isSignedIn() && (
+        isAdmin() || 
+        (resource.data.toUserId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['read']))
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Reviews
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidReview(incoming());
+      allow update, delete: if isAdmin();
+    }
+
+    // Admins metadata
+    match /admins/{adminId} {
+      allow read: if isAdmin();
+      allow write: if false; 
+    }
+  }
+}

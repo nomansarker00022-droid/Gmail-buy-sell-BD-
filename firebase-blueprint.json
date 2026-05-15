@@ -1,0 +1,224 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "User Profile",
+      "description": "Public and private user profile information with balance and numeric ID.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "phone": { "type": "string" },
+        "bkashNumber": { "type": "string" },
+        "nagadNumber": { "type": "string" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "age": { "type": "number", "description": "User age (optional)" },
+        "address": { "type": "string", "description": "User address (optional)" },
+        "hasSeenWelcome": { "type": "boolean", "description": "Whether the user has seen the welcome popup" },
+        "numericId": { "type": "string", "description": "5-digit unique ID" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "balance": { "type": "number" },
+        "totalOrders": { "type": "number" },
+        "totalSpent": { "type": "number" },
+        "totalSales": { "type": "number" },
+        "totalEarned": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "balance", "createdAt"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "A report filed by a buyer against a purchased listing.",
+      "type": "object",
+      "properties": {
+        "buyerId": { "type": "string" },
+        "buyerEmail": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "listingId": { "type": "string" },
+        "purchaseId": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "resolved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["buyerId", "sellerId", "listingId", "message", "status", "createdAt"]
+    },
+    "Listing": {
+      "title": "Gmail Listing",
+      "description": "A Gmail account for sale.",
+      "type": "object",
+      "properties": {
+        "sellerId": { "type": "string" },
+        "sellerNumericId": { "type": "string" },
+        "gmailAccount": { "type": "string", "description": "Masked email" },
+        "type": { "type": "string" },
+        "price": { "type": "number" },
+        "status": { "type": "string", "enum": ["Available", "Pending", "Approved", "Refunded", "Dispute", "SellRequest", "Sold", "Deleted"] },
+        "bkashNumber": { "type": "string" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "soldTo": { "type": "string" }
+      },
+      "required": ["gmailAccount", "price", "status", "createdAt"]
+    },
+    "Credential": {
+      "title": "Gmail Credentials",
+      "description": "Sensitive login data for a Gmail listing.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "password": { "type": "string" },
+        "recoveryEmail": { "type": "string" },
+        "twoFactor": { "type": "string" }
+      },
+      "required": ["email", "password"]
+    },
+    "Purchase": {
+      "title": "Purchase Record",
+      "description": "A record of a purchase including credentials for history.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "listingId": { "type": "string" },
+        "gmailAccount": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "sellerBkash": { "type": "string" },
+        "price": { "type": "number" },
+        "credentials": {
+          "type": "object",
+          "properties": {
+            "email": { "type": "string" },
+            "password": { "type": "string" },
+            "recovery": { "type": "string" },
+            "twoFactor": { "type": "string" }
+          }
+        },
+        "purchasedAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string" }
+      },
+      "required": ["userId", "listingId", "price", "purchasedAt"]
+    },
+    "Headline": {
+      "title": "Headline Setting",
+      "description": "Global headline and speed setting.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "speed": { "type": "number" }
+      },
+      "required": ["text", "speed"]
+    },
+    "Pricing": {
+      "title": "Pricing Setting",
+      "description": "Marketplace pricing defaults.",
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "User deposit or manual payment request.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "senderNumber": { "type": "string" },
+        "trxId": { "type": "string" },
+        "amount": { "type": "number" },
+        "listingId": { "type": "string" },
+        "itemCount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "verified", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "userEmail", "senderNumber", "trxId", "amount", "status", "createdAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A message sent to a user from Admin or another user.",
+      "type": "object",
+      "properties": {
+        "toUserId": { "type": "string" },
+        "fromUserId": { "type": "string" },
+        "fromName": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["system", "info", "warning", "success", "error"] },
+        "details": { "type": "object" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["toUserId", "fromUserId", "message", "type", "read", "createdAt"]
+    },
+    "Review": {
+      "title": "User Review",
+      "description": "A public review posted by a user with optional photo.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "text": { "type": "string" },
+        "photo": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "text", "createdAt"]
+    },
+    "TrxRegistry": {
+      "title": "Transaction Registry",
+      "description": "Records used transaction IDs to prevent reuse.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "/settings/{settingId}": {
+      "schema": "object",
+      "description": "Global application settings (Headline or Pricing)."
+    },
+    "/payments/{paymentId}": {
+      "schema": "Payment",
+      "description": "Payment transactions."
+    },
+    "/profiles/{userId}": {
+      "schema": "Profile",
+      "description": "User profile with balance."
+    },
+    "/listings/{listingId}": {
+      "schema": "Listing",
+      "description": "Marketplace listings."
+    },
+    "/listings/{listingId}/private/credentials": {
+      "schema": "Credential",
+      "description": "Private sensitive credentials."
+    },
+    "/purchases/{purchaseId}": {
+      "schema": "Purchase",
+      "description": "Purchase history records."
+    },
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Buyer reports for issues."
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications."
+    },
+    "/used_trx_ids/{trxId}": {
+      "schema": "TrxRegistry",
+      "description": "Transaction ID registry."
+    },
+    "/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "Public user reviews and feedback."
+    },
+    "/test/{docId}": {
+      "schema": { "type": "object", "properties": { "connection": { "type": "string" } } },
+      "description": "Connectivity testing path."
+    }
+  }
+}
