@@ -824,6 +824,11 @@ export default function App() {
               setUserProfile(data);
               localStorage.setItem(cacheKey, JSON.stringify(data));
               
+              // Trigger welcome popup if not seen yet
+              if (!data.hasSeenWelcome) {
+                setShowWelcomePopup(true);
+              }
+              
               // Only update form if it was empty or first time
               if (!profileForm.displayName && data.displayName) {
                 setProfileForm(prev => ({
@@ -852,6 +857,7 @@ export default function App() {
                 referredBy: referredBy || null,
                 successfulReferrals: 0,
                 hasTransacted: false,
+                hasSeenWelcome: false, // Explicitly set for welcome popup logic
                 photoURL: currentUser.photoURL || null,
                 displayName: currentUser.displayName || null,
                 createdAt: serverTimestamp()
