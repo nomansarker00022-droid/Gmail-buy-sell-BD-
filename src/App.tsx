@@ -682,6 +682,12 @@ export default function App() {
         setQuotaExceeded(true);
         return "আজ জিমেইল মার্কেটপ্লেসের ফ্রি লিমিট শেষ হয়ে গেছে। দয়া করে আগামীকাল পুনরায় চেষ্টা করুন। (Firestore Quota Limit Reach.)";
       }
+      if (mainError.toLowerCase().includes('unavailable') || mainError.toLowerCase().includes('failed to connect')) {
+        return "আপনার ইন্টারনেট কানেকশন চেক করুন। সার্ভারের সাথে সংযোগ বিচ্ছিন্ন হয়ে গেছে। (Firestore Connectivity Issue.)";
+      }
+      if (mainError.toLowerCase().includes('unauthorized domain') || mainError.toLowerCase().includes('unauthorized-domain')) {
+        return "Unauthorized Domain! দয়া করে আপনার Netlify ডোমেইনটি (gmailbuysellbd.netlify.app) Firebase Console-এর Authorized Domains সেকশনে যুক্ত করুন।";
+      }
       return mainError;
     } catch (e) {
       // Fallback for regular error strings
@@ -689,6 +695,12 @@ export default function App() {
           errorStr.toLowerCase().includes('resource-exhausted') ||
           errorStr.toLowerCase().includes('quota exceeded')) {
         return "দুঃখিত, আজ জিমেইল মার্কেটপ্লেসের ফ্রি লিমিট শেষ হয়ে গেছে। দয়া করে আগামীকাল পুনরায় চেষ্টা করুন। (Firestore Quota Limit Reached. Reset occurs daily.) More info: https://firebase.google.com/pricing#cloud-firestore";
+      }
+      if (errorStr.toLowerCase().includes('unavailable') || errorStr.toLowerCase().includes('failed to connect')) {
+        return "ইন্টারনেট কানেকশন চেক করুন। সার্ভারের সাথে সংযোগ বিচ্ছিন্ন। (Firestore Offline/Connectivity Error.)";
+      }
+      if (errorStr.toLowerCase().includes('unauthorized domain') || errorStr.toLowerCase().includes('unauthorized-domain')) {
+        return "Unauthorized Domain! আপনার Netlify ডোমেইনটি (gmailbuysellbd.netlify.app) Firebase Console-এ Authorized Domains হিসেবে যুক্ত করুন।";
       }
       return errorStr;
     }
@@ -783,9 +795,11 @@ export default function App() {
       try {
         console.log('Auth state changed:', currentUser?.email);
         setUser(currentUser);
+        
         if (currentUser) {
           // 1. Load Profile from Cache immediately for UI snappiness
-          const cachedProfile = localStorage.getItem(`cache_profile_${currentUser.uid}`);
+          const cacheKey = `cache_profile_${currentUser.uid}`;
+          const cachedProfile = localStorage.getItem(cacheKey);
           if (cachedProfile) {
             try {
               const data = JSON.parse(cachedProfile);
@@ -806,38 +820,16 @@ export default function App() {
 
           // Fetch profile from server
           const profileRef = doc(db, 'profiles', currentUser.uid);
-          let profileSnap = null;
-          let retryCount = 0;
-          const maxRetries = 2; // Reduced retries to save quota on failure
+          const profileSnap = await getDoc(profileRef);
 
-          while (retryCount <= maxRetries) {
-            try {
-              profileSnap = await getDoc(profileRef);
-              break; 
-            } catch (err: any) {
-              if (err.message?.includes('quota') || err.message?.includes('exhausted')) {
-                setQuotaExceeded(true);
-                break;
-              }
-              const isOffline = err.message?.includes('offline') || err.code === 'unavailable';
-              if (isOffline && retryCount < maxRetries) {
-                retryCount++;
-                await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-                continue;
-              }
-              break;
-            }
-          }
-
-          if (profileSnap && profileSnap.exists()) {
+          if (profileSnap.exists()) {
             const data = profileSnap.data();
             let needsUpdate = false;
             const updates: any = {};
 
-            // Securely assign admin role
+            // Parallelize critical updates
             if (currentUser.email && SYSTEM_ADMINS.includes(currentUser.email) && data.role !== 'admin') {
               updates.role = 'admin';
-              updates.updatedAt = serverTimestamp();
               data.role = 'admin';
               needsUpdate = true;
             }
@@ -852,23 +844,14 @@ export default function App() {
               data.successfulReferrals = 0;
               needsUpdate = true;
             }
-            if (!data.photoURL && currentUser.photoURL) {
-              updates.photoURL = currentUser.photoURL;
-              data.photoURL = currentUser.photoURL;
-              needsUpdate = true;
-            }
-            if (!data.displayName && currentUser.displayName) {
-              updates.displayName = currentUser.displayName;
-              data.displayName = currentUser.displayName;
-              needsUpdate = true;
-            }
 
             if (needsUpdate) {
+              updates.updatedAt = serverTimestamp();
               await updateDoc(profileRef, updates);
             }
 
             setUserProfile(data);
-            localStorage.setItem(`cache_profile_${currentUser.uid}`, JSON.stringify(data));
+            localStorage.setItem(cacheKey, JSON.stringify(data));
             
             setProfileForm({
               firstName: data.firstName || '',
@@ -883,16 +866,12 @@ export default function App() {
             });
 
             if (!data.hasSeenWelcome && !data.firstName) {
-              setWelcomeForm({
-                firstName: '', lastName: '', age: '', address: '', photoURL: ''
-              });
               setShowWelcomePopup(true);
             }
-          } else if (profileSnap) {
+          } else {
+            // New user registration flow
             const numericId = Math.floor(10000 + Math.random() * 90000).toString();
             const isAdminEmail = currentUser.email && SYSTEM_ADMINS.includes(currentUser.email);
-            
-            // Check for referral
             const referredBy = localStorage.getItem('referredBy');
             
             const newProfile = {
@@ -910,20 +889,13 @@ export default function App() {
               displayName: currentUser.displayName || null,
               createdAt: serverTimestamp()
             };
+            
             await setDoc(profileRef, newProfile);
             setUserProfile(newProfile);
-            setWelcomeForm({
-              firstName: '',
-              lastName: '',
-              age: '',
-              address: '',
-              photoURL: ''
-            });
             setShowWelcomePopup(true);
 
-            // Notify referrer if exists
             if (referredBy) {
-              await sendNotification(referredBy, `গাইস! আপনার লিংক থেকে একজন নতুন ইউজার জয়েন করেছে। সে যখন ১ম ট্রানজেকশন করবে আপনি ৫ টাকা বোনাস পাবেন।`, 'info');
+              sendNotification(referredBy, `অভিনন্দন! আপনার রেফারেল লিংক থেকে একজন নতুন ইউজার জয়েন করেছে।`, 'info');
               localStorage.removeItem('referredBy');
             }
           }
@@ -1070,21 +1042,29 @@ export default function App() {
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    
+    // Optimistic UI Update
+    const derivedDisplayName = (profileForm.firstName + ' ' + (profileForm.lastName || '')).trim();
+    const updatedData = {
+      ...profileForm,
+      age: profileForm.age ? Number(profileForm.age) : null,
+      displayName: derivedDisplayName || profileForm.displayName,
+      updatedAt: serverTimestamp()
+    };
+    
+    const previousProfile = { ...userProfile };
+    setUserProfile((prev: any) => ({ ...prev, ...updatedData }));
+    setShowProfileUpdate(false);
+    
     setIsSubmitting(true);
     try {
-      const derivedDisplayName = (profileForm.firstName + ' ' + (profileForm.lastName || '')).trim();
-      const updatedData = {
-        ...profileForm,
-        age: profileForm.age ? Number(profileForm.age) : null,
-        displayName: derivedDisplayName || profileForm.displayName,
-        updatedAt: serverTimestamp()
-      };
       await updateDoc(doc(db, 'profiles', user.uid), updatedData);
-      setUserProfile((prev: any) => ({ ...prev, ...updatedData }));
       alert('Profile updated successfully!');
-      setShowProfileUpdate(false);
     } catch (err: any) {
+      // Revert on error
+      setUserProfile(previousProfile);
       alert('Update Error: ' + err.message);
+      setShowProfileUpdate(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -1225,7 +1205,7 @@ export default function App() {
       } else if (err.code === 'auth/popup-blocked') {
         setError('Popup blocked! Please allow popups for this site in your browser settings.');
       } else if (err.code === 'auth/unauthorized-domain') {
-        setError('Unauthorized Domain: Please add this domain to "Authorized Domains" in your Firebase Project settings (Authentication > Settings).');
+        setError('Unauthorized Domain: আপনার Netlify ডোমেইনটি (gmailbuysellbd.netlify.app) Firebase Console > Authentication > Settings > Authorized Domains এ যুক্ত করুন।');
       } else if (err.code === 'auth/cancelled-popup-request') {
         // User closed the popup, ignore
       } else if (err.code === 'auth/popup-closed-by-user') {
@@ -1567,11 +1547,11 @@ export default function App() {
         try { setSellerListings(JSON.parse(cached)); } catch(e) {}
       }
 
-      // Only refetch if quota not exceeded and (no cache OR 5 mins passed)
+      // Only refetch if quota not exceeded and (no cache OR 30s passed)
       const now = Date.now();
-      const needsFetch = !cached || !cachedTime || (now - parseInt(cachedTime)) > 300000;
+      const needsFetch = !cached || !cachedTime || (now - parseInt(cachedTime)) > 30000;
 
-      if (!quotaExceeded && needsFetch) {
+      if (!quotaExceeded && (needsFetch || !sellerListings.length)) {
         try {
           const sellerQ = query(collection(db, 'listings'), where('sellerId', '==', user.uid), limit(200));
           const snap = await getDocs(sellerQ);
@@ -1636,11 +1616,11 @@ export default function App() {
         if (cachedPay) { try { setUserPayments(JSON.parse(cachedPay)); } catch(e) {} }
       }
 
-      // Re-fetch logic
+      // Re-fetch logic (Optimized: 30s cache instead of 5m for better reactivity)
       const now = Date.now();
-      const needsFetch = !cachedMarket || !cachedTime || (now - parseInt(cachedTime)) > 300000;
+      const needsFetch = !cachedMarket || !cachedTime || (now - parseInt(cachedTime)) > 30000;
 
-      if (!quotaExceeded && needsFetch) {
+      if (!quotaExceeded && (needsFetch || !marketListings.length)) {
         try {
           const q = query(
             collection(db, 'listings'),
@@ -3645,6 +3625,19 @@ export default function App() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h2 className="font-display text-xl font-black text-slate-900 tracking-tight">Marketplace</h2>
+                        <button 
+                          onClick={() => {
+                            // Clear local state to force fetchMarketData to run full logic
+                            localStorage.removeItem('cache_market_listings');
+                            localStorage.removeItem('cache_market_listings_timestamp');
+                            setMarketListings([]);
+                            // Trigger the effect by changing a dummy state if needed, but here simple clear works 
+                            // because [] dependency in setMarketListings check will trigger fetch
+                          }}
+                          className="p-1.5 bg-slate-100 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-lg transition-all active:rotate-180 duration-500"
+                        >
+                          <RefreshCw size={14} />
+                        </button>
                         <div className="flex items-center gap-1 px-2 py-0.5 bg-green-50 rounded-full border border-green-100">
                           <div className="w-1 h-1 bg-green-500 rounded-full" />
                           <span className="text-[8px] font-black text-green-600 uppercase tracking-widest leading-none">Live</span>
@@ -4623,7 +4616,7 @@ export default function App() {
                 </div>
 
                 <div className="flex bg-white p-1 rounded-xl border border-slate-100 shadow-sm overflow-x-auto gap-1">
-                  {["All", "Available", "Pending", "Fixed", "Dispute", "SellRequest", "Sold", "Orders", "Payments", "Withdrawals"].map((tab) => (
+                  {["All", "Available", "Pending", "Approved", "Dispute", "SellRequest", "Sold", "Orders", "Payments", "Withdrawals"].map((tab) => (
                     <button 
                       key={tab} 
                       onClick={() => {
@@ -5357,7 +5350,7 @@ export default function App() {
                 {/* Summary Stats */}
                 <div className="grid grid-cols-2 gap-1.5">
                   {[
-                    { label: "Fixed", status: 'Approved', count: sellerListings.filter(l => l.status === 'Approved').length, color: "text-green-600", bg: "bg-green-50" },
+                    { label: "Approved", status: 'Approved', count: sellerListings.filter(l => l.status === 'Approved').length, color: "text-green-600", bg: "bg-green-50" },
                     { label: "Dispute", status: 'Dispute', count: sellerListings.filter(l => l.status === 'Dispute').length, color: "text-red-500", bg: "bg-red-50" },
                   ].map((stat, i) => (
                     <button 
@@ -5636,7 +5629,7 @@ export default function App() {
                     onClick={() => setListingFilter('Approved')}
                     className={`whitespace-nowrap px-2.5 py-1 rounded-lg text-[9px] font-bold transition-all border ${listingFilter === 'Approved' ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 shadow-sm'}`}
                   >
-                    Fixed
+                    Approved
                   </button>
                   <button 
                     onClick={() => setListingFilter('Reports')}
@@ -5712,7 +5705,7 @@ export default function App() {
                               item.status === 'Dispute' ? 'bg-red-50 border-red-100 text-red-600' :
                               'bg-slate-50 border-slate-100 text-slate-500'
                             }`}>
-                              {item.status === 'Approved' ? 'Fixed' : item.status}
+                              {item.status === 'Approved' ? 'Approved' : item.status}
                             </span>
                             <p className="text-[10px] font-black text-indigo-600 mt-1">৳{item.price}</p>
                           </div>
@@ -6910,9 +6903,15 @@ export default function App() {
                 <motion.div 
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
-                  className="bg-red-50 border border-red-100 rounded-2xl p-4 flex flex-col gap-2"
+                  className="bg-red-50 border border-red-100 rounded-2xl p-4 flex flex-col gap-2 relative"
                 >
-                  <div className="flex items-start gap-3">
+                  <button 
+                    onClick={() => setError(null)}
+                    className="absolute top-3 right-3 text-red-300 hover:text-red-500 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                  <div className="flex items-start gap-3 pr-6">
                     <AlertCircle className="text-red-500 shrink-0" size={18} />
                     <p className="text-xs text-red-600 leading-relaxed overflow-hidden text-ellipsis">{getDisplayError(error)}</p>
                   </div>

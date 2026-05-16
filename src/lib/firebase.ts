@@ -17,10 +17,10 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes('remixed')) {
 
 const app = initializeApp(firebaseConfig);
 
-// Use initializeFirestore with forced long polling. Passing the databaseId is CRITICAL.
-// Note:experimentalForceLongPolling and experimentalAutoDetectLongPolling cannot be used together.
+// Use initializeFirestore with enhanced settings for iframe environments.
 export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true
+  experimentalAutoDetectLongPolling: true,
+  // Ensure that memory-only persistence is NOT used if possible, but standard persistence is usually fine.
 }, firebaseConfig.firestoreDatabaseId || '(default)');
 
 // Robust Auth initialization for iframes and cross-origin environments
