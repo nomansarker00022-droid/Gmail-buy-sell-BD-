@@ -2166,9 +2166,7 @@ export default function App() {
         try {
           if (action === 'Delete') {
             const listingRef = doc(db, 'listings', id);
-            // Delete creds first
-            await setDoc(doc(db, `listings/${id}/private`, 'credentials'), { deleted: true }, { merge: true });
-            await updateDoc(listingRef, { status: 'Deleted', updatedAt: serverTimestamp() });
+            await deleteDoc(listingRef);
           } else {
             const updatePayload: any = {
               status: action,
@@ -2276,7 +2274,7 @@ export default function App() {
             totalSpent: increment(Number(payment.amount)),
             updatedAt: serverTimestamp()
           });
-          transaction.update(paymentRef, { status: 'verified', updatedAt: serverTimestamp() });
+          transaction.delete(paymentRef);
         } 
         else if (listingsToProcess.length > 0) {
           let totalDirectSpent = 0;
@@ -2329,9 +2327,9 @@ export default function App() {
             updatedAt: serverTimestamp()
           });
 
-          transaction.update(paymentRef, { status: 'verified', updatedAt: serverTimestamp() });
+          transaction.delete(paymentRef);
         } else {
-          transaction.update(paymentRef, { status: 'verified', updatedAt: serverTimestamp() });
+          transaction.delete(paymentRef);
         }
 
         return listingsToProcess.map(l => l.data.gmailAccount).join(', ');
@@ -2579,12 +2577,11 @@ export default function App() {
 
   const deleteListing = async (listingId: string) => {
     if (!isAdmin) return;
-    if (!confirm('Are you sure you want to delete this listing?')) return;
+    if (!confirm('আপনি কি নিশ্চিত যে এই লিস্টিংটি ডিলিট করতে চান? এটি সার্ভার থেকে চিরতরে মুছে যাবে।')) return;
     try {
-      await updateDoc(doc(db, 'listings', listingId), {
-        status: 'Deleted',
-        updatedAt: serverTimestamp()
-      });
+      // Delete the listing document itself
+      await deleteDoc(doc(db, 'listings', listingId));
+      console.log(`Listing ${listingId} permanently deleted.`);
     } catch (err) {
       handleFirestoreError(err, OperationType.DELETE, `listings/${listingId}`);
     }
@@ -4795,12 +4792,12 @@ export default function App() {
                               onClick={async () => {
                                 if (!confirm(`Confirm withdrawal payment? Ensure you have sent ৳${withdraw.amount} via ${withdraw.method || 'bKash'} to ${withdraw.number || withdraw.bkashNumber}.`)) return;
                                 try {
-                                  await updateDoc(doc(db, 'withdrawals', withdraw.id), {
-                                    status: 'completed',
-                                    completedAt: serverTimestamp()
-                                  });
+                                  // Send notification first while document still exists
                                   await sendNotification(withdraw.userId, `আপনার উইথড্র রিকুয়েস্ট (৳${withdraw.amount}) এপ্রুভ হয়েছে। আপনার ${withdraw.method || 'বিকাশ'} চেক করুন।`, 'success');
-                                  alert('Withdrawal marked as completed!');
+                                  
+                                  // Delete the withdrawal request record permanently
+                                  await deleteDoc(doc(db, 'withdrawals', withdraw.id));
+                                  alert('Withdrawal approved and record removed from server!');
                                 } catch (err: any) {
                                   alert('Error: ' + err.message);
                                 }
