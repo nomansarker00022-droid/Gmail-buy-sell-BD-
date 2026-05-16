@@ -612,18 +612,15 @@ export default function App() {
   useEffect(() => {
     if (!isAdmin || view !== 'admin') return;
 
-    const fetchWithdrawals = async () => {
-      try {
-        const q = query(collection(db, 'withdrawals'), orderBy('createdAt', 'desc'), limit(100));
-        const snap = await getDocs(q);
-        setAllWithdrawals(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      } catch (err) {
-        console.warn('Withdrawals fetch failed:', err);
-      }
-    };
-    fetchWithdrawals();
+    // Real-time Withdrawals Listener for Admin
+    const qWithdrawals = query(collection(db, 'withdrawals'), orderBy('createdAt', 'desc'), limit(100));
+    const unsubscribeWithdrawals = onSnapshot(qWithdrawals, (snapshot) => {
+      setAllWithdrawals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (err) => {
+      console.warn('Withdrawals listener failed:', err);
+    });
 
-    return () => {};
+    return () => unsubscribeWithdrawals();
   }, [isAdmin, view]);
 
   const formattedDate = currentTime.toLocaleDateString('en-GB', {
@@ -819,87 +816,62 @@ export default function App() {
             } catch(e) {}
           }
 
-          // Fetch profile from server
+          // Real-time Profile Listener
           const profileRef = doc(db, 'profiles', currentUser.uid);
-          const profileSnap = await getDoc(profileRef);
-
-          if (profileSnap.exists()) {
-            const data = profileSnap.data();
-            let needsUpdate = false;
-            const updates: any = {};
-
-            // Parallelize critical updates
-            if (currentUser.email && SYSTEM_ADMINS.includes(currentUser.email) && data.role !== 'admin') {
-              updates.role = 'admin';
-              data.role = 'admin';
-              needsUpdate = true;
-            }
-            if (!data.numericId) {
+          const unsubscribeProfile = onSnapshot(profileRef, async (snap) => {
+            if (snap.exists()) {
+              const data = snap.data();
+              setUserProfile(data);
+              localStorage.setItem(cacheKey, JSON.stringify(data));
+              
+              // Only update form if it was empty or first time
+              if (!profileForm.displayName && data.displayName) {
+                setProfileForm(prev => ({
+                  ...prev,
+                  displayName: data.displayName || '',
+                  phone: data.phone || '',
+                  bkashNumber: data.bkashNumber || '',
+                  nagadNumber: data.nagadNumber || '',
+                  photoURL: data.photoURL || ''
+                }));
+              }
+            } else {
+              // New user registration flow
               const numericId = Math.floor(10000 + Math.random() * 90000).toString();
-              updates.numericId = numericId;
-              data.numericId = numericId;
-              needsUpdate = true;
-            }
-            if (data.successfulReferrals === undefined) {
-              updates.successfulReferrals = 0;
-              data.successfulReferrals = 0;
-              needsUpdate = true;
-            }
-
-            if (needsUpdate) {
-              updates.updatedAt = serverTimestamp();
-              await updateDoc(profileRef, updates);
-            }
-
-            setUserProfile(data);
-            localStorage.setItem(cacheKey, JSON.stringify(data));
-            
-            setProfileForm({
-              firstName: data.firstName || '',
-              lastName: data.lastName || '',
-              age: data.age?.toString() || '',
-              address: data.address || '',
-              displayName: data.displayName || '',
-              phone: data.phone || '',
-              bkashNumber: data.bkashNumber || '',
-              nagadNumber: data.nagadNumber || '',
-              photoURL: data.photoURL || ''
-            });
-
-            if (!data.hasSeenWelcome && !data.firstName) {
+              const isAdminEmail = currentUser.email && SYSTEM_ADMINS.includes(currentUser.email);
+              const referredBy = localStorage.getItem('referredBy');
+              
+              const newProfile = {
+                email: currentUser.email,
+                balance: 0,
+                totalSales: 0,
+                totalOrders: 0,
+                uid: currentUser.uid,
+                numericId: numericId,
+                role: isAdminEmail ? 'admin' : 'user',
+                referredBy: referredBy || null,
+                successfulReferrals: 0,
+                hasTransacted: false,
+                photoURL: currentUser.photoURL || null,
+                displayName: currentUser.displayName || null,
+                createdAt: serverTimestamp()
+              };
+              
+              await setDoc(profileRef, newProfile);
+              setUserProfile(newProfile);
               setShowWelcomePopup(true);
-            }
-          } else {
-            // New user registration flow
-            const numericId = Math.floor(10000 + Math.random() * 90000).toString();
-            const isAdminEmail = currentUser.email && SYSTEM_ADMINS.includes(currentUser.email);
-            const referredBy = localStorage.getItem('referredBy');
-            
-            const newProfile = {
-              email: currentUser.email,
-              balance: 0,
-              totalSales: 0,
-              totalOrders: 0,
-              uid: currentUser.uid,
-              numericId: numericId,
-              role: isAdminEmail ? 'admin' : 'user',
-              referredBy: referredBy || null,
-              successfulReferrals: 0,
-              hasTransacted: false,
-              photoURL: currentUser.photoURL || null,
-              displayName: currentUser.displayName || null,
-              createdAt: serverTimestamp()
-            };
-            
-            await setDoc(profileRef, newProfile);
-            setUserProfile(newProfile);
-            setShowWelcomePopup(true);
 
-            if (referredBy) {
-              sendNotification(referredBy, `অভিনন্দন! আপনার রেফারেল লিংক থেকে একজন নতুন ইউজার জয়েন করেছে।`, 'info');
-              localStorage.removeItem('referredBy');
+              if (referredBy) {
+                sendNotification(referredBy, `অভিনন্দন! আপনার রেফারেল লিংক থেকে একজন নতুন ইউজার জয়েন করেছে।`, 'info');
+                localStorage.removeItem('referredBy');
+              }
             }
-          }
+          }, (err) => {
+            console.error('Profile listener error:', err);
+            handleFirestoreError(err, OperationType.GET, `profiles/${currentUser.uid}`);
+          });
+
+          return () => unsubscribeProfile();
         } else {
           setUserProfile(null);
         }
@@ -938,27 +910,17 @@ export default function App() {
     };
     setProfileForm(profileFormUpdate);
 
-    // Reports & Notifications Fetch - Optimized to save quota
-    const fetchUserData = async () => {
-      try {
-        const [buyerSnap, sellerSnap, notifSnap] = await Promise.all([
-          getDocs(query(collection(db, 'reports'), where('buyerId', '==', user.uid), limit(20))),
-          getDocs(query(collection(db, 'reports'), where('sellerId', '==', user.uid), limit(20))),
-          getDocs(query(collection(db, 'notifications'), where('toUserId', '==', user.uid), orderBy('createdAt', 'desc'), limit(30)))
-        ]);
-        
-        setMyReports(buyerSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any).sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-        setSellerReports(sellerSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any).sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-        const notifs = notifSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any);
-        setNotifications(notifs);
-        setUnreadCount(notifs.filter(n => !n.read).length);
-      } catch (err) {
-        console.warn('UserData fetch failed:', err);
-      }
-    };
-    fetchUserData();
+    // Real-time Notifications Listener
+    const qNotifs = query(collection(db, 'notifications'), where('toUserId', '==', user.uid), orderBy('createdAt', 'desc'), limit(30));
+    const unsubscribeNotifs = onSnapshot(qNotifs, (snapshot) => {
+      const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any);
+      setNotifications(notifs);
+      setUnreadCount(notifs.filter((n: any) => !n.read).length);
+    }, (err) => {
+      console.warn('Notifications listener failed:', err);
+    });
 
-    return () => {};
+    return () => unsubscribeNotifs();
   }, [user]);
 
   const sendNotification = async (toUserId: string, message: string, type: 'info' | 'warning' | 'success' | 'error' | 'system' = 'info', details: any = {}) => {
@@ -1510,7 +1472,7 @@ export default function App() {
 
   const revealPassword = async (listingId: string, sellerId?: string) => {
     // Check if user is owner or admin
-    const isAdminUser = user?.email === 'ashrafulislambhuiyan8@gmail.com';
+    const isAdminUser = user?.email && SYSTEM_ADMINS.includes(user.email);
     
     if (user?.uid !== sellerId && !isAdminUser) {
       alert("Only the account owner or admin can view these credentials.");
@@ -1536,131 +1498,97 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!user || (view !== 'seller-center' && view !== 'gmail-market' && view !== 'marketplace')) return;
-
-    // Seller's own listings - Fetch once instead of real-time to save quota
-    const fetchSellerListings = async () => {
-      if (!user) return;
-      
-      // Load from cache first
-      const cacheKey = `cache_seller_listings_${user.uid}`;
-      const cached = localStorage.getItem(cacheKey);
-      const cacheTimeKey = `${cacheKey}_timestamp`;
-      const cachedTime = localStorage.getItem(cacheTimeKey);
-      
-      if (cached) {
-        try { setSellerListings(JSON.parse(cached)); } catch(e) {}
-      }
-
-      // Only refetch if quota not exceeded and (no cache OR 30s passed)
-      const now = Date.now();
-      const needsFetch = !cached || !cachedTime || (now - parseInt(cachedTime)) > 30000;
-
-      if (!quotaExceeded && (needsFetch || !sellerListings.length)) {
-        try {
-          const sellerQ = query(collection(db, 'listings'), where('sellerId', '==', user.uid), limit(200));
-          const snap = await getDocs(sellerQ);
-          const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-          setSellerListings(items);
-          localStorage.setItem(cacheKey, JSON.stringify(items));
-          localStorage.setItem(cacheTimeKey, now.toString());
-        } catch (err: any) {
-          console.warn("Seller listings fetch failed:", err);
-          if (err.message?.includes('quota') || err.message?.includes('exhausted')) {
-            setQuotaExceeded(true);
-          }
-        }
-      }
-    };
-    fetchSellerListings();
-
-    return () => {};
-  }, [user, view]);
-
-  useEffect(() => {
     if (!isAdmin || view !== 'admin') return;
 
-    const fetchAdminData = async () => {
-      try {
-        const [listingsSnap, purchasesSnap, paymentsSnap, reportsSnap] = await Promise.all([
-          getDocs(query(collection(db, 'listings'), orderBy('createdAt', 'desc'), limit(100))),
-          getDocs(query(collection(db, 'purchases'), orderBy('purchasedAt', 'desc'), limit(100))),
-          getDocs(query(collection(db, 'payments'), orderBy('createdAt', 'desc'), limit(100))),
-          getDocs(query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(100)))
-        ]);
-        
-        setAllListings(listingsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any));
-        setAllPurchases(purchasesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any));
-        setAllPayments(paymentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any));
-        setAdminReports(reportsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any));
-      } catch (err) {
-        console.warn('Admin data fetch failed:', err);
-      }
+    // Real-time Admin Listeners
+    const qListings = query(collection(db, 'listings'), orderBy('createdAt', 'desc'), limit(200));
+    const unsubscribeListings = onSnapshot(qListings, (snap) => {
+      setAllListings(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any));
+    });
+
+    const qPurchases = query(collection(db, 'purchases'), orderBy('purchasedAt', 'desc'), limit(100));
+    const unsubscribePurchases = onSnapshot(qPurchases, (snap) => {
+      setAllPurchases(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any));
+    });
+
+    const qPayments = query(collection(db, 'payments'), orderBy('createdAt', 'desc'), limit(100));
+    const unsubscribePayments = onSnapshot(qPayments, (snap) => {
+      setAllPayments(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any));
+    });
+
+    const qReports = query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(100));
+    const unsubscribeReports = onSnapshot(qReports, (snap) => {
+      setAdminReports(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any));
+    });
+
+    return () => {
+      unsubscribeListings();
+      unsubscribePurchases();
+      unsubscribePayments();
+      unsubscribeReports();
     };
-    fetchAdminData();
   }, [isAdmin, view]);
+
+  useEffect(() => {
+    if (!user || (view !== 'seller-center' && view !== 'gmail-market' && view !== 'marketplace')) return;
+
+    // Real-time Seller Listings Listener
+    const sellerQ = query(collection(db, 'listings'), where('sellerId', '==', user.uid), limit(200));
+    const unsubscribeSeller = onSnapshot(sellerQ, (snap) => {
+      const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        .sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      setSellerListings(items);
+      localStorage.setItem(`cache_seller_listings_${user.uid}`, JSON.stringify(items));
+    }, (err) => {
+      console.warn("Seller listings listener failed:", err);
+    });
+
+    return () => unsubscribeSeller();
+  }, [user, view]);
 
   useEffect(() => {
     if (view !== 'gmail-market' && view !== 'marketplace') return;
 
-    const fetchMarketData = async () => {
-      // Load from cache first
-      const cacheKey = 'cache_market_listings';
-      const cacheTimeKey = `${cacheKey}_timestamp`;
-      const cachedMarket = localStorage.getItem(cacheKey);
-      const cachedTime = localStorage.getItem(cacheTimeKey);
+    // Real-time Market Listings Listener
+    const qMarket = query(
+      collection(db, 'listings'),
+      where('status', '==', 'Available'),
+      limit(100)
+    );
+    
+    const unsubscribeMarket = onSnapshot(qMarket, (snapshot) => {
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        .sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      setMarketListings(items);
+      localStorage.setItem('cache_market_listings', JSON.stringify(items));
+    }, (err) => {
+      console.warn('Market listener failed:', err);
+    });
 
-      if (cachedMarket) {
-        try { setMarketListings(JSON.parse(cachedMarket)); } catch(e) {}
-      }
+    let unsubscribePurchases: () => void = () => {};
+    let unsubscribePayments: () => void = () => {};
 
-      if (user) {
-        const cachedPurch = localStorage.getItem(`cache_my_purchases_${user.uid}`);
-        const cachedPay = localStorage.getItem(`cache_user_payments_${user.uid}`);
-        if (cachedPurch) { try { setMyPurchases(JSON.parse(cachedPurch)); } catch(e) {} }
-        if (cachedPay) { try { setUserPayments(JSON.parse(cachedPay)); } catch(e) {} }
-      }
+    if (user) {
+      const qPurchases = query(collection(db, 'purchases'), where('userId', '==', user.uid), orderBy('purchasedAt', 'desc'), limit(50));
+      unsubscribePurchases = onSnapshot(qPurchases, (snapshot) => {
+        const purchases = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setMyPurchases(purchases);
+        localStorage.setItem(`cache_my_purchases_${user.uid}`, JSON.stringify(purchases));
+      });
 
-      // Re-fetch logic (Optimized: 30s cache instead of 5m for better reactivity)
-      const now = Date.now();
-      const needsFetch = !cachedMarket || !cachedTime || (now - parseInt(cachedTime)) > 30000;
+      const qPayments = query(collection(db, 'payments'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(50));
+      unsubscribePayments = onSnapshot(qPayments, (snapshot) => {
+        const payments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setUserPayments(payments);
+        localStorage.setItem(`cache_user_payments_${user.uid}`, JSON.stringify(payments));
+      });
+    }
 
-      if (!quotaExceeded && (needsFetch || !marketListings.length)) {
-        try {
-          const q = query(
-            collection(db, 'listings'),
-            where('status', '==', 'Available'),
-            limit(100)
-          );
-          const snapshot = await getDocs(q);
-          const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-          setMarketListings(items);
-          localStorage.setItem(cacheKey, JSON.stringify(items));
-          localStorage.setItem(cacheTimeKey, now.toString());
-
-          if (user) {
-            const [myPurchSnap, userPaySnap] = await Promise.all([
-              getDocs(query(collection(db, 'purchases'), where('userId', '==', user.uid), orderBy('purchasedAt', 'desc'), limit(50))),
-              getDocs(query(collection(db, 'payments'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(50)))
-            ]);
-            const purchases = myPurchSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            const payments = userPaySnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            
-            setMyPurchases(purchases);
-            setUserPayments(payments);
-            
-            localStorage.setItem(`cache_my_purchases_${user.uid}`, JSON.stringify(purchases));
-            localStorage.setItem(`cache_user_payments_${user.uid}`, JSON.stringify(payments));
-          }
-        } catch (err: any) {
-          console.warn('Market data fetch failed:', err);
-          if (err.message?.includes('quota') || err.message?.includes('exhausted')) {
-            setQuotaExceeded(true);
-          }
-        }
-      }
+    return () => {
+      unsubscribeMarket();
+      unsubscribePurchases();
+      unsubscribePayments();
     };
-    fetchMarketData();
   }, [user, view, quotaExceeded]);
 
   const handleBulkBuyFromBalance = async () => {
