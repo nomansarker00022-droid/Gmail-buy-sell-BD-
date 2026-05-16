@@ -40,6 +40,7 @@ import {
   orderBy,
   serverTimestamp,
   updateDoc,
+  deleteDoc,
   increment,
   limit,
   writeBatch,
@@ -1423,6 +1424,10 @@ export default function App() {
 
       alert(sellListingToEdit ? 'Listing updated and resubmitted for review!' : 'Account submitted for review!');
 
+      if (finalStatus === 'SellRequest') {
+        cleanupOldListings('SellRequest');
+      }
+
       // Notify Admins
       try {
         const adminsSnapshot = await getDocs(query(collection(db, 'profiles'), where('role', '==', 'admin')));
@@ -1849,6 +1854,8 @@ export default function App() {
       
       setSelectedListings([]);
       setIsBulkBuyMode(false);
+      // Cleanup old sold listings
+      cleanupOldListings('Sold');
     } catch (err: any) {
       console.error('Bulk buy transaction failed:', err);
       setError(err.message || 'Transaction failed');
@@ -1975,6 +1982,8 @@ export default function App() {
       } else {
         throw new Error("কেনা সফল হয়েছে কিন্তু পাসওয়ার্ড লোড করা যায়নি। দয়া করে Purchased ট্যাব চেক করুন।");
       }
+      // Cleanup old sold listings
+      cleanupOldListings('Sold');
     } catch (err: any) {
       console.error('Purchase failed:', err);
       const errorMessage = err.message || '';
@@ -2141,7 +2150,7 @@ export default function App() {
     }
   };
 
-  const handleAdminBulkAction = async (action: 'Available' | 'Approved' | 'Dispute' | 'Delete') => {
+  const handleAdminBulkAction = async (action: 'Available' | 'Approved' | 'Dispute' | 'Sold' | 'SellRequest' | 'Delete') => {
     if (!isAdmin || adminSelectedListings.length === 0) return;
     
     const confirmMsg = action === 'Delete' 
@@ -2207,6 +2216,11 @@ export default function App() {
         }
       }
       alert(`${successCount}টি লিস্টিং সফলভাবে ${action === 'Delete' ? 'ডিলিট' : 'আপডেট'} করা হয়েছে!`);
+      
+      if (action === 'Approved' || action === 'Dispute' || action === 'Sold' || action === 'SellRequest') {
+        cleanupOldListings(action);
+      }
+      
       setAdminSelectedListings([]);
     } catch (err: any) {
       alert('Bulk action error: ' + err.message);
@@ -2366,6 +2380,26 @@ export default function App() {
     }
   };
 
+  const cleanupOldListings = async (status: string) => {
+    try {
+      const q = query(
+        collection(db, 'listings'),
+        where('status', '==', status),
+        orderBy('createdAt', 'desc')
+      );
+      const snap = await getDocs(q);
+      if (snap.size > 10) {
+        const toDelete = snap.docs.slice(10);
+        for (const d of toDelete) {
+          await deleteDoc(doc(db, 'listings', d.id));
+        }
+        console.log(`Cleanup: Deleted ${toDelete.length} old ${status} listings.`);
+      }
+    } catch (e) {
+      console.error('Cleanup error:', e);
+    }
+  };
+
   const updateListingStatus = async (listingId: string, status: string, extraData: any = {}) => {
     if (!isAdmin) {
       console.error('Not an admin. Email:', user?.email);
@@ -2395,6 +2429,11 @@ export default function App() {
       }
 
       await updateDoc(doc(db, 'listings', listingId), updatePayload);
+
+      // Trigger cleanup for server optimization
+      if (status === 'Approved' || status === 'Dispute' || status === 'Sold' || status === 'SellRequest') {
+        cleanupOldListings(status);
+      }
 
       // Notification for seller
       if (status === 'Available' || status === 'Dispute') {
