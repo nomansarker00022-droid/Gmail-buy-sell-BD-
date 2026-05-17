@@ -142,16 +142,13 @@ export default function App() {
   };
 
   useEffect(() => {
-    const fetchReviews = async () => {
-      try {
-        const q = query(collection(db, 'reviews'), orderBy('createdAt', 'desc'), limit(50));
-        const snap = await getDocs(q);
-        setReviews(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      } catch (err) {
-        console.warn('Reviews fetch failed:', err);
-      }
-    };
-    fetchReviews();
+    const q = query(collection(db, 'reviews'), orderBy('createdAt', 'desc'), limit(50));
+    const unsubscribeReviews = onSnapshot(q, (snapshot) => {
+      setReviews(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (err) => {
+      console.warn('Reviews listener failed:', err);
+    });
+    return () => unsubscribeReviews();
   }, []);
 
   const [view, setView] = useState<'login' | 'register' | 'forgot' | 'marketplace' | 'seller-center' | 'gmail-market' | 'admin' | 'profile' | 'transactions'>('login');
@@ -478,50 +475,41 @@ export default function App() {
     };
     fetchTodayStats();
 
-    // Stats were causing high quota usage - fetch once and don't use onSnapshot for heavy leaderboards
-    const fetchLeaderboards = async () => {
-      // Load from cache first
-      const cachedSellers = localStorage.getItem('cache_top_sellers');
-      const cachedBuyers = localStorage.getItem('cache_top_buyers');
-      const cachedSold = localStorage.getItem('cache_today_sold');
-      const cachedSales = localStorage.getItem('cache_live_sales');
+    // Real-time Leaderboards & Activity Feed
+    const qSellers = query(collection(db, 'profiles'), where('totalSales', '>', 0), orderBy('totalSales', 'desc'), limit(10));
+    const unsubscribeSellers = onSnapshot(qSellers, (snap) => {
+      const sellers = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setTopSellers(sellers);
+      localStorage.setItem('cache_top_sellers', JSON.stringify(sellers));
+    }, (err) => console.warn('Sellers listener failed:', err));
 
-      if (cachedSellers) try { setTopSellers(JSON.parse(cachedSellers)); } catch(e){}
-      if (cachedBuyers) try { setTopBuyers(JSON.parse(cachedBuyers)); } catch(e){}
-      if (cachedSold) try { setTodaySold(JSON.parse(cachedSold)); } catch(e){}
-      if (cachedSales) try { setLiveSales(JSON.parse(cachedSales)); } catch(e){}
+    const qBuyers = query(collection(db, 'profiles'), where('totalSpent', '>', 0), orderBy('totalSpent', 'desc'), limit(10));
+    const unsubscribeBuyers = onSnapshot(qBuyers, (snap) => {
+      const buyers = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setTopBuyers(buyers);
+      localStorage.setItem('cache_top_buyers', JSON.stringify(buyers));
+    }, (err) => console.warn('Buyers listener failed:', err));
+    
+    const qSold = query(collection(db, 'listings'), where('status', 'in', ['Sold', 'Pending', 'Approved']), orderBy('createdAt', 'desc'), limit(10));
+    const unsubscribeSold = onSnapshot(qSold, (snap) => {
+      const soldItems = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setTodaySold(soldItems);
+      localStorage.setItem('cache_today_sold', JSON.stringify(soldItems));
+    }, (err) => console.warn('Sold listener failed:', err));
 
-      try {
-        const qSellers = query(collection(db, 'profiles'), where('totalSales', '>', 0), orderBy('totalSales', 'desc'), limit(10));
-        const sellSnap = await getDocs(qSellers);
-        const sellers = sellSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setTopSellers(sellers);
-        localStorage.setItem('cache_top_sellers', JSON.stringify(sellers));
+    const qSellerActivity = query(collection(db, 'listings'), where('status', 'in', ['SellRequest', 'Pending', 'Approved', 'Available', 'Dispute', 'Sold']), orderBy('createdAt', 'desc'), limit(10));
+    const unsubscribeActivity = onSnapshot(qSellerActivity, (snap) => {
+      const activeItems = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setLiveSales(activeItems);
+      localStorage.setItem('cache_live_sales', JSON.stringify(activeItems));
+    }, (err) => console.warn('Activity listener failed:', err));
 
-        const qBuyers = query(collection(db, 'profiles'), where('totalSpent', '>', 0), orderBy('totalSpent', 'desc'), limit(10));
-        const buySnap = await getDocs(qBuyers);
-        const buyers = buySnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setTopBuyers(buyers);
-        localStorage.setItem('cache_top_buyers', JSON.stringify(buyers));
-        
-        const qSold = query(collection(db, 'listings'), where('status', 'in', ['Sold', 'Pending', 'Approved']), orderBy('createdAt', 'desc'), limit(10));
-        const soldSnap = await getDocs(qSold);
-        const soldItems = soldSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setTodaySold(soldItems);
-        localStorage.setItem('cache_today_sold', JSON.stringify(soldItems));
-
-        const qSellerActivity = query(collection(db, 'listings'), where('status', 'in', ['SellRequest', 'Pending', 'Approved', 'Available', 'Dispute', 'Sold']), orderBy('createdAt', 'desc'), limit(10));
-        const activSnap = await getDocs(qSellerActivity);
-        const activeItems = activSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setLiveSales(activeItems);
-        localStorage.setItem('cache_live_sales', JSON.stringify(activeItems));
-      } catch (err) {
-        console.warn('Leaderboard fetch failed:', err);
-      }
+    return () => {
+      unsubscribeSellers();
+      unsubscribeBuyers();
+      unsubscribeSold();
+      unsubscribeActivity();
     };
-    fetchLeaderboards();
-
-    return () => {};
   }, []);
 
   const isAdmin = user?.email && SYSTEM_ADMINS.includes(user.email);
@@ -634,9 +622,10 @@ export default function App() {
   const [marketListings, setMarketListings] = useState<any[]>([]);
 
   const filteredMarketListings = marketListings.filter(l => 
-    l.gmailAccount.toLowerCase().includes(marketSearchQuery.toLowerCase()) || 
-    (l.type && l.type.toLowerCase().includes(marketSearchQuery.toLowerCase())) ||
-    (l.description && l.description.toLowerCase().includes(marketSearchQuery.toLowerCase()))
+    (l.gmailAccount.toLowerCase().includes(marketSearchQuery.toLowerCase()) || 
+     (l.type && l.type.toLowerCase().includes(marketSearchQuery.toLowerCase())) ||
+     (l.description && l.description.toLowerCase().includes(marketSearchQuery.toLowerCase()))) &&
+    l.sellerId !== user?.uid
   );
 
   const [myPurchases, setMyPurchases] = useState<any[]>([]);
