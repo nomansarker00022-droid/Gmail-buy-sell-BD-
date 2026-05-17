@@ -1396,8 +1396,13 @@ export default function App() {
     setError(null);
     try {
       console.log('Sending reset email to:', email);
-      await sendPasswordResetEmail(auth, email);
-      alert('পাসওয়ার্ড রিসেট করার ইমেইল পাঠানো হয়েছে! \n\nদয়া করে আপনার ইনবক্স অথবা স্প্যাম (Spam) ফোল্ডার চেক করুন। যদি ৫ মিনিটের মধ্যে ইমেইল না পান, তবে নিশ্চিত হোন যে আপনার ইমেইলটি এই সাইটে নিবন্ধিত আছে।');
+      const actionCodeSettings = {
+        // This URL must be whitelisted in Firebase Console -> Authentication -> Settings -> Authorized domains
+        url: window.location.origin,
+        handleCodeInApp: true,
+      };
+      await sendPasswordResetEmail(auth, email, actionCodeSettings);
+      alert('পাসওয়ার্ড রিসেট করার ইমেইল পাঠানো হয়েছে! \n\nদয়া করে আপনার ইনবক্স অথবা স্প্যাম (Spam) ফোল্ডার চেক করুন। লিংকে ক্লিক করলে আপনি সরাসরি পাসওয়ার্ড পরিবর্তনের অপশন পাবেন।');
       setView('login');
     } catch (err: any) {
       console.error('Password reset error:', err);
