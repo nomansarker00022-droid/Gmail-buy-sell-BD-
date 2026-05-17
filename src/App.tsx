@@ -21,6 +21,8 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   sendPasswordResetEmail,
+  confirmPasswordReset,
+  verifyPasswordResetCode,
   onAuthStateChanged,
   signOut,
   signInWithPopup,
@@ -148,10 +150,40 @@ export default function App() {
     }, (err) => {
       console.warn('Reviews listener failed:', err);
     });
+
+    // Handle Password Reset URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+    const actionCode = urlParams.get('oobCode');
+
+    if (mode === 'resetPassword' && actionCode) {
+      handleVerifyCode(actionCode);
+    }
+
     return () => unsubscribeReviews();
   }, []);
 
-  const [view, setView] = useState<'login' | 'register' | 'forgot' | 'marketplace' | 'seller-center' | 'gmail-market' | 'admin' | 'profile' | 'transactions'>('login');
+  const handleVerifyCode = async (code: string) => {
+    try {
+      setLoading(true);
+      await verifyPasswordResetCode(auth, code);
+      setResetCode(code);
+      setView('reset');
+      // Clean up URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (err: any) {
+      console.error('Verify reset code error:', err);
+      setError('পাসওয়ার্ড রিসেট লিংকটি সঠিক নয় অথবা এর মেয়াদ শেষ হয়ে গেছে। দয়া করে আবার চেষ্টা করুন।');
+      setView('login');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const [view, setView] = useState<'login' | 'register' | 'forgot' | 'reset' | 'marketplace' | 'seller-center' | 'gmail-market' | 'admin' | 'profile' | 'transactions'>('login');
+  const [resetCode, setResetCode] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -611,6 +643,13 @@ export default function App() {
     return () => unsubscribeWithdrawals();
   }, [isAdmin, view]);
 
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return 'Just now';
+    if (timestamp.toDate) return timestamp.toDate().toLocaleString();
+    if (timestamp.seconds) return new Date(timestamp.seconds * 1000).toLocaleString();
+    return new Date(timestamp).toLocaleString();
+  };
+
   const formattedDate = currentTime.toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'long',
@@ -675,6 +714,18 @@ export default function App() {
       if (mainError.toLowerCase().includes('unauthorized domain') || mainError.toLowerCase().includes('unauthorized-domain')) {
         return "Unauthorized Domain! দয়া করে আপনার Netlify ডোমেইনটি (gmailbuysellbd.netlify.app) Firebase Console-এর Authorized Domains সেকশনে যুক্ত করুন।";
       }
+      if (mainError.toLowerCase().includes('email-already-in-use') || mainError.toLowerCase().includes('auth/email-already-in-use')) {
+        return "এই ইমেইলটি ইতিমধ্যে নিবন্ধিত। দয়া করে লগইন করুন।";
+      }
+      if (mainError.toLowerCase().includes('wrong-password') || mainError.toLowerCase().includes('invalid-credential') || mainError.toLowerCase().includes('invalid-password')) {
+        return "পাসওয়ার্ডটি সঠিক নয়। সঠিক পাসওয়ার্ড দিয়ে চেষ্টা করুন।";
+      }
+      if (mainError.toLowerCase().includes('user-not-found')) {
+        return "এই ইমেইলটি নিবন্ধিত নয়। দয়া করে নতুন একাউন্ট খুলুন।";
+      }
+      if (mainError.toLowerCase().includes('weak-password')) {
+        return "পাসওয়ার্ডটি অন্তত ৬ অক্ষরের হতে হবে।";
+      }
       return mainError;
     } catch (e) {
       // Fallback for regular error strings
@@ -716,6 +767,65 @@ export default function App() {
     gmailAccount: '',
     type: 'info' as 'info' | 'warning' | 'success' | 'error'
   });
+
+  const [adminUserSearchQuery, setAdminUserSearchQuery] = useState('');
+  const [adminSearchedAccount, setAdminSearchedAccount] = useState<any>(null);
+
+  const handleAdminUserLookup = async () => {
+    if (!isAdmin || !adminUserSearchQuery) return;
+    setIsVerifying(true);
+    try {
+      let targetUid = '';
+      
+      if (/^\d+$/.test(adminUserSearchQuery)) {
+        const q = query(collection(db, 'profiles'), where('numericId', '==', adminUserSearchQuery));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          targetUid = snap.docs[0].id;
+        }
+      }
+
+      if (!targetUid) {
+        const q = query(collection(db, 'profiles'), where('email', '==', adminUserSearchQuery));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          targetUid = snap.docs[0].id;
+        }
+      }
+
+      if (!targetUid) {
+        const docRef = doc(db, 'profiles', adminUserSearchQuery);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          targetUid = adminUserSearchQuery;
+        }
+      }
+
+      if (!targetUid) {
+        alert('User not found!');
+        setAdminSearchedAccount(null);
+        return;
+      }
+
+      const finalDoc = await getDoc(doc(db, 'profiles', targetUid));
+      setAdminSearchedAccount({ id: finalDoc.id, ...finalDoc.data() });
+    } catch (err: any) {
+      alert('Search Error: ' + err.message);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleSendAdminResetEmail = async (email: string) => {
+    if (!isAdmin || !email) return;
+    if (!window.confirm(`আপনি কি ${email} এ পাসওয়ার্ড রিসেট ইমেল পাঠাতে চান?`)) return;
+    try {
+      await sendPasswordResetEmail(auth, email);
+      alert(`${email} এ পাসওয়ার্ড রিসেট ইমেল পাঠানো হয়েছে! ইনবক্স বা স্প্যাম চেক করুন।`);
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    }
+  };
   const [gmailPrices, setGmailPrices] = useState<Record<string, { seller: string, buyer: string }>>(DEFAULT_GMAIL_PRICES);
 
   useEffect(() => {
@@ -1098,13 +1208,13 @@ export default function App() {
         setUserOtp('');
       } catch (regErr: any) {
         console.error('Registration failed:', regErr);
-        if (regErr.code === 'auth/email-already-in-use' || regErr.message?.includes('email-already-in-use')) {
+        if (regErr.code === 'auth/email-already-in-use' || (regErr.message && regErr.message.includes('email-already-in-use'))) {
           setError('এই ইমেইলটি ইতিমধ্যে নিবন্ধিত। সঠিক পাসওয়ার্ড দিয়ে লগইন করুন।');
           setOtpStep(false);
-        } else if (regErr.code === 'auth/weak-password' || regErr.message?.includes('weak-password')) {
+        } else if (regErr.code === 'auth/weak-password' || (regErr.message && regErr.message.includes('weak-password'))) {
           setError('পাসওয়ার্ডটি অন্তত ৬ অক্ষরের হতে হবে।');
         } else {
-          setError(`সমস্যা হয়েছে: ${regErr.message || 'Error'}`);
+          setError(regErr.message || 'Registration failed');
         }
       } finally {
         setLoading(false);
@@ -1140,6 +1250,46 @@ export default function App() {
       }
     } finally {
       if (!otpStep) setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetCode) {
+      setError('রিসেট কোড পাওয়া যায়নি। আবার চেষ্টা করুন।');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setError('পাসওয়ার্ড দুটি মিলছে না।');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError('পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে।');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      await confirmPasswordReset(auth, resetCode, newPassword);
+      alert('পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে! এখন নতুন পাসওয়ার্ড দিয়ে লগইন করুন।');
+      setView('login');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setResetCode(null);
+    } catch (err: any) {
+      console.error('Confirm reset password error:', err);
+      if (err.code === 'auth/expired-action-code') {
+        setError('লিংকটির মেয়াদ শেষ হয়ে গেছে। আবার চেষ্টা করুন।');
+      } else if (err.code === 'auth/invalid-action-code') {
+        setError('অকার্যকর লিংক। আবার চেষ্টা করুন।');
+      } else if (err.code === 'auth/weak-password') {
+        setError('পাসওয়ার্ডটি অন্তত ৬ অক্ষরের হতে হবে।');
+      } else {
+        setError(err.message || 'পাসওয়ার্ড পরিবর্তন করতে সমস্যা হয়েছে।');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1222,12 +1372,12 @@ export default function App() {
       setUserOtp('');
     } catch (err: any) {
       console.error('Register error:', err);
-      if (err.code === 'auth/email-already-in-use' || err.message?.includes('email-already-in-use')) {
+      if (err.code === 'auth/email-already-in-use' || (err.message && err.message.includes('email-already-in-use'))) {
         setError('এই ইমেইলটি ইতিমধ্যে ব্যবহার করা হয়েছে। লগইন করুন।');
-      } else if (err.code === 'auth/weak-password' || err.message?.includes('weak-password')) {
+      } else if (err.code === 'auth/weak-password' || (err.message && err.message.includes('weak-password'))) {
         setError('পাসওয়ার্ডটি অন্তত ৬ অক্ষরের হতে হবে।');
       } else {
-        setError('রেজিস্ট্রেশন করতে সমস্যা হচ্ছে। পরে চেষ্টা করুন।');
+        setError(err.message || 'Registration error');
       }
       setOtpStep(false);
     } finally {
@@ -1237,13 +1387,32 @@ export default function App() {
 
   const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email) {
+      setError('দয়া করে আপনার ইমেইল এড্রেসটি লিখুন।');
+      return;
+    }
+    
+    setLoading(true);
     setError(null);
     try {
+      console.log('Sending reset email to:', email);
       await sendPasswordResetEmail(auth, email);
-      alert('Password reset email sent!');
+      alert('পাসওয়ার্ড রিসেট করার ইমেইল পাঠানো হয়েছে! \n\nদয়া করে আপনার ইনবক্স অথবা স্প্যাম (Spam) ফোল্ডার চেক করুন। যদি ৫ মিনিটের মধ্যে ইমেইল না পান, তবে নিশ্চিত হোন যে আপনার ইমেইলটি এই সাইটে নিবন্ধিত আছে।');
       setView('login');
     } catch (err: any) {
-      setError(err.message);
+      console.error('Password reset error:', err);
+      // Firebase specific error handling
+      if (err.code === 'auth/user-not-found' || err.message?.includes('user-not-found')) {
+        setError('এই ইমেইলটি নিবন্ধিত নয়। দয়া করে সঠিক ইমেইল দিন অথবা নতুন একাউন্ট খুলুন।');
+      } else if (err.code === 'auth/invalid-email' || err.message?.includes('invalid-email')) {
+        setError('অকার্যকর ইমেইল এড্রেস। দয়া করে সঠিক ইমেইল দিন।');
+      } else if (err.code === 'auth/unauthorized-domain' || err.message?.includes('unauthorized-domain')) {
+        setError('Unauthorized Domain! আপনার ডোমেইনটি Firebase-এ Authorized Domains হিসেবে যুক্ত নেই।');
+      } else {
+        setError(err.message || 'পাসওয়ার্ড রিসেট করতে সমস্যা হয়েছে।');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1544,6 +1713,14 @@ export default function App() {
   useEffect(() => {
     if (view !== 'gmail-market' && view !== 'marketplace') return;
 
+    // Load from cache first
+    if (user) {
+      const cachedPurch = localStorage.getItem(`cache_my_purchases_${user.uid}`);
+      const cachedPay = localStorage.getItem(`cache_user_payments_${user.uid}`);
+      if (cachedPurch) { try { setMyPurchases(JSON.parse(cachedPurch)); } catch(e) {} }
+      if (cachedPay) { try { setUserPayments(JSON.parse(cachedPay)); } catch(e) {} }
+    }
+
     // Real-time Market Listings Listener
     const qMarket = query(
       collection(db, 'listings'),
@@ -1569,6 +1746,8 @@ export default function App() {
         const purchases = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setMyPurchases(purchases);
         localStorage.setItem(`cache_my_purchases_${user.uid}`, JSON.stringify(purchases));
+      }, (err) => {
+        console.warn('Purchases listener failed:', err);
       });
 
       const qPayments = query(collection(db, 'payments'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(50));
@@ -1576,6 +1755,8 @@ export default function App() {
         const payments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setUserPayments(payments);
         localStorage.setItem(`cache_user_payments_${user.uid}`, JSON.stringify(payments));
+      }, (err) => {
+        console.warn('Payments listener failed:', err);
       });
     }
 
@@ -3815,7 +3996,7 @@ export default function App() {
                                    {order.credentials?.email || order.gmailAccount}
                                 </h4>
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="text-[8px] md:text-[10px] text-white/40 font-bold uppercase tracking-widest">{new Date(order.purchasedAt?.toDate()).toLocaleString()}</p>
+                                  <p className="text-[8px] md:text-[10px] text-white/40 font-bold uppercase tracking-widest">{formatDate(order.purchasedAt)}</p>
                                   <div className="flex items-center gap-1 text-[8px] font-mono text-white/20 bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
                                     Seller: {order.sellerId}
                                     <button 
@@ -4174,6 +4355,78 @@ export default function App() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* User Account Recovery Section */}
+                  <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+                        <Users size={20} />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-800">User Search & Recovery</h3>
+                        <p className="text-xs text-slate-400 font-bold">Manage accounts & recover passwords</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex gap-2">
+                        <input 
+                          value={adminUserSearchQuery}
+                          onChange={(e) => setAdminUserSearchQuery(e.target.value)}
+                          placeholder="Email or numeric User ID..."
+                          className="flex-1 px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:border-indigo-500 transition-all shadow-inner text-xs"
+                        />
+                        <button 
+                          onClick={handleAdminUserLookup}
+                          disabled={isVerifying}
+                          className="px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-md active:scale-95 flex items-center justify-center"
+                        >
+                          {isVerifying ? <RefreshCw className="animate-spin" size={14} /> : <Search size={14} />}
+                        </button>
+                      </div>
+
+                      {adminSearchedAccount && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-4"
+                        >
+                          <div className="flex items-center justify-between">
+                             <div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">User Details</p>
+                                <p className="text-sm font-black text-slate-800">{adminSearchedAccount.displayName}</p>
+                                <p className="text-[10px] font-bold text-indigo-600 break-all">{adminSearchedAccount.email}</p>
+                             </div>
+                             <div className="text-right">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Balance</p>
+                                <p className="text-sm font-black text-green-600">৳{adminSearchedAccount.balance?.toFixed(2)}</p>
+                             </div>
+                          </div>
+                          
+                          <div className="flex gap-3 pt-4 border-t border-slate-200">
+                             <button 
+                               onClick={() => handleSendAdminResetEmail(adminSearchedAccount.email)}
+                               className="flex-1 py-4 bg-orange-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-orange-700 transition-all shadow-lg shadow-orange-100 flex items-center justify-center gap-2"
+                             >
+                               <Lock size={14} />
+                               Reset Pass
+                             </button>
+                             <button 
+                               onClick={() => {
+                                  setAdminNotifyForm(prev => ({ ...prev, targetUserId: adminSearchedAccount.numericId || adminSearchedAccount.id }));
+                                  alert('UID loaded in Notification form below');
+                               }}
+                               className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all flex items-center justify-center gap-2"
+                             >
+                               <Bell size={14} />
+                               Notify
+                             </button>
+                          </div>
+                          <p className="text-[9px] text-[#2E7D32] bg-green-50 p-2 rounded-lg font-bold text-center">🔐 Admin-only access. Follow Google security guidelines.</p>
+                        </motion.div>
+                      )}
+                    </div>
+                  </div>
+
                   {/* User Balance Management */}
                   <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6">
                     <div className="flex items-center gap-4">
@@ -4442,7 +4695,7 @@ export default function App() {
                                           {payment.method === 'nagad' ? 'Nagad' : 'bKash'}: {payment.senderNumber}
                                         </span>
                                         <span className={`text-[9px] font-black ${payment.method === 'nagad' ? 'bg-red-50 text-red-600' : 'bg-pink-50 text-[#e2136e]'} px-2 py-1 rounded-md uppercase tracking-widest`}>৳{payment.amount}</span>
-                                        <span className="text-[9px] font-bold text-slate-400 capitalize">{payment.createdAt?.toDate ? new Date(payment.createdAt.toDate()).toLocaleString() : 'Recent'}</span>
+                                        <span className="text-[9px] font-bold text-slate-400 capitalize">{formatDate(payment.createdAt)}</span>
                                     </div>
                                     <p className="text-[10px] text-slate-600 font-bold">User: {payment.userEmail}</p>
                                     {(payment.listingId || payment.itemIds) && (
@@ -4795,7 +5048,7 @@ export default function App() {
                           )}
                           <div className="text-right">
                              <p className="text-[9px] text-slate-400 font-bold uppercase">
-                               {payment.createdAt?.toDate ? new Date(payment.createdAt.toDate()).toLocaleString() : 'Recent'}
+                               {formatDate(payment.createdAt)}
                              </p>
                           </div>
                         </div>
@@ -4833,7 +5086,7 @@ export default function App() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-[10px] text-slate-400 font-bold uppercase">{new Date(order.purchasedAt?.toDate()).toLocaleString()}</p>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase">{formatDate(order.purchasedAt)}</p>
                           <div className="mt-2 flex items-center gap-2 justify-end">
                             <div className="flex items-center gap-1 px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-black border border-green-100 shadow-sm">
                               <CheckCircle size={14} />
@@ -5616,7 +5869,7 @@ export default function App() {
                         >
                           <div className="flex justify-between items-start text-[10px] font-black uppercase tracking-widest text-red-400">
                              <span>Report from {report.buyerEmail}</span>
-                             <span>{new Date(report.createdAt?.toDate()).toLocaleDateString()}</span>
+                             <span>{formatDate(report.createdAt)}</span>
                           </div>
                           <p className="text-sm font-bold text-slate-800 bg-white/50 p-4 rounded-xl border border-white">
                              "{report.message}"
@@ -6814,10 +7067,15 @@ export default function App() {
           </div>
           <div className="max-w-7xl mx-auto px-4 md:px-8 mt-16 pt-8 border-t border-slate-50 flex justify-center">
             <div className="flex items-center gap-6 text-[10px] text-slate-300 font-bold uppercase tracking-[0.2em]">
-              <span className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                Service Online
-              </span>
+                <a 
+                  href="https://wa.me/8801410731308" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="flex items-center gap-2 hover:text-[#2E7D32] transition-colors"
+                >
+                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                  📞 Customer Service
+                </a>
               <span>&bull;</span>
               <span>Secure 256-bit AES</span>
               <span>&bull;</span>
@@ -7021,10 +7279,15 @@ export default function App() {
 
               {/* System Footer */}
               <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] pt-4">
-                <span className="flex items-center gap-2">
+                <a 
+                  href="https://wa.me/8801410731308" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="flex items-center gap-2 hover:text-[#2E7D32] transition-colors"
+                >
                   <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                  Service Online
-                </span>
+                  📞 Customer Service
+                </a>
                 <span className="hidden sm:inline opacity-30">&bull;</span>
                 <span>Secure 256-bit AES</span>
                 <span className="hidden sm:inline opacity-30">&bull;</span>
@@ -7153,8 +7416,8 @@ export default function App() {
                 <div className="w-20 h-20 bg-gradient-to-tr from-[#2E7D32] to-[#4CAF50] rounded-[28px] flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-900/10">
                   <Lock className="text-white" size={36} />
                 </div>
-                <h1 className="font-display text-3xl font-extrabold tracking-tight text-slate-800 leading-tight">Reset Password</h1>
-                <p className="text-slate-500 text-sm font-medium">We'll help you get back into your account.</p>
+                <h1 className="font-display text-3xl font-extrabold tracking-tight text-slate-800 leading-tight">পাসওয়ার্ড রিসেট</h1>
+                <p className="text-slate-500 text-sm font-medium">আপনার একাউন্টে ফিরে আসতে আমরা আপনাকে সাহায্য করব।</p>
               </div>
 
               {error && (
@@ -7166,7 +7429,7 @@ export default function App() {
 
               <form onSubmit={handleForgot} className="space-y-8">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">Email Address</label>
+                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">ইমেইল এড্রেস</label>
                   <div className="relative group">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#2E7D32] transition-colors" size={18} />
                     <input
@@ -7182,9 +7445,17 @@ export default function App() {
 
                 <button 
                   type="submit"
-                  className="w-full bg-[#2E7D32] hover:bg-[#256628] text-white font-bold py-4 rounded-2xl shadow-xl shadow-green-900/10 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                  disabled={loading}
+                  className="w-full bg-[#2E7D32] hover:bg-[#256628] text-white font-bold py-4 rounded-2xl shadow-xl shadow-green-900/10 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  Send Reset Link
+                  {loading ? (
+                    <>
+                      <RefreshCw className="animate-spin" size={18} />
+                      লিংক পাঠানো হচ্ছে...
+                    </>
+                  ) : (
+                    'রিসেট লিংক পাঠান'
+                  )}
                 </button>
               </form>
 
@@ -7193,7 +7464,82 @@ export default function App() {
                   onClick={() => setView('login')}
                   className="text-sm font-bold text-[#2E7D32] hover:underline"
                 >
-                  Return to login
+                  লগইন এ ফিরে যান
+                </button>
+              </div>
+            </div>
+          )}
+
+          {view === 'reset' && (
+            <div className="space-y-10 relative z-10">
+              <div className="text-center space-y-3">
+                <div className="w-20 h-20 bg-gradient-to-tr from-[#2E7D32] to-[#4CAF50] rounded-[28px] flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-900/10">
+                  <RefreshCw className="text-white" size={36} />
+                </div>
+                <h1 className="font-display text-3xl font-extrabold tracking-tight text-slate-800 leading-tight">নতুন পাসওয়ার্ড</h1>
+                <p className="text-slate-500 text-sm font-medium">আপনার একাউন্টের জন্য একটি নতুন পাসওয়ার্ড সেট করুন।</p>
+              </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-100 rounded-2xl p-4 flex items-start gap-3">
+                  <AlertCircle className="text-red-500 shrink-0" size={18} />
+                  <p className="text-xs text-red-600 leading-relaxed overflow-hidden text-ellipsis">{getDisplayError(error)}</p>
+                </div>
+              )}
+
+              <form onSubmit={handleResetPassword} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">নতুন পাসওয়ার্ড</label>
+                  <div className="relative group">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#2E7D32] transition-colors" size={18} />
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                      className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-4 focus:ring-green-100 focus:border-[#2E7D32] transition-all text-slate-800 placeholder:text-slate-300"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">পাসওয়ার্ড নিশ্চিত করুন</label>
+                  <div className="relative group">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#2E7D32] transition-colors" size={18} />
+                    <input
+                      type="password"
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                      className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-4 focus:ring-green-100 focus:border-[#2E7D32] transition-all text-slate-800 placeholder:text-slate-300"
+                    />
+                  </div>
+                </div>
+
+                <button 
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-[#2E7D32] hover:bg-[#256628] text-white font-bold py-4 rounded-2xl shadow-xl shadow-green-900/10 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCw className="animate-spin" size={18} />
+                      পরিবর্তন করা হচ্ছে...
+                    </>
+                  ) : (
+                    'পাসওয়ার্ড পরিবর্তন করুন'
+                  )}
+                </button>
+              </form>
+
+              <div className="text-center">
+                <button 
+                  onClick={() => setView('login')}
+                  className="text-sm font-bold text-[#2E7D32] hover:underline"
+                >
+                  লগইন এ ফিরে যান
                 </button>
               </div>
             </div>
