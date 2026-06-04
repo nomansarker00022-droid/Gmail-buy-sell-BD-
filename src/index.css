@@ -12,3 +12,13 @@
     @apply antialiased text-gray-900 bg-slate-50;
   }
 }
+
+/* Hide scrollbars elegantly */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}

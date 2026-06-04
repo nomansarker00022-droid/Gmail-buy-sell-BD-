@@ -1,5 +1,5 @@
 {
-  "name": "Remix: Gmail Buy \u0026 Sell BD",
+  "name": "Gmail Buy & Sell BD",
   "description": "A secure marketplace for buying and selling Gmail accounts in Bangladesh, supporting custom domain publishing.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

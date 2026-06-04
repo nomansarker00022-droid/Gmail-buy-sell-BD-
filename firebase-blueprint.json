@@ -53,14 +53,17 @@
         "sellerId": { "type": "string" },
         "sellerNumericId": { "type": "string" },
         "gmailAccount": { "type": "string", "description": "Masked email" },
+        "emailHash": { "type": "string" },
         "type": { "type": "string" },
         "price": { "type": "number" },
-        "status": { "type": "string", "enum": ["Available", "Pending", "Approved", "Refunded", "Dispute", "SellRequest", "Sold", "Deleted"] },
+        "status": { "type": "string", "enum": ["Available", "Pending", "Approved", "Refunded", "Dispute", "SellRequest", "Sold", "Deleted", "Rejected"] },
         "bkashNumber": { "type": "string" },
         "description": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" },
-        "soldTo": { "type": "string" }
+        "soldTo": { "type": "string" },
+        "paymentStatus": { "type": "string" },
+        "payoutTrxId": { "type": "string" }
       },
       "required": ["gmailAccount", "price", "status", "createdAt"]
     },
@@ -98,7 +101,9 @@
           }
         },
         "purchasedAt": { "type": "string", "format": "date-time" },
-        "status": { "type": "string" }
+        "status": { "type": "string" },
+        "paymentStatus": { "type": "string" },
+        "payoutTrxId": { "type": "string" }
       },
       "required": ["userId", "listingId", "price", "purchasedAt"]
     },
@@ -165,6 +170,22 @@
       },
       "required": ["userId", "text", "createdAt"]
     },
+    "FacebookListing": {
+      "title": "Facebook Listing",
+      "description": "A Facebook account for sale or listing listed by a user.",
+      "type": "object",
+      "properties": {
+        "sellerId": { "type": "string" },
+        "sellerEmail": { "type": "string" },
+        "category": { "type": "string" },
+        "phone": { "type": "string" },
+        "password": { "type": "string" },
+        "twoFA": { "type": "string" },
+        "status": { "type": "string", "enum": ["Live", "Pending", "Sold", "Dispute"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["sellerId", "category", "phone", "password", "twoFA", "status", "createdAt"]
+    },
     "TrxRegistry": {
       "title": "Transaction Registry",
       "description": "Records used transaction IDs to prevent reuse.",
@@ -173,9 +194,31 @@
         "userId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "DirectChat": {
+      "title": "Direct Chat Message",
+      "description": "A direct message between a buyer and a seller.",
+      "type": "object",
+      "properties": {
+        "roomId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "receiverName": { "type": "string" },
+        "listingId": { "type": "string" },
+        "listingTitle": { "type": "string" },
+        "text": { "type": "string" },
+        "imageUrl": { "type": "string", "description": "Base64 encoded or direct URL image attachment" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["roomId", "senderId", "senderName", "receiverId", "receiverName", "text", "createdAt"]
     }
   },
   "firestore": {
+    "/direct_chats/{messageId}": {
+      "schema": "DirectChat",
+      "description": "Direct buyer-to-seller message entries."
+    },
     "/settings/{settingId}": {
       "schema": "object",
       "description": "Global application settings (Headline or Pricing)."
@@ -215,6 +258,10 @@
     "/reviews/{reviewId}": {
       "schema": "Review",
       "description": "Public user reviews and feedback."
+    },
+    "/facebook_listings/{listingId}": {
+      "schema": "FacebookListing",
+      "description": "Private list of Facebook accounts listed for sale, only visible/manageable by their creator/seller."
     },
     "/test/{docId}": {
       "schema": { "type": "object", "properties": { "connection": { "type": "string" } } },

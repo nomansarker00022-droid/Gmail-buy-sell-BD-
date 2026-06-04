@@ -25,7 +25,7 @@ service cloud.firestore {
     function isAdmin() { 
       return isSignedIn() && (
         request.auth.token.email in [
-          'ashrafulislambhuiyan8@gmail.com'
+          'ashrafulislambhuiyan8@gmail.com', 'nomansarker00022@gmail.com'
         ] ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
@@ -34,7 +34,7 @@ service cloud.firestore {
     // System Admin (Hardcoded List)
     function isSystemAdmin() {
       return isSignedIn() && request.auth.token.email in [
-        'ashrafulislambhuiyan8@gmail.com'
+        'ashrafulislambhuiyan8@gmail.com', 'nomansarker00022@gmail.com'
       ];
     }
 
@@ -111,6 +111,9 @@ service cloud.firestore {
              (!('description' in data) || (data.description is string && data.description.size() <= 2000)) &&
              (!('soldTo' in data) || (data.soldTo is string)) &&
              (!('soldPrice' in data) || (data.soldPrice is number)) &&
+             (!('paymentStatus' in data) || (data.paymentStatus is string)) &&
+             (!('payoutTrxId' in data) || (data.payoutTrxId is string)) &&
+             (!('emailHash' in data) || (data.emailHash is string)) &&
              (!('createdAt' in data) || (data.createdAt is timestamp)) &&
              (!('updatedAt' in data) || (data.updatedAt is timestamp));
     }
@@ -123,6 +126,17 @@ service cloud.firestore {
              (!('twoFactor' in data) || (data.twoFactor is string));
     }
 
+    function isValidFacebookListing(data) {
+      return data.sellerId == request.auth.uid &&
+             data.category is string && data.category.size() <= 200 &&
+             data.phone is string && data.phone.size() <= 100 &&
+             data.password is string && data.password.size() <= 100 &&
+             data.twoFA is string && data.twoFA.size() <= 200 &&
+             data.status in ['Live', 'Pending', 'Sold', 'Dispute'] &&
+             (!('sellerEmail' in data) || (data.sellerEmail is string && data.sellerEmail.size() <= 256)) &&
+             (data.createdAt is timestamp);
+    }
+
     function isValidPurchase(data) {
       return data.userId == request.auth.uid &&
              (!('userEmail' in data) || (data.userEmail is string)) &&
@@ -133,6 +147,8 @@ service cloud.firestore {
              (!('sellerBkash' in data) || (data.sellerBkash is string)) &&
              (!('description' in data) || (data.description is string)) &&
              (!('status' in data) || (data.status is string)) &&
+             (!('paymentStatus' in data) || (data.paymentStatus is string)) &&
+             (!('payoutTrxId' in data) || (data.payoutTrxId is string)) &&
              (!('purchasedAt' in data) || (data.purchasedAt is timestamp)) &&
              (!('credentials' in data) || (data.credentials is map || data.credentials == null));
     }
@@ -174,6 +190,18 @@ service cloud.firestore {
              (data.createdAt is timestamp);
     }
 
+    function isValidDirectChat(data) {
+      return data.senderId == request.auth.uid &&
+             data.senderName is string && data.senderName.size() <= 200 &&
+             data.receiverId is string &&
+             data.receiverName is string && data.receiverName.size() <= 200 &&
+             data.roomId is string && data.roomId.size() <= 200 &&
+             (!('listingId' in data) || data.listingId is string) &&
+             (!('listingTitle' in data) || (data.listingTitle is string && data.listingTitle.size() <= 200)) &&
+             data.text is string && data.text.size() <= 5000 &&
+             (!('imageUrl' in data) || data.imageUrl == null || (data.imageUrl is string && data.imageUrl.size() <= 2000000));
+    }
+
     // --- Collections ---
 
     // Registries for uniqueness
@@ -191,27 +219,40 @@ service cloud.firestore {
     // Profiles
     match /profiles/{userId} {
       allow read: if isSignedIn();
-      allow create: if isOwner(userId) && isValidProfile(incoming());
+      allow create: if isOwner(userId) && isValidProfile(incoming()) && (
+        !('role' in incoming()) || incoming().role == 'user'
+      ) && (
+        !('balance' in incoming()) || incoming().balance == 0
+      ) && (
+        !('totalSpent' in incoming()) || incoming().totalSpent == 0
+      ) && (
+        !('totalEarned' in incoming()) || incoming().totalEarned == 0
+      ) && (
+        !('earningsBalance' in incoming()) || incoming().earningsBalance == 0
+      ) && (
+        !('totalSales' in incoming()) || incoming().totalSales == 0
+      ) && (
+        !('totalOrders' in incoming()) || incoming().totalOrders == 0
+      ) && (
+        !('successfulReferrals' in incoming()) || incoming().successfulReferrals == 0
+      );
       
       allow update: if isSignedIn() && (
         isAdmin() || 
-        // Relational Update: Buyer/Seller stats transfer during purchase
+        // Relational Update: Buyer/Seller stats transfer during purchase (from Admin / Backend transaction)
         // We trust these specific keys because they are only updated in transactions
         (incoming().diff(existing()).affectedKeys().hasOnly([
-          'totalSales', 'totalEarned', 'updatedAt', 'balance', 'totalOrders', 
+          'totalSales', 'totalEarned', 'earningsBalance', 'updatedAt', 'balance', 'totalOrders', 
           'totalSpent', 'successfulReferrals', 'hasTransacted'
         ])) ||
         // Owner updates own profile (Self care)
         (isOwner(userId) && isValidProfile(incoming()) && (
-          // Basic fields update
+          // Basic fields update - Standard Users CANNOT update role, balance, or stats
           incoming().diff(existing()).affectedKeys().hasOnly([
             'displayName', 'photoURL', 'phone', 'bkashNumber', 'nagadNumber',
             'firstName', 'lastName', 'age', 'address', 'hasSeenWelcome',
-            'updatedAt', 'totalOrders', 'totalSpent', 'balance', 'email', 'numericId',
-            'successfulReferrals', 'hasTransacted', 'referredBy', 'totalSales', 'totalEarned', 'role'
-          ]) &&
-          (!('balance' in incoming()) || isAdmin() || incoming().balance <= existing().balance) &&
-          (!('email' in incoming()) || incoming().email == existing().email)
+            'updatedAt', 'referredBy'
+          ])
         ))
       );
     }
@@ -257,7 +298,7 @@ service cloud.firestore {
         (existing().status == 'Available' && 
           incoming().status == 'Sold' && 
           incoming().soldTo == request.auth.uid &&
-          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'soldTo', 'updatedAt', 'soldPrice']))
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'soldTo', 'updatedAt', 'soldPrice', 'paymentStatus']))
       );
       
       allow delete: if isAdmin();
@@ -274,6 +315,20 @@ service cloud.firestore {
         );
         allow write: if isAdmin() || (isSignedIn() && isOwner(get(/databases/$(database)/documents/listings/$(listingId)).data.sellerId) && isValidCredential(incoming()));
       }
+    }
+
+    // Facebook Listings
+    match /facebook_listings/{listingId} {
+      allow list: if isSignedIn() && (resource.data.sellerId == request.auth.uid || isAdmin());
+      allow get: if isSignedIn() && (resource.data.sellerId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidFacebookListing(incoming()) && (incoming().createdAt == request.time);
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (resource.data.sellerId == request.auth.uid && isValidFacebookListing(incoming()) && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'phone', 'password', 'twoFA'])
+        ))
+      );
+      allow delete: if isSignedIn() && (resource.data.sellerId == request.auth.uid || isAdmin());
     }
 
     // Purchases
@@ -311,6 +366,15 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isSignedIn() && isValidReview(incoming());
       allow update, delete: if isAdmin();
+    }
+
+    // Direct Chats / Peer-to-Peer messages
+    match /direct_chats/{messageId} {
+      allow list: if isSignedIn() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid || isAdmin());
+      allow get: if isSignedIn() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidDirectChat(incoming()) && (incoming().createdAt == request.time);
+      allow update: if false; // Messages are immutable after sending
+      allow delete: if isAdmin();
     }
 
     // Admins metadata

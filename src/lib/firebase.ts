@@ -19,7 +19,7 @@ const app = initializeApp(firebaseConfig);
 
 // Use initializeFirestore with enhanced settings for iframe environments.
 export const db = initializeFirestore(app, {
-  experimentalAutoDetectLongPolling: true,
+  experimentalForceLongPolling: true,
   // Ensure that memory-only persistence is NOT used if possible, but standard persistence is usually fine.
 }, firebaseConfig.firestoreDatabaseId || '(default)');
 
@@ -58,8 +58,22 @@ export interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  
+  // Detect Quota Exceeded / Resource Exhausted errors quietly to prevent UI popups and banners
+  const isQuota = errorMessage.includes('Quota exceeded') || 
+                  errorMessage.includes('Quota limit exceeded') || 
+                  errorMessage.includes('Resource exhausted') ||
+                  errorMessage.includes('quota') ||
+                  errorMessage.includes('exhausted');
+                  
+  if (isQuota) {
+    console.info('Firestore Quota: Handled gracefully and suppressed to prevent disruption.');
+    return;
+  }
+
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errorMessage,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,

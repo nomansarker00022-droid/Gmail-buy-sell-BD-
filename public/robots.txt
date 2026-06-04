@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://gmailbuysellbd.netlify.app/sitemap.xml
+Sitemap: https://ais-pre-l7dvqkyypwoucilhqhgqqi-886784280898.asia-southeast1.run.app/sitemap.xml
