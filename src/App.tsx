@@ -12,7 +12,7 @@ import {
   Store, Wallet, Send, Menu, X, ChevronDown, ChevronUp,
   History, Headphones, Star, User as UserIcon, Home, CreditCard,
   BadgeCheck, MessageSquare, Gift, Bell, ArrowLeft, RefreshCw, Edit,
-  MessageCircle, Crown, Filter, Layers, Clock, Calendar, Trophy, Users, Zap, Activity,
+  MessageCircle, Crown, Filter, Layers, Clock, Calendar, Trophy, Users, Zap, Activity, Sparkles,
   ShoppingCart, Shield, Trash2, CheckCircle, Check, CheckSquare, Copy, Globe, Info, Tag,
   PlusSquare, Megaphone, Save, Share2, Camera, Facebook, Archive, Package, Download, Youtube, Upload,
   AlertTriangle, ExternalLink, ShieldAlert,
@@ -51,6 +51,7 @@ import {
 } from 'firebase/firestore';
 import { db, auth, messaging, handleFirestoreError, OperationType } from './lib/firebase';
 import { getToken, onMessage } from 'firebase/messaging';
+import { AdSenseSlot } from './components/AdSenseSlot';
 
 // System Admins
 const SYSTEM_ADMINS = ['ashrafulislambhuiyan8@gmail.com', 'nomansarker00022@gmail.com'];
@@ -68,6 +69,10 @@ const DEFAULT_GMAIL_PRICES: Record<string, { seller: string, buyer: string }> = 
 };
 
 export default function App() {
+  const [adsensePubId, setAdsensePubId] = useState(() => localStorage.getItem('cache_adsense_pubid') || "");
+  const [adsenseEnabled, setAdsenseEnabled] = useState(() => localStorage.getItem('cache_adsense_enabled') !== 'false');
+  const [pendingAdsensePubId, setPendingAdsensePubId] = useState(() => localStorage.getItem('cache_adsense_pubid') || "");
+
   // Swallowing Firebase internal assertion/stream/quota exceptions globally to prevent full tab crashes
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
@@ -105,6 +110,33 @@ export default function App() {
       window.removeEventListener('unhandledrejection', handleRejection);
     };
   }, []);
+
+  // Dynamic Google AdSense Loader Effect
+  useEffect(() => {
+    if (adsenseEnabled && adsensePubId) {
+      let clientID = adsensePubId.trim();
+      if (clientID && !clientID.startsWith("ca-pub-")) {
+        // Automatically format if they only passed the numeric ID, e.g. 5259160538058203
+        if (/^\d+$/.test(clientID)) {
+          clientID = "ca-pub-" + clientID;
+        } else {
+          clientID = "ca-pub-" + clientID; // Default prefix wrapper
+        }
+      }
+      
+      const existingScript = document.head.querySelector('script[src*="pagead2.googlesyndication.com"]');
+      if (existingScript) {
+        existingScript.remove();
+      }
+      
+      const script = document.createElement('script');
+      script.async = true;
+      script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${clientID}`;
+      script.crossOrigin = "anonymous";
+      document.head.appendChild(script);
+      console.log("Dynamically loaded Google AdSense Script for client:", clientID);
+    }
+  }, [adsenseEnabled, adsensePubId]);
 
   // --- Local Virtual DB & Quota Resilience Engine (Absolute Zero Data Loss & Seamless Execution) ---
   const getLocalItems = (collectionName: string): any[] => {
@@ -1142,6 +1174,9 @@ export default function App() {
   const [totalUsersCount, setTotalUsersCount] = useState(0);
   const [noticeText, setNoticeText] = useState("Securely manage, buy, and sell verified Gmail accounts with Bangladesh's most trusted and fastest marketplace.");
   const [pendingNotice, setPendingNotice] = useState("");
+  const [estTraffic, setEstTraffic] = useState(5000);
+  const [estCTR, setEstCTR] = useState(2.5);
+  const [estCPC, setEstCPC] = useState(20);
   const [isAdminOnlineState, setIsAdminOnlineState] = useState(false);
   const [showReferModal, setShowReferModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
@@ -5033,6 +5068,24 @@ export default function App() {
           setPendingNotice(data.text);
           localStorage.setItem('cache_notice', data.text);
         }
+
+        // Fetch Google AdSense Configurations
+        const adsenseDocRef = doc(db, 'settings', 'adsense');
+        try {
+          const adsenseSnap = await getDoc(adsenseDocRef);
+          if (adsenseSnap.exists()) {
+            const data = adsenseSnap.data();
+            if (data) {
+              setAdsensePubId(data.pubId || "");
+              setPendingAdsensePubId(data.pubId || "");
+              setAdsenseEnabled(data.enabled !== false);
+              localStorage.setItem('cache_adsense_pubid', data.pubId || "");
+              localStorage.setItem('cache_adsense_enabled', String(data.enabled !== false));
+            }
+          }
+        } catch (adsenseErr) {
+          console.warn("Skipping dynamic adsense config fetch from firestore (using cache):", adsenseErr);
+        }
         setQuotaExceeded(false);
       } catch (err: any) {
         console.warn("Settings fetch failed:", err);
@@ -5069,6 +5122,24 @@ export default function App() {
       alert('Notice Board updated!');
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'settings/notice');
+    }
+  };
+
+  const updateAdSenseSettings = async (pubId: string, enabled: boolean) => {
+    if (!isAdmin) return;
+    try {
+      await setDoc(doc(db, 'settings', 'adsense'), { 
+        pubId: pubId.trim(), 
+        enabled,
+        updatedAt: serverTimestamp() 
+      });
+      setAdsensePubId(pubId.trim());
+      setAdsenseEnabled(enabled);
+      localStorage.setItem('cache_adsense_pubid', pubId.trim());
+      localStorage.setItem('cache_adsense_enabled', String(enabled));
+      alert('Google AdSense configurations successfully updated and saved securely to Cloud Firestore!');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, 'settings/adsense');
     }
   };
 
@@ -5605,6 +5676,9 @@ export default function App() {
                     </button>
                   </div>
                 </section>
+
+                {/* Google AdSense Revenue Banner Block */}
+                <AdSenseSlot pubId={adsensePubId} type="banner" className="mb-4" />
 
                 {/* Quick Action Grid Menu */}
                 <section className="grid grid-cols-5 gap-1 md:gap-3 mb-4 px-1">
@@ -6551,79 +6625,83 @@ export default function App() {
                       </div>
                     ) : (
                       filteredMarketListings.map((item, i) => (
-                        <motion.div
-                          key={item.id}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.02 }}
-                          className={`bg-white rounded-xl border p-2.5 md:p-4 shadow-sm hover:shadow-md transition-all group relative overflow-hidden flex items-center justify-between gap-2.5 cursor-pointer active:scale-[0.99] ${selectedListings.includes(item.id) ? 'border-indigo-600 ring-2 ring-indigo-500/10' : 'border-slate-100'}`}
-                          onClick={() => {
-                            if (isBulkBuyMode) {
-                              if (selectedListings.includes(item.id)) {
-                                setSelectedListings(selectedListings.filter(id => id !== item.id));
-                              } else {
-                                setSelectedListings([...selectedListings, item.id]);
-                              }
-                            }
-                          }}
-                        >
-                          <div className="flex items-center gap-2.5 flex-1 min-w-0 relative z-10">
-                            {isBulkBuyMode ? (
-                              <div className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center shrink-0 transition-colors ${selectedListings.includes(item.id) ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-slate-200'}`}>
-                                {selectedListings.includes(item.id) && <Check size={14} className="text-white" strokeWidth={3} />}
-                              </div>
-                            ) : (
-                              <div className="w-8 h-8 bg-slate-50 rounded-lg flex items-center justify-center text-slate-400 border border-slate-50 group-hover:bg-indigo-600 group-hover:text-white transition-all shrink-0">
-                                <Mail size={14} className="group-hover:text-white text-indigo-600" />
-                              </div>
-                            )}
-
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 mb-0.5 w-full min-w-0">
-                                <h4 className="font-display text-[10px] min-[360px]:text-xs md:text-sm font-black text-slate-800 truncate min-w-0 flex-shrink" title={item.maskedEmail || item.gmailAccount}>
-                                  {item.maskedEmail || item.gmailAccount}
-                                </h4>
-                                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-green-50 rounded-full border border-green-100 shrink-0">
-                                  <div className="w-1 h-1 bg-green-500 rounded-full" />
-                                  <span className="text-[5px] md:text-[8px] font-black text-green-600 uppercase tracking-widest leading-none">Available</span>
-                                </div>
-                              </div>
-                              <p className="text-[9px] md:text-[11px] font-black text-blue-600 uppercase tracking-tight">
-                                {item.type || 'FRESH'}
-                              </p>
-                              {item.description && (
-                                <p className="text-[9px] md:text-[11px] text-slate-500 font-medium leading-tight mt-1 line-clamp-none break-all">
-                                  {item.description}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 md:gap-3 shrink-0 relative z-10">
-                            {(() => {
-                              const priceObj = gmailPrices[item.type];
-                              const displayPrice = priceObj?.buyer ? parseFloat(priceObj.buyer) : item.price;
-                              return (
-                                <p className="text-[10px] min-[360px]:text-[11px] md:text-lg font-black text-slate-900">৳{displayPrice.toFixed(0)}</p>
-                              );
-                            })()}
-
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (!isBulkBuyMode) {
-                                  const priceObj = gmailPrices[item.type];
-                                  const displayPrice = priceObj?.buyer ? parseFloat(priceObj.buyer) : item.price;
-                                  setShowPaymentModal({ show: true, price: displayPrice, listingId: item.id });
+                        <React.Fragment key={item.id}>
+                          {adsenseEnabled && (i === 1 || i === 4) && (
+                            <AdSenseSlot pubId={adsensePubId} type="in-feed" className="my-1" />
+                          )}
+                          <motion.div
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.02 }}
+                            className={`bg-white rounded-xl border p-2.5 md:p-4 shadow-sm hover:shadow-md transition-all group relative overflow-hidden flex items-center justify-between gap-2.5 cursor-pointer active:scale-[0.99] ${selectedListings.includes(item.id) ? 'border-indigo-600 ring-2 ring-indigo-500/10' : 'border-slate-100'}`}
+                            onClick={() => {
+                              if (isBulkBuyMode) {
+                                if (selectedListings.includes(item.id)) {
+                                  setSelectedListings(selectedListings.filter(id => id !== item.id));
+                                } else {
+                                  setSelectedListings([...selectedListings, item.id]);
                                 }
-                              }}
-                              disabled={isSubmitting || (isBulkBuyMode && !selectedListings.includes(item.id))}
-                              className={`h-7 min-[360px]:h-8 px-2 md:px-6 rounded-lg font-black text-[8px] min-[360px]:text-[9px] md:text-xs uppercase tracking-widest transition-all active:scale-90 flex items-center justify-center gap-1 md:gap-2 ${isBulkBuyMode ? (selectedListings.includes(item.id) ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400') : 'bg-indigo-600 hover:bg-slate-900 text-white shadow-sm shadow-indigo-100'}`}
-                            >
-                              {isSubmitting ? <RefreshCw className="animate-spin" size={10} /> : (isBulkBuyMode ? (selectedListings.includes(item.id) ? 'Selected' : 'Select') : 'BUY')}
-                            </button>
-                          </div>
-                        </motion.div>
+                              }
+                            }}
+                          >
+                            <div className="flex items-center gap-2.5 flex-1 min-w-0 relative z-10">
+                              {isBulkBuyMode ? (
+                                <div className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center shrink-0 transition-colors ${selectedListings.includes(item.id) ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-slate-200'}`}>
+                                  {selectedListings.includes(item.id) && <Check size={14} className="text-white" strokeWidth={3} />}
+                                </div>
+                              ) : (
+                                <div className="w-8 h-8 bg-slate-50 rounded-lg flex items-center justify-center text-slate-400 border border-slate-50 group-hover:bg-indigo-600 group-hover:text-white transition-all shrink-0">
+                                  <Mail size={14} className="group-hover:text-white text-indigo-600" />
+                                </div>
+                              )}
+
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 mb-0.5 w-full min-w-0">
+                                  <h4 className="font-display text-[10px] min-[360px]:text-xs md:text-sm font-black text-slate-800 truncate min-w-0 flex-shrink" title={item.maskedEmail || item.gmailAccount}>
+                                    {item.maskedEmail || item.gmailAccount}
+                                  </h4>
+                                  <div className="flex items-center gap-1 px-1.5 py-0.5 bg-green-50 rounded-full border border-green-100 shrink-0">
+                                    <div className="w-1 h-1 bg-green-500 rounded-full" />
+                                    <span className="text-[5px] md:text-[8px] font-black text-green-600 uppercase tracking-widest leading-none">Available</span>
+                                  </div>
+                                </div>
+                                <p className="text-[9px] md:text-[11px] font-black text-blue-600 uppercase tracking-tight">
+                                  {item.type || 'FRESH'}
+                                </p>
+                                {item.description && (
+                                  <p className="text-[9px] md:text-[11px] text-slate-500 font-medium leading-tight mt-1 line-clamp-none break-all">
+                                    {item.description}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 md:gap-3 shrink-0 relative z-10">
+                              {(() => {
+                                const priceObj = gmailPrices[item.type];
+                                const displayPrice = priceObj?.buyer ? parseFloat(priceObj.buyer) : item.price;
+                                return (
+                                  <p className="text-[10px] min-[360px]:text-[11px] md:text-lg font-black text-slate-900">৳{displayPrice.toFixed(0)}</p>
+                                );
+                              })()}
+
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!isBulkBuyMode) {
+                                    const priceObj = gmailPrices[item.type];
+                                    const displayPrice = priceObj?.buyer ? parseFloat(priceObj.buyer) : item.price;
+                                    setShowPaymentModal({ show: true, price: displayPrice, listingId: item.id });
+                                  }
+                                }}
+                                disabled={isSubmitting || (isBulkBuyMode && !selectedListings.includes(item.id))}
+                                className={`h-7 min-[360px]:h-8 px-2 md:px-6 rounded-lg font-black text-[8px] min-[360px]:text-[9px] md:text-xs uppercase tracking-widest transition-all active:scale-90 flex items-center justify-center gap-1 md:gap-2 ${isBulkBuyMode ? (selectedListings.includes(item.id) ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400') : 'bg-indigo-600 hover:bg-slate-900 text-white shadow-sm shadow-indigo-100'}`}
+                              >
+                                {isSubmitting ? <RefreshCw className="animate-spin" size={10} /> : (isBulkBuyMode ? (selectedListings.includes(item.id) ? 'Selected' : 'Select') : 'BUY')}
+                              </button>
+                            </div>
+                          </motion.div>
+                        </React.Fragment>
                       ))
                     )
                   ) : (
@@ -9009,6 +9087,244 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* Google AdSense Revenue Hub & Monetization Console */}
+                <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6 mt-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 border border-amber-100 shadow-sm animate-pulse">
+                        <Sparkles size={24} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-black text-slate-800 text-lg tracking-tight">Google AdSense Revenue Board</h3>
+                          <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${adsenseEnabled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            {adsenseEnabled ? '● ACTIVE' : '○ DISABLED'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Dynamic ads.txt serving & live income simulator</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <a 
+                        href="/ads.txt" 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="px-3.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-lg text-[10px] font-black uppercase tracking-wider border border-slate-200/60 flex items-center gap-1.5 transition-all"
+                      >
+                        <Globe size={11} />
+                        View Live ads.txt
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Controls */}
+                    <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
+                      <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Configure Publisher ID</h4>
+                      
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">AdSense Publisher ID</label>
+                        <div className="relative">
+                          <input 
+                            value={pendingAdsensePubId}
+                            onChange={(e) => setPendingAdsensePubId(e.target.value)}
+                            placeholder="pub-XXXXXXXXXXXXXXXX"
+                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-800 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all placeholder:text-slate-300 shadow-2xs"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">ID</span>
+                        </div>
+                        <p className="text-[9px] text-slate-400 font-semibold leading-relaxed">
+                          Enter your exact AdSense publisher ID in the form <code className="bg-slate-100 px-1 py-0.5 rounded text-red-500">pub-XXXXXXXX</code> or <code className="bg-slate-100 px-1 py-0.5 rounded text-red-500">ca-pub-XXXXXXXX</code>.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200/60 shadow-2xs">
+                        <div>
+                          <span className="block font-bold text-slate-800 text-sm">Enable Banner & In-Feed Ads</span>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase">Toggle visibility of ads onsite</span>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            const nextState = !adsenseEnabled;
+                            setAdsenseEnabled(nextState);
+                            localStorage.setItem('cache_adsense_enabled', String(nextState));
+                          }}
+                          className={`w-12 h-6 rounded-full p-1 flex transition-colors duration-300 ${adsenseEnabled ? 'bg-amber-500 justify-end' : 'bg-slate-200 justify-start'}`}
+                        >
+                          <div className="w-4 h-4 bg-white rounded-full shadow-sm" />
+                        </button>
+                      </div>
+
+                      <button 
+                        onClick={() => updateAdSenseSettings(pendingAdsensePubId, adsenseEnabled)}
+                        className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-amber-200/50 hover:opacity-95 transition-all text-center flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <Sparkles size={12} />
+                        Save & Apply Changes
+                      </button>
+                    </div>
+
+                    {/* Dynamic ads.txt row display */}
+                    <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100 flex flex-col justify-between">
+                      <div>
+                        <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Compliance & Verifications</h4>
+                        <p className="text-[10.5px] text-slate-500 font-semibold leading-relaxed mb-3">
+                          Google AdSense crawlers require a valid <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700">ads.txt</code> declaration inside your domain's root folder to prevent unauthorized ad inventory placement.
+                        </p>
+                      </div>
+
+                      <div className="bg-slate-900 rounded-2xl p-4 font-mono text-[10px] sm:text-xs text-amber-400 border border-slate-800 shadow-inner select-all relative group break-all">
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="bg-slate-800 text-white text-[8px] px-1.5 py-0.5 rounded font-sans uppercase font-bold tracking-widest">Select All</span>
+                        </div>
+                        # Google AdSense Declaration<br/>
+                        google.com, {adsensePubId ? (adsensePubId.trim().startsWith("pub-") || adsensePubId.trim().startsWith("ca-pub-") ? adsensePubId.trim().replace("ca-pub-", "") : adsensePubId.trim()) : "pub-0000000000000000"}, DIRECT, f08c47fec0942fa0
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => {
+                            const formatted = `google.com, ${adsensePubId ? (adsensePubId.trim().startsWith("pub-") || adsensePubId.trim().startsWith("ca-pub-") ? adsensePubId.trim().replace("ca-pub-", "") : adsensePubId.trim()) : "pub-0000000000000000"}, DIRECT, f08c47fec0942fa0`;
+                            navigator.clipboard.writeText(formatted);
+                            alert('ads.txt line copied to clipboard!');
+                          }}
+                          className="flex-1 py-3 bg-white hover:bg-slate-100 text-slate-700 rounded-xl font-black text-[9px] uppercase tracking-widest border border-slate-200 transition-all text-center flex items-center justify-center gap-1 shadow-sm"
+                        >
+                          Copy ads.txt Content
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Profit Estimator Dashboard */}
+                  <div className="bg-emerald-50/20 border border-emerald-500/10 rounded-3xl p-6 space-y-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center text-sm font-black">
+                        ৳
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-800 text-sm">Interactive Marketplace Ad Income Calculator</h4>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Forecast your static and in-feed adsense revenue potentials</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {/* Range 1: Traffic */}
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between items-center text-[10px] font-black uppercase">
+                          <span className="text-slate-400">Daily Traffic (Pageviews)</span>
+                          <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 font-sans">{estTraffic.toLocaleString()} views</span>
+                        </div>
+                        <input 
+                          type="range"
+                          min="100"
+                          max="50000"
+                          step="100"
+                          value={estTraffic}
+                          onChange={(e) => setEstTraffic(Number(e.target.value))}
+                          className="w-full h-1.5 bg-emerald-100 rounded-lg appearance-none cursor-pointer accent-emerald-500 focus:outline-none"
+                        />
+                      </div>
+
+                      {/* Range 2: CTR */}
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between items-center text-[10px] font-black uppercase text-sans">
+                          <span className="text-slate-400">Estimate Ad CTR (%)</span>
+                          <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 font-sans">{estCTR}%</span>
+                        </div>
+                        <input 
+                          type="range"
+                          min="0.5"
+                          max="10.0"
+                          step="0.1"
+                          value={estCTR}
+                          onChange={(e) => setEstCTR(Number(e.target.value))}
+                          className="w-full h-1.5 bg-emerald-100 rounded-lg appearance-none cursor-pointer accent-emerald-500 focus:outline-none"
+                        />
+                      </div>
+
+                      {/* Range 3: CPC */}
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between items-center text-[10px] font-black uppercase">
+                          <span className="text-slate-400">Cost Per Click (CPC)</span>
+                          <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 font-emerald-700">৳{estCPC}</span>
+                        </div>
+                        <input 
+                          type="range"
+                          min="5"
+                          max="150"
+                          step="1"
+                          value={estCPC}
+                          onChange={(e) => setEstCPC(Number(e.target.value))}
+                          className="w-full h-1.5 bg-emerald-100 rounded-lg appearance-none cursor-pointer accent-emerald-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Result outputs */}
+                    <div className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-2xl p-5 text-white flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md shadow-emerald-100/50">
+                      <div className="space-y-0.5 text-center sm:text-left">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-[#FFEB3B] drop-shadow-xs">ESTIMATED REVENUE STREAM</span>
+                        <h5 className="text-3xl font-black tracking-tight flex items-baseline gap-1.5 justify-center sm:justify-start">
+                          ৳{Math.round(estTraffic * 30 * (estCTR / 100) * estCPC).toLocaleString()}
+                          <span className="text-xs font-semibold text-emerald-100 uppercase tracking-widest font-sans">/ month</span>
+                        </h5>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 divide-x divide-white/20 text-center w-full sm:w-auto shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-white/10 sm:flex sm:gap-6 sm:divide-x">
+                        <div className="px-2">
+                          <span className="block text-[8px] sm:text-[9px] font-black text-emerald-100 uppercase tracking-widest">Daily Estimate</span>
+                          <span className="text-sm sm:text-base font-black text-white">৳{Math.round(estTraffic * (estCTR / 100) * estCPC).toLocaleString()}</span>
+                        </div>
+                        <div className="px-2">
+                          <span className="block text-[8px] sm:text-[9px] font-black text-emerald-100 uppercase tracking-widest">Annual Potential</span>
+                          <span className="text-sm sm:text-base font-black text-[#FFEB3B]">৳{Math.round(estTraffic * 365 * (estCTR / 100) * estCPC).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Checklist and Blogger guides */}
+                  <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 space-y-4">
+                    <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Google AdSense Free Monetization & Setup Roadmap</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2.5">
+                        <div className="flex items-start gap-3 bg-white p-3 rounded-xl border border-slate-200/50 shadow-2xs">
+                          <input type="checkbox" defaultChecked className="mt-1 accent-emerald-500 rounded border-slate-300" />
+                          <div>
+                            <span className="block text-[11px] font-black text-slate-700 uppercase">1. Google compliance ads.txt verification</span>
+                            <p className="text-[9.5px] text-slate-500 font-semibold leading-relaxed">System compiles and hosts target ads.txt dynamics automatically at your root path.</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3 bg-white p-3 rounded-xl border border-slate-200/50 shadow-2xs">
+                          <input type="checkbox" defaultChecked className="mt-1 accent-emerald-500 rounded border-slate-300" />
+                          <div>
+                            <span className="block text-[11px] font-black text-slate-700 uppercase">2. Automated XML Sitemaps Setup</span>
+                            <p className="text-[9.5px] text-slate-500 font-semibold leading-relaxed">Search engines automatically fetch list profiles and indices at our live `sitemap.xml` feeds.</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        <div className="flex items-start gap-3 bg-white p-3 rounded-xl border border-slate-200/50 shadow-2xs">
+                          <input type="checkbox" className="mt-1 accent-emerald-500 rounded border-slate-300" />
+                          <div>
+                            <span className="block text-[11px] font-black text-[#e2136e] uppercase font-sans">3. Set up Custom Blogger Domain mapping</span>
+                            <p className="text-[9.5px] text-slate-500 font-semibold leading-relaxed">Map custom top-level domains (e.g. .com, .net, .org) inside Blogger DNS configuration panels before review.</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3 bg-white p-3 rounded-xl border border-slate-200/50 shadow-2xs">
+                          <input type="checkbox" className="mt-1 accent-emerald-500 rounded border-slate-300" />
+                          <div>
+                            <span className="block text-[11px] font-black text-slate-700 uppercase">4. Apply on AdSense control panel</span>
+                            <p className="text-[9.5px] text-slate-500 font-semibold leading-relaxed">Add your verified site url to your Google AdSense Dashboard, copy Publisher ID, and activate.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Pending Payments to Verify */}
                 <div id="admin-payments" className="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-sm mb-12">
                   <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-pink-50/30">
@@ -10222,7 +10538,7 @@ export default function App() {
                       >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
                           <div className="min-w-0 flex-1">
-                            <h4 className="font-display text-sm sm:text-lg font-bold text-slate-800 truncate break-all block" title={item.gmailAccount}>
+                            <h4 className="font-display text-base sm:text-xl font-bold text-slate-800 truncate break-all block" title={item.gmailAccount}>
                               {item.gmailAccount}
                             </h4>
                           </div>
@@ -10244,7 +10560,7 @@ export default function App() {
                           {item.type}
                         </div>
 
-                        {item.status !== 'Approved' && item.status !== 'Sold' && (
+                        {false && (
                           <div className="space-y-4 min-w-0">
                             <p className="text-[12px] font-black text-slate-400 uppercase tracking-[0.1em]">ACCOUNT DETAILS</p>
                             <div className="space-y-3 min-w-0">
@@ -12061,6 +12377,11 @@ export default function App() {
             </>
           )}
         </AnimatePresence>
+
+        {/* Sticky bottom Google AdSense banner */}
+        {adsenseEnabled && view !== 'admin' && view !== 'login' && view !== 'register' && view !== 'forgot' && view !== 'reset' && (
+          <AdSenseSlot pubId={adsensePubId} type="sticky-bottom" />
+        )}
 
         {/* Mobile Footer Navigation */}
         <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 z-40 px-2 lg:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-safe">

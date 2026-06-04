@@ -100,6 +100,40 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
+  // Dynamic AdSense ads.txt serving
+  app.get("/ads.txt", async (req, res) => {
+    try {
+      const firestore = getDb();
+      const adsenseDoc = await firestore.collection("settings").doc("adsense").get();
+      let pubId = "pub-0000000000000000";
+      
+      if (adsenseDoc.exists) {
+        const data = adsenseDoc.data();
+        if (data?.pubId && data.pubId.trim() !== "") {
+          let cleanId = data.pubId.trim();
+          // Extract numbers if they pasted full 'ca-pub-...' or 'pub-...'
+          if (cleanId.startsWith("ca-pub-")) {
+            cleanId = cleanId.replace("ca-pub-", "pub-");
+          } else if (!cleanId.startsWith("pub-")) {
+            if (/^\d+$/.test(cleanId)) {
+              cleanId = "pub-" + cleanId;
+            } else {
+              cleanId = cleanId; // keep as-is if already formatted
+            }
+          }
+          pubId = cleanId;
+        }
+      }
+      
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res.send(`# ==========================================================================\n# Google AdSense authorized digital sellers association declaration (ads.txt)\n# Dynamically generated based on admin configurations\n# ==========================================================================\n\ngoogle.com, ${pubId}, DIRECT, f08c47fec0942fa0\n`);
+    } catch (error) {
+      console.error("Error generating ads.txt dynamically:", error);
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res.send("google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0\n");
+    }
+  });
+
   // Vite middleware for development
   const isProduction = process.env.NODE_ENV === "production" || process.env.VITE_PROD === "true";
 
