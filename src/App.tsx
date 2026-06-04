@@ -15,7 +15,7 @@ import {
   MessageCircle, Crown, Filter, Layers, Clock, Calendar, Trophy, Users, Zap, Activity, Sparkles,
   ShoppingCart, Shield, Trash2, CheckCircle, Check, CheckSquare, Copy, Globe, Info, Tag,
   PlusSquare, Megaphone, Save, Share2, Camera, Facebook, Archive, Package, Download, Youtube, Upload,
-  AlertTriangle, ExternalLink, ShieldAlert,
+  AlertTriangle, ExternalLink, ShieldAlert, Flame, Coins,
 } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 import { 
@@ -72,6 +72,17 @@ export default function App() {
   const [adsensePubId, setAdsensePubId] = useState(() => localStorage.getItem('cache_adsense_pubid') || "");
   const [adsenseEnabled, setAdsenseEnabled] = useState(() => localStorage.getItem('cache_adsense_enabled') !== 'false');
   const [pendingAdsensePubId, setPendingAdsensePubId] = useState(() => localStorage.getItem('cache_adsense_pubid') || "");
+
+  const [adsterraEnabled, setAdsterraEnabled] = useState(() => localStorage.getItem('cache_adsterra_enabled') === 'true');
+  const [adsterraBannerKey, setAdsterraBannerKey] = useState(() => localStorage.getItem('cache_adsterra_banner_key') || "");
+  const [adsterraMobileBannerKey, setAdsterraMobileBannerKey] = useState(() => localStorage.getItem('cache_adsterra_mobile_banner_key') || "");
+  const [adsterraInFeedKey, setAdsterraInFeedKey] = useState(() => localStorage.getItem('cache_adsterra_infeed_key') || "");
+  const [adsterraStickyKey, setAdsterraStickyKey] = useState(() => localStorage.getItem('cache_adsterra_sticky_key') || "");
+
+  const [pendingAdsterraBannerKey, setPendingAdsterraBannerKey] = useState(() => localStorage.getItem('cache_adsterra_banner_key') || "");
+  const [pendingAdsterraMobileBannerKey, setPendingAdsterraMobileBannerKey] = useState(() => localStorage.getItem('cache_adsterra_mobile_banner_key') || "");
+  const [pendingAdsterraInFeedKey, setPendingAdsterraInFeedKey] = useState(() => localStorage.getItem('cache_adsterra_infeed_key') || "");
+  const [pendingAdsterraStickyKey, setPendingAdsterraStickyKey] = useState(() => localStorage.getItem('cache_adsterra_sticky_key') || "");
 
   // Swallowing Firebase internal assertion/stream/quota exceptions globally to prevent full tab crashes
   useEffect(() => {
@@ -1177,6 +1188,8 @@ export default function App() {
   const [estTraffic, setEstTraffic] = useState(5000);
   const [estCTR, setEstCTR] = useState(2.5);
   const [estCPC, setEstCPC] = useState(20);
+  const [adsterraTraffic, setAdsterraTraffic] = useState(5000);
+  const [adsterraCPM, setAdsterraCPM] = useState(1.5); // Default expected global CPM in USD
   const [isAdminOnlineState, setIsAdminOnlineState] = useState(false);
   const [showReferModal, setShowReferModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
@@ -5086,6 +5099,34 @@ export default function App() {
         } catch (adsenseErr) {
           console.warn("Skipping dynamic adsense config fetch from firestore (using cache):", adsenseErr);
         }
+
+        // Fetch Adsterra Configurations
+        const adsterraDocRef = doc(db, 'settings', 'adsterra');
+        try {
+          const adsterraSnap = await getDoc(adsterraDocRef);
+          if (adsterraSnap.exists()) {
+            const data = adsterraSnap.data();
+            if (data) {
+              setAdsterraEnabled(data.enabled === true);
+              setAdsterraBannerKey(data.bannerKey || "");
+              setPendingAdsterraBannerKey(data.bannerKey || "");
+              setAdsterraMobileBannerKey(data.mobileBannerKey || "");
+              setPendingAdsterraMobileBannerKey(data.mobileBannerKey || "");
+              setAdsterraInFeedKey(data.inFeedKey || "");
+              setPendingAdsterraInFeedKey(data.inFeedKey || "");
+              setAdsterraStickyKey(data.stickyKey || "");
+              setPendingAdsterraStickyKey(data.stickyKey || "");
+
+              localStorage.setItem('cache_adsterra_enabled', String(data.enabled === true));
+              localStorage.setItem('cache_adsterra_banner_key', data.bannerKey || "");
+              localStorage.setItem('cache_adsterra_mobile_banner_key', data.mobileBannerKey || "");
+              localStorage.setItem('cache_adsterra_infeed_key', data.inFeedKey || "");
+              localStorage.setItem('cache_adsterra_sticky_key', data.stickyKey || "");
+            }
+          }
+        } catch (adsterraErr) {
+          console.warn("Skipping dynamic adsterra config fetch from firestore (using cache):", adsterraErr);
+        }
         setQuotaExceeded(false);
       } catch (err: any) {
         console.warn("Settings fetch failed:", err);
@@ -5140,6 +5181,40 @@ export default function App() {
       alert('Google AdSense configurations successfully updated and saved securely to Cloud Firestore!');
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'settings/adsense');
+    }
+  };
+
+  const updateAdsterraSettings = async (
+    enabled: boolean,
+    bannerKey: string,
+    mobileBannerKey: string,
+    inFeedKey: string,
+    stickyKey: string
+  ) => {
+    if (!isAdmin) return;
+    try {
+      await setDoc(doc(db, 'settings', 'adsterra'), {
+        enabled,
+        bannerKey: bannerKey.trim(),
+        mobileBannerKey: mobileBannerKey.trim(),
+        inFeedKey: inFeedKey.trim(),
+        stickyKey: stickyKey.trim(),
+        updatedAt: serverTimestamp()
+      });
+      setAdsterraEnabled(enabled);
+      setAdsterraBannerKey(bannerKey.trim());
+      setAdsterraMobileBannerKey(mobileBannerKey.trim());
+      setAdsterraInFeedKey(inFeedKey.trim());
+      setAdsterraStickyKey(stickyKey.trim());
+
+      localStorage.setItem('cache_adsterra_enabled', String(enabled));
+      localStorage.setItem('cache_adsterra_banner_key', bannerKey.trim());
+      localStorage.setItem('cache_adsterra_mobile_banner_key', mobileBannerKey.trim());
+      localStorage.setItem('cache_adsterra_infeed_key', inFeedKey.trim());
+      localStorage.setItem('cache_adsterra_sticky_key', stickyKey.trim());
+      alert('Adsterra monetization configurations successfully updated and saved securely to Cloud Firestore!');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, 'settings/adsterra');
     }
   };
 
@@ -5677,8 +5752,18 @@ export default function App() {
                   </div>
                 </section>
 
-                {/* Google AdSense Revenue Banner Block */}
-                <AdSenseSlot pubId={adsensePubId} type="banner" className="mb-4" />
+                {/* Google AdSense or Adsterra Revenue Banner Block */}
+                <AdSenseSlot 
+                  pubId={adsensePubId} 
+                  type="banner" 
+                  className="mb-4"
+                  adsenseEnabled={adsenseEnabled}
+                  adsterraEnabled={adsterraEnabled}
+                  adsterraBannerKey={adsterraBannerKey}
+                  adsterraMobileBannerKey={adsterraMobileBannerKey}
+                  adsterraInFeedKey={adsterraInFeedKey}
+                  adsterraStickyKey={adsterraStickyKey}
+                />
 
                 {/* Quick Action Grid Menu */}
                 <section className="grid grid-cols-5 gap-1 md:gap-3 mb-4 px-1">
@@ -6626,8 +6711,18 @@ export default function App() {
                     ) : (
                       filteredMarketListings.map((item, i) => (
                         <React.Fragment key={item.id}>
-                          {adsenseEnabled && (i === 1 || i === 4) && (
-                            <AdSenseSlot pubId={adsensePubId} type="in-feed" className="my-1" />
+                          {(adsenseEnabled || adsterraEnabled) && (i === 1 || i === 4) && (
+                            <AdSenseSlot 
+                              pubId={adsensePubId} 
+                              type="in-feed" 
+                              className="my-1"
+                              adsenseEnabled={adsenseEnabled}
+                              adsterraEnabled={adsterraEnabled}
+                              adsterraBannerKey={adsterraBannerKey}
+                              adsterraMobileBannerKey={adsterraMobileBannerKey}
+                              adsterraInFeedKey={adsterraInFeedKey}
+                              adsterraStickyKey={adsterraStickyKey}
+                            />
                           )}
                           <motion.div
                             initial={{ opacity: 0, x: -10 }}
@@ -9320,6 +9415,248 @@ export default function App() {
                             <p className="text-[9.5px] text-slate-500 font-semibold leading-relaxed">Add your verified site url to your Google AdSense Dashboard, copy Publisher ID, and activate.</p>
                           </div>
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Adsterra Revenue Hub & Monetization Console */}
+                <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6 mt-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 border border-indigo-100 shadow-sm animate-pulse">
+                        <Flame size={24} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-black text-slate-800 text-lg tracking-tight font-display">Adsterra Ad Networks Console</h3>
+                          <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${adsterraEnabled ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500'}`}>
+                            {adsterraEnabled ? '● ACTIVE' : '○ DISABLED'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">High performance CPM ad keys manager & earnings calculator</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="px-3.5 py-1.5 bg-indigo-50  text-indigo-600 rounded-lg text-[10px] font-black uppercase tracking-wider border border-indigo-100/50 flex items-center gap-1.5">
+                        <Coins size={11} className="animate-spin" />
+                        ADSTERRA PARTNER STATUS
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Controls & Keys */}
+                    <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
+                      <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Configure Adsterra Placements Keys</h4>
+                      
+                      {/* Desktop Banner Key */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
+                          <span>Standard Desktop Banner Key (728x90)</span>
+                          <span className="text-indigo-600 lowercase font-mono">adsterraBannerKey</span>
+                        </label>
+                        <div className="relative">
+                          <input 
+                            value={pendingAdsterraBannerKey}
+                            onChange={(e) => setPendingAdsterraBannerKey(e.target.value)}
+                            placeholder="e.g. 1a2b3c4d5e6f7g8h9i0j..."
+                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-300 shadow-2xs"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded uppercase">728x90</span>
+                        </div>
+                      </div>
+
+                      {/* Mobile Banner Key */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
+                          <span>Mobile Banner Key (320x50)</span>
+                          <span className="text-indigo-600 lowercase font-mono">adsterraMobileBannerKey</span>
+                        </label>
+                        <div className="relative">
+                          <input 
+                            value={pendingAdsterraMobileBannerKey}
+                            onChange={(e) => setPendingAdsterraMobileBannerKey(e.target.value)}
+                            placeholder="e.g. 2b3c4d5e6f7g8h9i0j1a..."
+                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-300 shadow-2xs"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded uppercase">320x50</span>
+                        </div>
+                      </div>
+
+                      {/* In-Feed Banner Key */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
+                          <span>In-Feed Banner Key (300x250)</span>
+                          <span className="text-indigo-600 lowercase font-mono">adsterraInFeedKey</span>
+                        </label>
+                        <div className="relative">
+                          <input 
+                            value={pendingAdsterraInFeedKey}
+                            onChange={(e) => setPendingAdsterraInFeedKey(e.target.value)}
+                            placeholder="e.g. 3c4d5e6f7g8h9i0j1a2b..."
+                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-300 shadow-2xs"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded uppercase">300x250</span>
+                        </div>
+                      </div>
+
+                      {/* Sticky Bottom Key */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
+                          <span>Sticky Bottom Banner Code Key (320x50 / social)</span>
+                          <span className="text-indigo-600 lowercase font-mono">adsterraStickyKey</span>
+                        </label>
+                        <div className="relative">
+                          <input 
+                            value={pendingAdsterraStickyKey}
+                            onChange={(e) => setPendingAdsterraStickyKey(e.target.value)}
+                            placeholder="e.g. 4d5e6f7g8h9i0j1a2b3c..."
+                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-300 shadow-2xs"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded uppercase">sticky</span>
+                        </div>
+                      </div>
+
+                      {/* Enable Switch */}
+                      <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200/60 shadow-2xs">
+                        <div>
+                          <span className="block font-bold text-slate-800 text-sm">Enable Adsterra Ads</span>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase">Activate high-CPM Adsterra placements</span>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            const nextState = !adsterraEnabled;
+                            setAdsterraEnabled(nextState);
+                            localStorage.setItem('cache_adsterra_enabled', String(nextState));
+                          }}
+                          className={`w-12 h-6 rounded-full p-1 flex transition-colors duration-300 ${adsterraEnabled ? 'bg-indigo-600 justify-end' : 'bg-slate-200 justify-start'}`}
+                        >
+                          <div className="w-4 h-4 bg-white rounded-full shadow-sm" />
+                        </button>
+                      </div>
+
+                      <button 
+                        onClick={() => updateAdsterraSettings(
+                          adsterraEnabled,
+                          pendingAdsterraBannerKey,
+                          pendingAdsterraMobileBannerKey,
+                          pendingAdsterraInFeedKey,
+                          pendingAdsterraStickyKey
+                        )}
+                        className="w-full py-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-indigo-200/50 hover:opacity-95 transition-all text-center flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <Coins size={12} />
+                        Save Adsterra Keys & Activate
+                      </button>
+                    </div>
+
+                    {/* Interactive CPM Calculator specifically tailored to Adsterra networks */}
+                    <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100 flex flex-col justify-between">
+                      <div>
+                        <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Adsterra High-CPM Earnings Calculator</h4>
+                        <p className="text-[10.5px] text-slate-500 font-semibold leading-relaxed mb-4">
+                          Adsterra operates on a native dynamic CPM model. Track how traffic waves convert immediately to dollars and BDT revenue streams. (Conversion rate: 1 USD = 120 BDT)
+                        </p>
+
+                        <div className="space-y-4 mt-2">
+                          {/* Traffic slider */}
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between items-center text-[10px] font-black uppercase">
+                              <span className="text-slate-400">Daily Traffic Views</span>
+                              <span className="text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 font-sans">{adsterraTraffic.toLocaleString()} views</span>
+                            </div>
+                            <input 
+                              type="range"
+                              min="100"
+                              max="100000"
+                              step="200"
+                              value={adsterraTraffic}
+                              onChange={(e) => setAdsterraTraffic(Number(e.target.value))}
+                              className="w-full h-1.5 bg-indigo-100 rounded-lg appearance-none cursor-pointer accent-indigo-600 focus:outline-none"
+                            />
+                          </div>
+
+                          {/* CPM slider */}
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between items-center text-[10px] font-black uppercase">
+                              <span className="text-slate-400">Expected CPM (Mille Rates USD)</span>
+                              <span className="text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 font-sans">${adsterraCPM.toFixed(2)} USD</span>
+                            </div>
+                            <input 
+                              type="range"
+                              min="0.2"
+                              max="12.0"
+                              step="0.1"
+                              value={adsterraCPM}
+                              onChange={(e) => setAdsterraCPM(Number(e.target.value))}
+                              className="w-full h-1.5 bg-indigo-100 rounded-lg appearance-none cursor-pointer accent-indigo-600 focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Display of BDT outputs */}
+                      <div className="bg-gradient-to-r from-indigo-600 to-indigo-800 rounded-2xl p-5 text-white space-y-4 shadow-md shadow-indigo-100/30">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="block text-[8px] font-black uppercase tracking-widest text-indigo-400">Adsterra Estimated Income</span>
+                            <h5 className="text-2xl font-black tracking-tight mt-0.5">
+                              ৳{Math.round((adsterraTraffic / 1000) * adsterraCPM * 30 * 120).toLocaleString()}
+                              <span className="text-[10px] font-bold text-indigo-200 uppercase ml-1.5">/ month</span>
+                            </h5>
+                          </div>
+                          <div className="text-right">
+                            <span className="block text-[8px] font-black uppercase tracking-widest text-[#FFEB3B]">DAILY BOOST</span>
+                            <span className="text-lg font-black text-white">৳{Math.round((adsterraTraffic / 1000) * adsterraCPM * 120).toLocaleString()}</span>
+                          </div>
+                        </div>
+
+                        <div className="border-t border-indigo-500/25 pt-3 flex items-center justify-between">
+                          <span className="text-[9px] font-black text-indigo-200 uppercase tracking-wide">Expected Annual Payout</span>
+                          <span className="text-sm font-black text-[#FFEB3B] font-mono">৳{Math.round((adsterraTraffic / 1000) * adsterraCPM * 365 * 120).toLocaleString()} BDT</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Adsterra step by step guidelines specifically customized for the user */}
+                  <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 space-y-4">
+                    <h4 className="text-[11px] font-black text-slate-850 uppercase tracking-widest flex items-center gap-1.5">
+                      <Sparkles size={11} className="text-indigo-650" />
+                      Adsterra Publisher Setup Roadmap for gmail-buy-sell-bd.vercel.app
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-[10px] sm:text-xs">
+                      <div className="space-y-3.5 leading-relaxed text-slate-650 font-medium">
+                        <p>
+                          ওয়েবসাইটে বিজ্ঞাপন দেখানোর জন্য নিচের সহজ ৪টি ধাপ সম্পন্ন করুন:
+                        </p>
+                        <ol className="list-decimal list-inside space-y-2 font-bold">
+                          <li>
+                            প্রথমে <a href="https://publishers.adsterra.com/signup" target="_blank" rel="noreferrer" className="text-indigo-600 font-black hover:underline">Adsterra Publisher Panel-এ সাইনআপ</a> করুন।
+                          </li>
+                          <li>
+                            ড্যাশবোর্ড থেকে <strong className="text-slate-900 font-extrabold">"Add Website"</strong> বাটনে ক্লিক করে ডোমেইনটি বসান: <code className="bg-white border border-slate-200 font-mono px-1 py-0.5 rounded text-indigo-600">gmail-buy-sell-bd.vercel.app</code>
+                          </li>
+                          <li>
+                            Category থেকে <strong className="text-slate-900 font-extrabold">"Miscellaneous (Other)"</strong> বা <strong className="text-slate-900 font-extrabold">"Social"</strong> নির্বাচন করুন এবং আপনার পছন্দের Size যোগ করুন।
+                          </li>
+                        </ol>
+                      </div>
+
+                      <div className="space-y-3.5 leading-relaxed text-slate-650 font-medium border-l border-slate-200/50 pl-0 md:pl-5">
+                        <ol className="list-decimal list-inside space-y-2 font-bold" start={4}>
+                          <li>
+                            সাইটটি ৩-৪ সেকেন্ডে অটো-অ্যাপ্রুভ হয়ে যাবে। সাইট নামের পাশে <strong className="text-slate-900 font-extrabold">"Get Code"</strong> বাটনে ক্লিক করুন।
+                          </li>
+                          <li>
+                            নিচে দেখানো স্ক্রিপ্ট কোড থেকে <strong className="text-slate-500 font-mono">key</strong> ভ্যালুটি কপি করে এনে এখানে বসিয়ে দিন (উপরে প্রতিটি বিজ্ঞাপন ফরম্যাটের কী দেওয়া আছে):
+                            <pre className="bg-slate-900 border border-slate-800 text-indigo-300 font-mono text-[9px] p-2.5 rounded-xl mt-1.5 overflow-x-auto select-all break-all leading-normal">
+                              {'//www.highperformanceformat.com/1a2b3c4d5e6f7g8h9i0j/invoke.js'}
+                            </pre>
+                            এখানে <strong className="text-[#FFEB3B] font-mono font-bold">1a2b3c4d5e6f7g8h9i0j</strong> হলো আপনার ইউনিক Ad Placement Key!
+                          </li>
+                        </ol>
                       </div>
                     </div>
                   </div>
@@ -12379,8 +12716,17 @@ export default function App() {
         </AnimatePresence>
 
         {/* Sticky bottom Google AdSense banner */}
-        {adsenseEnabled && view !== 'admin' && view !== 'login' && view !== 'register' && view !== 'forgot' && view !== 'reset' && (
-          <AdSenseSlot pubId={adsensePubId} type="sticky-bottom" />
+        {(adsenseEnabled || adsterraEnabled) && view !== 'admin' && view !== 'login' && view !== 'register' && view !== 'forgot' && view !== 'reset' && (
+          <AdSenseSlot 
+            pubId={adsensePubId} 
+            type="sticky-bottom" 
+            adsenseEnabled={adsenseEnabled}
+            adsterraEnabled={adsterraEnabled}
+            adsterraBannerKey={adsterraBannerKey}
+            adsterraMobileBannerKey={adsterraMobileBannerKey}
+            adsterraInFeedKey={adsterraInFeedKey}
+            adsterraStickyKey={adsterraStickyKey}
+          />
         )}
 
         {/* Mobile Footer Navigation */}
