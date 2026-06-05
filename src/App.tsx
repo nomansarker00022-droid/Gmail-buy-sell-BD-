@@ -68,6 +68,25 @@ const DEFAULT_GMAIL_PRICES: Record<string, { seller: string, buyer: string }> = 
   "৩-৪ মাস old (৩-৪ মাসের পুরাতন)": { seller: "12", buyer: "18" }
 };
 
+const fallbackRewards = [
+  {
+    id: 'rad_mock1',
+    title: "বিকাশ অ্যাপ ডাউনলোড করে ১০০ টাকা বোনাস নিন!",
+    description: "প্রথমবার বিকাশ অ্যাপ ডাউনলোড করে অ্যাকাউন্ট খুললেই পাবেন নিশ্চিত ১০০ টাকা বোনাস এবং আকর্ষণীয় ক্যাশব্যাক অফার।",
+    cta: "ডাউনলোড করুন (Download App)",
+    url: "https://www.bkash.com/app-download",
+    image: "https://images.unsplash.com/photo-1616077168079-7e09a677fb2c?w=500&auto=format&fit=crop&q=60"
+  },
+  {
+    id: 'rad_mock2',
+    title: "নগদ অ্যাকাউন্ট খুলে ফ্রি ৫০ টাকা রিচার্জ!",
+    description: "নগদ অ্যাপ দিয়ে একাউন্ট খুলে পিন সেট করলেই পেয়ে যাবেন নিশ্চিত ফ্রি ৫০ টাকা মোবাইল রিচার্জ বোনাস।",
+    cta: "নগদ অ্যাপ ডাউনলোড (Nagad App)",
+    url: "https://www.nagad.com.bd",
+    image: "https://images.unsplash.com/photo-1563013544-824ae1d704d3?w=500&auto=format&fit=crop&q=60"
+  }
+];
+
 export default function App() {
   const [adsensePubId, setAdsensePubId] = useState(() => localStorage.getItem('cache_adsense_pubid') || "");
   const [adsenseEnabled, setAdsenseEnabled] = useState(() => localStorage.getItem('cache_adsense_enabled') !== 'false');
@@ -78,11 +97,33 @@ export default function App() {
   const [adsterraMobileBannerKey, setAdsterraMobileBannerKey] = useState(() => localStorage.getItem('cache_adsterra_mobile_banner_key') || "");
   const [adsterraInFeedKey, setAdsterraInFeedKey] = useState(() => localStorage.getItem('cache_adsterra_infeed_key') || "");
   const [adsterraStickyKey, setAdsterraStickyKey] = useState(() => localStorage.getItem('cache_adsterra_sticky_key') || "");
+  const [adsterraDirectLink, setAdsterraDirectLink] = useState(() => localStorage.getItem('cache_adsterra_direct_link') || "");
 
   const [pendingAdsterraBannerKey, setPendingAdsterraBannerKey] = useState(() => localStorage.getItem('cache_adsterra_banner_key') || "");
   const [pendingAdsterraMobileBannerKey, setPendingAdsterraMobileBannerKey] = useState(() => localStorage.getItem('cache_adsterra_mobile_banner_key') || "");
   const [pendingAdsterraInFeedKey, setPendingAdsterraInFeedKey] = useState(() => localStorage.getItem('cache_adsterra_infeed_key') || "");
   const [pendingAdsterraStickyKey, setPendingAdsterraStickyKey] = useState(() => localStorage.getItem('cache_adsterra_sticky_key') || "");
+  const [pendingAdsterraDirectLink, setPendingAdsterraDirectLink] = useState(() => localStorage.getItem('cache_adsterra_direct_link') || "");
+
+  // Reward ads custom controls states
+  const [rewardAds, setRewardAds] = useState<any[]>(() => {
+    try {
+      const cached = localStorage.getItem('cache_reward_ads');
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [newRewardAdTitle, setNewRewardAdTitle] = useState("");
+  const [newRewardAdDescription, setNewRewardAdDescription] = useState("");
+  const [newRewardAdCta, setNewRewardAdCta] = useState("👉 CLAIM");
+  const [newRewardAdUrl, setNewRewardAdUrl] = useState("");
+  const [newRewardAdImage, setNewRewardAdImage] = useState("");
+  const [activeRewardAd, setActiveRewardAd] = useState<any | null>(null);
+  const [rewardAdDuration, setRewardAdDuration] = useState<number>(() => {
+    const cached = localStorage.getItem('cache_reward_ad_duration');
+    return cached ? Number(cached) : 30; // standard 30s default
+  });
 
   // Swallowing Firebase internal assertion/stream/quota exceptions globally to prevent full tab crashes
   useEffect(() => {
@@ -1193,6 +1234,107 @@ export default function App() {
   const [isAdminOnlineState, setIsAdminOnlineState] = useState(false);
   const [showReferModal, setShowReferModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [showAdsEarnModal, setShowAdsEarnModal] = useState(false);
+  const [adWatchProgress, setAdWatchProgress] = useState(0);
+  const [adWatchStatus, setAdWatchStatus] = useState<'idle' | 'watching' | 'completed'>('idle');
+  const [adWatchCountdown, setAdWatchCountdown] = useState(5);
+  const getTodayDateString = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const startWatchingAd = () => {
+    if (!user) {
+      alert("অনুগ্রহ করে ইনকাম করতে প্রথমে লগইন করুন!");
+      return;
+    }
+    const todayStr = getTodayDateString();
+    const currentCount = userProfile?.lastAdWatchedDate === todayStr ? (userProfile?.adsWatchedToday || 0) : 0;
+    if (currentCount >= 500) {
+      alert("আপনার আজকের ৫০০ বিজ্ঞাপনের ডেইলি লিমিট (Daily Limit 500 Ads) শেষ হয়ে গেছে! আগামীকাল আবার চেষ্টা করুন।");
+      return;
+    }
+
+    let chosenAd;
+    if (adsterraEnabled && adsterraDirectLink) {
+      const rand = Math.random();
+      if (rand < 0.75) {
+        chosenAd = {
+          id: 'adsterra_direct',
+          title: "🔥 HIGH-CPM SPONSOR REGISTER / APP OFFER",
+          description: "স্পন্সর অফারটি লোড করতে এবং আপনার সঠিক ভিউ ভেরিফিকেশন সম্পন্ন করতে নিচের বাটনে ক্লিক করে অফারটি সম্পূর্ণ করুন!",
+          cta: "👉 GET REWARD OFFER (ক্লিক করুন)",
+          url: adsterraDirectLink,
+          image: "https://images.unsplash.com/photo-1614064641938-3bbee52942c7?w=500&auto=format&fit=crop&q=60"
+        };
+      } else {
+        const pool = rewardAds && rewardAds.length > 0 ? rewardAds : fallbackRewards;
+        const randomIndex = Math.floor(Math.random() * pool.length);
+        chosenAd = pool[randomIndex];
+      }
+    } else {
+      const pool = rewardAds && rewardAds.length > 0 ? rewardAds : fallbackRewards;
+      const randomIndex = Math.floor(Math.random() * pool.length);
+      chosenAd = pool[randomIndex];
+    }
+    setActiveRewardAd(chosenAd);
+
+    setAdWatchStatus('watching');
+    setAdWatchCountdown(rewardAdDuration);
+    setAdWatchProgress(0);
+    
+    let currentCountDown = rewardAdDuration;
+    const interval = setInterval(() => {
+      currentCountDown -= 1;
+      setAdWatchCountdown(currentCountDown);
+      setAdWatchProgress(((rewardAdDuration - currentCountDown) / rewardAdDuration) * 100);
+      if (currentCountDown <= 0) {
+        clearInterval(interval);
+        setAdWatchStatus('completed');
+        setAdWatchProgress(100);
+      }
+    }, 1000);
+  };
+
+  const claimAdEarning = async () => {
+    if (!user?.uid) {
+      alert("অনুগ্রহ করে প্রথমে লগইন করুন!");
+      return;
+    }
+    const todayStr = getTodayDateString();
+    const currentCount = userProfile?.lastAdWatchedDate === todayStr ? (userProfile?.adsWatchedToday || 0) : 0;
+    if (currentCount >= 500) {
+      alert("আপনার আজকের ৫০০ বিজ্ঞাপনের ডেইলি লিমিট শেষ হয়ে গেছে!");
+      return;
+    }
+    const isSameDay = userProfile?.lastAdWatchedDate === todayStr;
+    const nextCount = isSameDay ? currentCount + 1 : 1;
+
+    try {
+      await updateDoc(doc(db, 'profiles', user.uid), {
+        earningsBalance: increment(0.50),
+        totalEarned: increment(0.50),
+        adsWatchedToday: isSameDay ? increment(1) : 1,
+        lastAdWatchedDate: todayStr
+      });
+      setUserProfile((prev: any) => ({
+        ...prev,
+        earningsBalance: (prev?.earningsBalance || 0) + 0.50,
+        totalEarned: (prev?.totalEarned || 0) + 0.50,
+        adsWatchedToday: nextCount,
+        lastAdWatchedDate: todayStr
+      }));
+      alert(`অভিনন্দন! আপনার একাউন্টে ৳০.৫০ যোগ করা হয়েছে। আজকের ভিউ সংখ্যা: ${nextCount}/500`);
+      setAdWatchStatus('idle');
+      setAdWatchProgress(0);
+      setActiveRewardAd(null);
+    } catch (err: any) {
+      alert('Error updating earnings: ' + err.message);
+    }
+  };
   const [withdrawMode, setWithdrawMode] = useState<'referral' | 'earnings'>('referral');
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
   const [welcomeForm, setWelcomeForm] = useState({
@@ -5116,17 +5258,41 @@ export default function App() {
               setPendingAdsterraInFeedKey(data.inFeedKey || "");
               setAdsterraStickyKey(data.stickyKey || "");
               setPendingAdsterraStickyKey(data.stickyKey || "");
+              setAdsterraDirectLink(data.directLink || "");
+              setPendingAdsterraDirectLink(data.directLink || "");
 
               localStorage.setItem('cache_adsterra_enabled', String(data.enabled === true));
               localStorage.setItem('cache_adsterra_banner_key', data.bannerKey || "");
               localStorage.setItem('cache_adsterra_mobile_banner_key', data.mobileBannerKey || "");
               localStorage.setItem('cache_adsterra_infeed_key', data.inFeedKey || "");
               localStorage.setItem('cache_adsterra_sticky_key', data.stickyKey || "");
+              localStorage.setItem('cache_adsterra_direct_link', data.directLink || "");
             }
           }
         } catch (adsterraErr) {
           console.warn("Skipping dynamic adsterra config fetch from firestore (using cache):", adsterraErr);
         }
+
+        // Fetch Custom Reward Ads Configurations
+        const rewardAdsDocRef = doc(db, 'settings', 'reward_ads');
+        try {
+          const rewardSnap = await getDoc(rewardAdsDocRef);
+          if (rewardSnap.exists()) {
+            const data = rewardSnap.data();
+            if (data) {
+              if (Array.isArray(data.ads)) {
+                setRewardAds(data.ads);
+                localStorage.setItem('cache_reward_ads', JSON.stringify(data.ads));
+              }
+              const dur = data.duration ? Number(data.duration) : 30;
+              setRewardAdDuration(dur);
+              localStorage.setItem('cache_reward_ad_duration', String(dur));
+            }
+          }
+        } catch (rewardErr) {
+          console.warn("Skipping dynamic reward ads fetch from firestore (using cache):", rewardErr);
+        }
+
         setQuotaExceeded(false);
       } catch (err: any) {
         console.warn("Settings fetch failed:", err);
@@ -5189,7 +5355,8 @@ export default function App() {
     bannerKey: string,
     mobileBannerKey: string,
     inFeedKey: string,
-    stickyKey: string
+    stickyKey: string,
+    directLink: string
   ) => {
     if (!isAdmin) return;
     try {
@@ -5199,6 +5366,7 @@ export default function App() {
         mobileBannerKey: mobileBannerKey.trim(),
         inFeedKey: inFeedKey.trim(),
         stickyKey: stickyKey.trim(),
+        directLink: directLink.trim(),
         updatedAt: serverTimestamp()
       });
       setAdsterraEnabled(enabled);
@@ -5206,15 +5374,35 @@ export default function App() {
       setAdsterraMobileBannerKey(mobileBannerKey.trim());
       setAdsterraInFeedKey(inFeedKey.trim());
       setAdsterraStickyKey(stickyKey.trim());
+      setAdsterraDirectLink(directLink.trim());
 
       localStorage.setItem('cache_adsterra_enabled', String(enabled));
       localStorage.setItem('cache_adsterra_banner_key', bannerKey.trim());
       localStorage.setItem('cache_adsterra_mobile_banner_key', mobileBannerKey.trim());
       localStorage.setItem('cache_adsterra_infeed_key', inFeedKey.trim());
       localStorage.setItem('cache_adsterra_sticky_key', stickyKey.trim());
+      localStorage.setItem('cache_adsterra_direct_link', directLink.trim());
       alert('Adsterra monetization configurations successfully updated and saved securely to Cloud Firestore!');
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'settings/adsterra');
+    }
+  };
+
+  const updateRewardAds = async (updatedList: any[], newDuration?: number) => {
+    if (!isAdmin) return;
+    try {
+      const targetDuration = newDuration !== undefined ? newDuration : rewardAdDuration;
+      await setDoc(doc(db, 'settings', 'reward_ads'), {
+        ads: updatedList,
+        duration: targetDuration,
+        updatedAt: serverTimestamp()
+      });
+      setRewardAds(updatedList);
+      setRewardAdDuration(targetDuration);
+      localStorage.setItem('cache_reward_ads', JSON.stringify(updatedList));
+      localStorage.setItem('cache_reward_ad_duration', String(targetDuration));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, 'settings/reward_ads');
     }
   };
 
@@ -7332,6 +7520,7 @@ export default function App() {
                         { title: "Sell Facebook Accounts", badge: "Active", color: "bg-blue-50 text-blue-600", icon: Facebook, desc: "Verified Facebook accounts বিক্রি করুন। Dynamic fields ও escrow protection সহ।", action: () => setView('facebook-sell-center') },
                         { title: "Sell Telegram OTP", badge: "Active", color: "bg-indigo-50 text-indigo-600", icon: Send, desc: "Telegram OTP numbers বিক্রি করুন। Buyer-এর সাথে chat-এ OTP deliver করুন।", action: () => {} },
                         { title: "Sell WhatsApp OTP", badge: "Active", color: "bg-emerald-50 text-emerald-600", icon: MessageSquare, desc: "WhatsApp OTP numbers বিক্রি করুন। Secure escrow-এ payment রাখা হয়।", action: () => {} },
+                        { title: "Ads view Earn", badge: "100% Payment", color: "bg-amber-50 text-amber-600", icon: Megaphone, desc: "এড থেকে ইনকাম করুন 100% পেমেন্ট নিশ্চিত", action: () => setShowAdsEarnModal(true) },
                      ].map((item, idx) => (
                         <button 
                            key={idx}
@@ -8873,6 +9062,192 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* Reward Ads Control */}
+                <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600">
+                      <Sparkles size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-800">Customize Reward Ads (রিওয়ার্ড এডস কনট্রোল)</h3>
+                      <p className="text-xs text-slate-400 font-bold">👉 VIEW (৳০.৫০ আয় করুন) বাটনে ক্লিক করলে যে এড পেজ আসবে তা নিয়ন্ত্রণ করুন</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Add Ad Form */}
+                    <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
+                      <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest pl-1">নতুন রিওয়ার্ড এড যুক্ত করুন</h4>
+                      
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">বিজ্ঞাপনের শিরোনাম (Ad Title) *</label>
+                        <input
+                          value={newRewardAdTitle}
+                          onChange={(e) => setNewRewardAdTitle(e.target.value)}
+                          placeholder="যেমন: bKash App Download করুন"
+                          className="w-full px-4 py-3 bg-white border border-slate-200/60 rounded-xl font-bold focus:outline-none focus:border-amber-500 text-xs"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">বিজ্ঞাপনের বর্ণনা (Ad Description) *</label>
+                        <textarea
+                          value={newRewardAdDescription}
+                          onChange={(e) => setNewRewardAdDescription(e.target.value)}
+                          placeholder="যেমন: বিকাশ অ্যাপে প্রথমবার সাইনআপ করে ১০০ টাকা বোনাস পান!"
+                          rows={2}
+                          className="w-full px-4 py-3 bg-white border border-slate-200/60 rounded-xl font-bold focus:outline-none focus:border-amber-500 text-xs resize-none"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">বাটন টেক্সট (CTA Text)</label>
+                          <input
+                            value={newRewardAdCta}
+                            onChange={(e) => setNewRewardAdCta(e.target.value)}
+                            placeholder="যেমন: 👉 CLAIM / ডাউনলোড করুন"
+                            className="w-full px-4 py-3 bg-white border border-slate-200/60 rounded-xl font-bold focus:outline-none focus:border-amber-500 text-xs"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">ব্যানার ইমেজ লিংক (Image URL - Optional)</label>
+                          <input
+                            value={newRewardAdImage}
+                            onChange={(e) => setNewRewardAdImage(e.target.value)}
+                            placeholder="https://example.com/banner.png"
+                            className="w-full px-4 py-3 bg-white border border-slate-200/60 rounded-xl font-bold focus:outline-none focus:border-amber-500 text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">বিজ্ঞাপনের লিংক (Redirect Destination URL) *</label>
+                        <input
+                          value={newRewardAdUrl}
+                          onChange={(e) => setNewRewardAdUrl(e.target.value)}
+                          placeholder="https://www.bkash.com/app-download"
+                          className="w-full px-4 py-3 bg-white border border-slate-200/60 rounded-xl font-bold focus:outline-none focus:border-amber-500 text-xs"
+                        />
+                      </div>
+
+                      <button
+                        onClick={async () => {
+                          if (!newRewardAdTitle.trim() || !newRewardAdDescription.trim() || !newRewardAdUrl.trim()) {
+                            alert("দয়া করে শিরোনাম, বর্ণনা এবং বিজ্ঞাপনের লিংক অবশই পূরণ করুন!");
+                            return;
+                          }
+                          const newAdItem = {
+                            id: 'rad_' + Math.random().toString(36).substr(2, 9),
+                            title: newRewardAdTitle.trim(),
+                            description: newRewardAdDescription.trim(),
+                            cta: newRewardAdCta.trim() || "👉 CLAIM",
+                            url: newRewardAdUrl.trim(),
+                            image: newRewardAdImage.trim(),
+                            createdAt: new Date().toISOString()
+                          };
+                          const updated = [newAdItem, ...rewardAds];
+                          await updateRewardAds(updated);
+                          
+                          // Clear inputs
+                          setNewRewardAdTitle("");
+                          setNewRewardAdDescription("");
+                          setNewRewardAdCta("👉 CLAIM");
+                          setNewRewardAdUrl("");
+                          setNewRewardAdImage("");
+                          alert("নতুন রিওয়ার্ড এডস সফলভাবে যুক্ত হয়েছে!");
+                        }}
+                        className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 font-sans text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-md hover:from-amber-600 hover:to-amber-700 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                      >
+                        <PlusSquare size={14} />
+                        রিওয়ার্ড এড যুক্ত করুন (Add Reward Ad)
+                      </button>
+
+                      {/* Reward Ad Duration Settings */}
+                      <div className="space-y-2 mt-4 p-4 bg-amber-50/40 rounded-2xl border border-amber-100 text-left">
+                        <label className="text-[10px] font-black text-amber-700 uppercase tracking-widest leading-none block">
+                          ⏱️ বিজ্ঞাপনের সময়সীমা (Reward Ad Timing Option)
+                        </label>
+                        <p className="text-[9px] text-slate-400 font-bold leading-normal">
+                          ইউজারদেরকে কত সেকেন্ড ভিউ করার পর ব্যালেন্স দেওয়া হবে তা নির্বাচন করুন:
+                        </p>
+                        <div className="grid grid-cols-3 gap-2 mt-1">
+                          {[5, 30, 60].map((sec) => (
+                            <button
+                              key={sec}
+                              onClick={async () => {
+                                if (confirm(`বিজ্ঞাপন দেখার সময়সীমা কি পরিবর্তন করে ${sec} সেকেন্ড করতে চান?`)) {
+                                  await updateRewardAds(rewardAds, sec);
+                                  alert(`বিজ্ঞাপন দেখার সময়সীমা ${sec} সেকেন্ড এ সেট করা হয়েছে!`);
+                                }
+                              }}
+                              className={`py-2 px-3 rounded-xl text-[10px] font-black uppercase transition-all tracking-wider cursor-pointer ${
+                                rewardAdDuration === sec
+                                  ? 'bg-amber-500 text-slate-950 shadow-sm border-2 border-amber-500'
+                                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                              }`}
+                            >
+                              {sec}s ({sec === 5 ? 'টেস্ট' : sec === 30 ? 'স্ট্যান্ডার্ড' : 'ভেরি হাই'})
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Ads List */}
+                    <div className="space-y-4">
+                      <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest pl-1 flex items-center justify-between">
+                        <span>সক্রিয় বিজ্ঞাপনের তালিকা ({rewardAds.length})</span>
+                        <span className="text-[9px] text-slate-400 font-bold font-mono">Real-time DB Sync</span>
+                      </h4>
+
+                      <div className="space-y-3.5 max-h-[380px] overflow-y-auto pr-1">
+                        {rewardAds.length === 0 ? (
+                          <div className="p-12 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                            <Sparkles size={28} className="text-slate-300 mx-auto mb-2 animate-pulse" />
+                            <p className="text-[11px] text-slate-400 font-bold leading-relaxed">কোনো রিওয়ার্ড এড যুক্ত করা হয়নি।</p>
+                            <p className="text-[9px] text-slate-300 mt-1">খালি থাকলে ইউজারদেরকে Adsterra/Adsense বা সলিড সিমুলেটেড বিজ্ঞাপন দেখানো হবে।</p>
+                          </div>
+                        ) : (
+                          rewardAds.map((ad, idx) => (
+                            <div key={ad.id || idx} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex gap-3.5 relative hover:border-amber-200 transition-colors">
+                              {ad.image && (
+                                <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-slate-50 border border-slate-100 flex items-center justify-center">
+                                  <img referrerPolicy="no-referrer" src={ad.image} alt="Ad banner" className="w-full h-full object-cover" onError={(e)=>{ (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                </div>
+                              )}
+                              <div className="space-y-1.5 flex-1 min-w-0">
+                                <h5 className="font-extrabold text-[#111] text-xs leading-snug truncate">{ad.title}</h5>
+                                <p className="text-[10px] text-slate-500 font-medium leading-relaxed line-clamp-2">{ad.description}</p>
+                                <div className="flex items-center gap-3">
+                                  <a href={ad.url} target="_blank" rel="noreferrer" className="text-[9px] font-black text-indigo-600 hover:underline uppercase tracking-wider font-sans shrink-0 flex items-center gap-0.5">
+                                    <span>Link: {ad.cta || '👉 CLAIM'}</span>
+                                    <ExternalLink size={8} />
+                                  </a>
+                                  <span className="text-[8px] text-slate-300 font-mono">|</span>
+                                  <span className="text-[9px] text-slate-400 font-mono truncate">{ad.url}</span>
+                                </div>
+                              </div>
+                              <button
+                                onClick={async () => {
+                                  if (confirm("এই রিওয়ার্ড এডটি কি তালিকা থেকে মুছে ফেলতে চান?")) {
+                                    const updated = rewardAds.filter((_, i) => i !== idx);
+                                    await updateRewardAds(updated);
+                                  }
+                                }}
+                                className="p-1.5 h-7 w-7 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg absolute top-2 right-2 transition-all self-start flex items-center justify-center"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* User Account Recovery Section */}
                   <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6">
@@ -9518,6 +9893,26 @@ export default function App() {
                         </div>
                       </div>
 
+                      {/* Adsterra Direct Link (Highest CPM) */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-rose-500 uppercase tracking-wider flex justify-between">
+                          <span>🔥 Adsterra Direct Link (সবচেয়ে বেশি ইনকামের ডাইরেক্ট লিংক)</span>
+                          <span className="text-rose-600 lowercase font-mono">adsterraDirectLink</span>
+                        </label>
+                        <div className="relative">
+                          <input 
+                            value={pendingAdsterraDirectLink}
+                            onChange={(e) => setPendingAdsterraDirectLink(e.target.value)}
+                            placeholder="e.g. https://www.highperformanceformat.com/xyz123abc..."
+                            className="w-full pl-4 pr-12 py-3 bg-white border border-rose-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-rose-500/20 focus:border-rose-450 outline-none transition-all placeholder:text-rose-205 shadow-2xs"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded uppercase">direct</span>
+                        </div>
+                        <p className="text-[9.5px] text-slate-400 font-bold leading-relaxed">
+                          ⚠️ Adsterra ডাইরেক্ট লিংক (Direct Link) সেট করলে Reward Ads ভিউ অপশনে এটি সবার ওপরে লোড হবে এবং আপনার প্রতি ক্লিকে অনেক বেশি ইনকাম আসবে!
+                        </p>
+                      </div>
+
                       {/* Enable Switch */}
                       <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200/60 shadow-2xs">
                         <div>
@@ -9542,7 +9937,8 @@ export default function App() {
                           pendingAdsterraBannerKey,
                           pendingAdsterraMobileBannerKey,
                           pendingAdsterraInFeedKey,
-                          pendingAdsterraStickyKey
+                          pendingAdsterraStickyKey,
+                          pendingAdsterraDirectLink
                         )}
                         className="w-full py-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-indigo-200/50 hover:opacity-95 transition-all text-center flex items-center justify-center gap-2 cursor-pointer"
                       >
@@ -11846,6 +12242,277 @@ export default function App() {
                   )}
                 </AnimatePresence>
 
+                {/* Ads view Earn Modal */}
+                <AnimatePresence>
+                  {showAdsEarnModal && (
+                    <>
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => {
+                          if (adWatchStatus !== 'watching') {
+                            setShowAdsEarnModal(false);
+                          } else {
+                            alert("বিজ্ঞাপন চলাকালীন বন্ধ করা যাবে না! অনুগ্রহ করে অপেক্ষা করুন।");
+                          }
+                        }}
+                        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200]"
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                        className="fixed inset-x-4 bottom-[5%] top-[10%] md:inset-y-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[480px] md:h-auto max-h-[85vh] bg-white rounded-[2.5rem] shadow-2xl z-[210] p-6 md:p-8 flex flex-col justify-between overflow-y-auto border border-amber-100"
+                      >
+                        {/* Header */}
+                        <div className="relative">
+                          <button 
+                            onClick={() => {
+                              if (adWatchStatus !== 'watching') {
+                                setShowAdsEarnModal(false);
+                              } else {
+                                alert("বিজ্ঞাপন চলাকালীন বন্ধ করা যাবে না! অনুগ্রহ করে অপেক্ষা করুন।");
+                              }
+                            }}
+                            className="absolute -top-2 -right-2 p-2 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors z-10"
+                          >
+                            <X size={18} className="text-slate-400" />
+                          </button>
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 border border-amber-100 font-sans shadow-sm animate-pulse">
+                              <Megaphone size={14} className="text-amber-600 shrink-0" />
+                            </div>
+                            <div>
+                              <h3 className="font-black text-slate-800 text-base tracking-tight font-display">Ads view Earn Console</h3>
+                              <p className="text-[9px] font-black text-amber-600 uppercase tracking-wider">এড থেকে ইনকাম করুন — 100% পেমেন্ট নিশ্চিত</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Main Content Area */}
+                        <div className="flex-1 space-y-4 my-2">
+                          {!user ? (
+                            <div className="p-6 text-center space-y-4 bg-slate-50 rounded-2xl border border-slate-100 font-sans">
+                              <ShieldAlert className="mx-auto text-amber-500" size={32} />
+                              <p className="text-xs text-slate-650 font-bold leading-relaxed">
+                                আপনি এখনো লগইন করেননি। আমাদের ভেরিফাইড বিজ্ঞাপনী প্ল্যাটফর্মে আয় শুরু করতে প্রথমে একটি একাউন্ট তৈরি করুন অথবা লগইন করুন।
+                              </p>
+                              <button
+                                onClick={() => {
+                                  setShowAdsEarnModal(false);
+                                  setView('login');
+                                }}
+                                className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] font-black uppercase tracking-wider rounded-xl hover:opacity-95 transition-all shadow-sm active:scale-95 cursor-pointer font-sans"
+                              >
+                                লগইন করুন (Login Now)
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              {/* Current Balance & Rate */}
+                              <div className="grid grid-cols-2 gap-3 font-sans">
+                                <div className="bg-amber-50/55 border border-amber-100/60 p-4 rounded-2xl flex flex-col justify-between">
+                                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 font-bold">Your Current Balance</span>
+                                  <span className="text-lg font-black text-slate-800 mt-1">৳{(userProfile?.earningsBalance || 0).toFixed(2)} BDT</span>
+                                </div>
+                                <div className="bg-emerald-50/55 border border-emerald-100/60 p-4 rounded-2xl flex flex-col justify-between">
+                                  <span className="text-[8px] font-black uppercase tracking-widest text-[#25D366] font-bold">Earning Rate / Ad</span>
+                                  <span className="text-lg font-black text-emerald-700 mt-1">৳০.৫০ BDT</span>
+                                </div>
+                              </div>
+
+                              {/* Daily Limit & Count of Watched Ads */}
+                              <div className="grid grid-cols-2 gap-3 font-sans">
+                                <div className="bg-rose-50/55 border border-rose-100/60 p-4 rounded-2xl flex flex-col justify-between">
+                                  <span className="text-[8px] font-black uppercase tracking-widest text-rose-500 font-bold">Daily Limit</span>
+                                  <span className="text-lg font-black text-rose-700 mt-1">500 Ads</span>
+                                </div>
+                                <div className="bg-blue-50/55 border border-blue-100/60 p-4 rounded-2xl flex flex-col justify-between">
+                                  <span className="text-[8px] font-black uppercase tracking-widest text-blue-500 font-bold">Today Watched</span>
+                                  <span className="text-lg font-black text-blue-700 mt-1">
+                                    {userProfile?.lastAdWatchedDate === getTodayDateString() ? (userProfile?.adsWatchedToday || 0) : 0} / 500
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Video/Banner Sponsor Ad Box (Loads Active Ads!) */}
+                              <div className="bg-[#0B0F19] rounded-3xl p-4 text-center border border-slate-800/80 relative overflow-hidden flex flex-col justify-between min-h-[160px]">
+                                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-amber-400 via-yellow-300 to-[#FFEB3B]" />
+                                
+                                <div className="flex items-center justify-between pb-2 border-b border-slate-850 mb-2 font-mono">
+                                  <span className="text-[7.5px] font-black uppercase tracking-widest text-[#FFEB3B] flex items-center gap-1">
+                                    <Flame size={10} className="text-amber-500 animate-pulse" /> SPONSOR AD PLACEMENT
+                                  </span>
+                                  <span className="text-[7px] text-slate-500 font-bold uppercase">SECURED BY HIGH-CONVERSION AD NETWORK</span>
+                                </div>
+
+                                {/* Rendering active ad slot for maximum traffic earnings */}
+                                <div className="my-auto py-2 flex flex-col items-center justify-center min-h-[100px] w-full bg-slate-950/40 rounded-xl border border-slate-800/50 overflow-hidden">
+                                  {adWatchStatus === 'watching' ? (
+                                    <div className="space-y-4 px-4 py-2 w-full text-left">
+                                      {/* Banner content */}
+                                      {activeRewardAd && (
+                                        <div className="flex gap-3 bg-slate-900/40 p-2.5 rounded-xl border border-slate-800/45">
+                                          {activeRewardAd.image && (
+                                            <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-slate-950 border border-slate-800 flex items-center justify-center">
+                                              <img referrerPolicy="no-referrer" src={activeRewardAd.image} alt="Sponsor Ad" className="w-full h-full object-cover" />
+                                            </div>
+                                          )}
+                                          <div className="flex-1 min-w-0">
+                                            <h4 className="text-[11.5px] font-black text-amber-300 leading-snug truncate">{activeRewardAd.title}</h4>
+                                            <p className="text-[9px] text-slate-400 leading-relaxed font-semibold mt-0.5 line-clamp-2">{activeRewardAd.description}</p>
+                                            
+                                            {/* CTA Link during watch */}
+                                            <a 
+                                              href={activeRewardAd.url} 
+                                              target="_blank" 
+                                              rel="noreferrer" 
+                                              className="inline-flex items-center gap-1 text-[8.5px] text-[#FFEB3B] font-extrabold hover:underline mt-1 uppercase"
+                                            >
+                                              <span>{activeRewardAd.cta || '👉 CLAIM'}</span>
+                                              <ExternalLink size={8} />
+                                            </a>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      <div className="space-y-2">
+                                        <div className="flex justify-between items-center text-[9px] font-black uppercase text-amber-400 tracking-wider font-mono">
+                                          <span>Verifying views (ডকুমেন্ট ভেরিফিকেশন)...</span>
+                                          <span>{adWatchCountdown}s left</span>
+                                        </div>
+                                        <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                          <motion.div 
+                                            className="bg-gradient-to-r from-amber-400 to-yellow-300 h-full"
+                                            initial={{ width: '0%' }}
+                                            animate={{ width: `${adWatchProgress}%` }}
+                                            transition={{ ease: 'linear' }}
+                                          />
+                                        </div>
+                                        <p className="text-[8px] text-slate-500 leading-relaxed font-bold">
+                                          ⚠️ সম্পূর্ণ {rewardAdDuration} সেকেন্ড অপেক্ষা করুন। এডটি লোড এবং ভেরিফাই করা হচ্ছে...
+                                        </p>
+                                      </div>
+                                    </div>
+                                  ) : adWatchStatus === 'completed' ? (
+                                    <div className="text-center space-y-3 py-3 px-4 w-full">
+                                      {activeRewardAd && (
+                                        <div className="bg-slate-900/60 p-3 rounded-2xl border border-slate-800 text-left max-w-[360px] mx-auto">
+                                          {activeRewardAd.image && (
+                                            <div className="w-full h-20 rounded-xl overflow-hidden mb-2 bg-slate-950">
+                                              <img referrerPolicy="no-referrer" src={activeRewardAd.image} className="w-full h-full object-cover" alt="Sponsor banner" />
+                                            </div>
+                                          )}
+                                          <h4 className="text-[12px] font-black text-amber-400 leading-snug">{activeRewardAd.title}</h4>
+                                          <p className="text-[9.5px] text-slate-400 mt-1 leading-relaxed font-bold line-clamp-3">{activeRewardAd.description}</p>
+                                          
+                                          {/* Direct click for bonus */}
+                                          <a 
+                                            href={activeRewardAd.url} 
+                                            target="_blank" 
+                                            rel="noreferrer" 
+                                            className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 rounded-xl text-[9.5px] font-black uppercase tracking-wider text-center flex items-center justify-center gap-1.5 mt-2 transition-all cursor-pointer shadow-md animate-pulse"
+                                          >
+                                            <span>{activeRewardAd.cta || '👉 CLAIM'}</span>
+                                            <ExternalLink size={9} />
+                                          </a>
+                                          <p className="text-[7.5px] text-slate-400 font-extrabold leading-normal mt-2 border-t border-slate-800/40 pt-1.5 text-center">
+                                            📢 একাউন্ট সচল রাখতে এবং ইনকাম সচল রাখতে স্পন্সর লিংকে ক্লিক করে ৫ সেকেন্ড অপেক্ষা করা আবশ্যক!
+                                          </p>
+                                        </div>
+                                      )}
+
+                                      <div className="space-y-1">
+                                        <div className="w-8 h-8 bg-emerald-500/15 rounded-full flex items-center justify-center mx-auto text-emerald-400 animate-bounce">
+                                          <CheckCircle size={16} />
+                                        </div>
+                                        <h4 className="text-[10px] font-black text-[#25D366] uppercase tracking-wider font-display font-sans">Verification Complete!</h4>
+                                        <p className="text-[8.5px] text-slate-400 font-bold leading-none">নিচে "Claim Reward" বাটনে ক্লিক করে ব্যালেন্স যুক্ত করুন!</p>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="w-full px-4 py-2 text-center space-y-4">
+                                      {/* Show static list or preview adsterra as placeholders before watching */}
+                                      <div className="p-4 bg-slate-900/40 rounded-2xl border border-slate-800/80">
+                                        <Sparkles size={20} className="text-amber-400 mx-auto mb-1 animate-pulse" />
+                                        <p className="text-[11px] font-black text-slate-200">বিজ্ঞাপন দেখে ইনকাম শুরু করুন</p>
+                                        <p className="text-[8.5px] text-slate-400 mt-1 max-w-[280px] mx-auto font-medium">
+                                          নিচে "👉 VIEW (৳০.৫০ আয় করুন)" বাটনে ক্লিক করলেই এড চালু হয়ে যাবে। {rewardAdDuration} সেকেন্ড ভিউ করলেই ব্যালেন্সে টাকা যোগ হবে!
+                                        </p>
+                                      </div>
+                                      
+                                      <AdSenseSlot 
+                                        pubId={adsensePubId} 
+                                        type="in-feed" 
+                                        className="mb-2 max-w-full rounded-lg overflow-hidden flex items-center justify-center opacity-85 hover:opacity-100 transition-opacity"
+                                        adsenseEnabled={adsenseEnabled}
+                                        adsterraEnabled={adsterraEnabled}
+                                        adsterraBannerKey={adsterraBannerKey}
+                                        adsterraMobileBannerKey={adsterraMobileBannerKey}
+                                        adsterraInFeedKey={adsterraInFeedKey}
+                                        adsterraStickyKey={adsterraStickyKey}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Instructions */}
+                              <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl space-y-1.5 text-left font-sans">
+                                <span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest">Guaranteed Rules & Terms</span>
+                                <p className="text-[9.5px] text-slate-650 leading-relaxed font-semibold">
+                                  ১. এখানে প্রতি ১টি বিজ্ঞাপন ভিউ করার জন্য আপনি <strong className="text-slate-850 font-black">৳০.৫০ বা ৫০ পয়সা</strong> পাবেন।<br />
+                                  ২. প্রতিদিনের সর্বোচ্চ কাজের লিমিট <strong className="text-rose-600 font-black">৫০০টি বিজ্ঞাপন (500 Ads Limit)</strong>।<br />
+                                  ৩. সম্পূর্ণ এড ভিউ সফলভাবে শেষ হলে "Claim Reward" বাটনে ক্লিক করে ওয়ালেটে টাকা যোগ করতে হবে।
+                                </p>
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Footer Controls */}
+                        {user && (
+                          <div className="pt-4 border-t border-slate-100 mt-2 space-y-2">
+                            {adWatchStatus === 'idle' ? (
+                              <button
+                                onClick={startWatchingAd}
+                                className="w-full py-4 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-500 text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-lg shadow-amber-100 hover:opacity-95 transition-all text-center flex items-center justify-center gap-2 cursor-pointer font-sans"
+                              >
+                                <Megaphone size={12} className="animate-pulse font-sans" />
+                                👉 VIEW (৳০.৫০ আয় করুন)
+                              </button>
+                            ) : adWatchStatus === 'watching' ? (
+                              <button
+                                disabled
+                                className="w-full py-4 bg-slate-100 text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-[0.15em] transition-all text-center flex items-center justify-center gap-2 cursor-not-allowed font-sans"
+                              >
+                                <RefreshCw size={12} className="animate-spin" />
+                                Verifying Advertisement {adWatchCountdown}s...
+                              </button>
+                            ) : (
+                              <button
+                                onClick={claimAdEarning}
+                                className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-emerald-100 hover:opacity-95 transition-all text-center flex items-center justify-center gap-2 cursor-pointer animate-pulse font-sans"
+                              >
+                                <CheckCircle size={12} />
+                                Claim Reward (৳০.৫০ ওয়ালেটে নিন)
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setShowAdsEarnModal(false)}
+                              disabled={adWatchStatus === 'watching'}
+                              className="w-full py-2.5 bg-slate-50 text-slate-500 rounded-xl font-black text-[9px] uppercase tracking-wider hover:bg-slate-100 hover:text-slate-700 transition-all text-center cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed font-sans"
+                            >
+                              Close Window
+                            </button>
+                          </div>
+                        )}
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+
                 <AnimatePresence>
                   {showWithdrawModal && (
                     <>
@@ -11920,8 +12587,8 @@ export default function App() {
                                  ? (userProfile?.successfulReferrals || 0) * 5 
                                  : (userProfile?.earningsBalance || 0);
 
-                               if (amount <= 0) {
-                                 alert('উইথড্র করার মতো পর্যাপ্ত ব্যালেন্স নেই!');
+                               if (amount < 50) {
+                                 alert('উইথড্র করতে আপনার সর্বনিম্ন ৳৫০ ব্যালেন্স থাকতে হবে!');
                                  return;
                                }
                                
