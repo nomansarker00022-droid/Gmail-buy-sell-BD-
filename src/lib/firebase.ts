@@ -1,8 +1,15 @@
 import { initializeApp } from 'firebase/app';
 import { initializeAuth, browserLocalPersistence, browserPopupRedirectResolver } from 'firebase/auth';
-import { initializeFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { initializeFirestore, doc, getDocFromServer, setLogLevel } from 'firebase/firestore';
 import { getMessaging } from 'firebase/messaging';
 import firebaseConfig from '@/firebase-applet-config.json';
+
+// Quiet connection warnings/information to avoid pollution of the test logging frame
+try {
+  setLogLevel('error');
+} catch (e) {
+  console.warn('Could not set Firestore log level:', e);
+}
 
 console.log('Firebase Config Debug:', {
   projectId: firebaseConfig.projectId,

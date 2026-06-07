@@ -75,6 +75,7 @@ service cloud.firestore {
              (!('referredBy' in data) || (data.referredBy is string || data.referredBy == null)) &&
              (!('successfulReferrals' in data) || (data.successfulReferrals is number)) &&
              (!('hasTransacted' in data) || (data.hasTransacted is bool)) &&
+             (!('hasDeposited' in data) || (data.hasDeposited is bool)) &&
              (!('createdAt' in data) || (data.createdAt is timestamp)) &&
              (!('updatedAt' in data) || (data.updatedAt is timestamp));
     }
@@ -101,21 +102,21 @@ service cloud.firestore {
     }
 
     function isValidListing(data) {
-      return data.gmailAccount is string && data.gmailAccount.size() <= 128 &&
+      return data.gmailAccount is string && data.gmailAccount.size() <= 256 &&
              data.type is string && data.type.size() <= 128 &&
              data.price is number && data.price >= 0 &&
              data.status in ['Available', 'Pending', 'Approved', 'Refunded', 'Dispute', 'SellRequest', 'Sold', 'Deleted', 'Rejected'] &&
-             (!('sellerId' in data) || (data.sellerId is string)) &&
-             (!('sellerNumericId' in data) || (data.sellerNumericId is string)) &&
-             (!('bkashNumber' in data) || (data.bkashNumber is string)) &&
-             (!('description' in data) || (data.description is string && data.description.size() <= 2000)) &&
-             (!('soldTo' in data) || (data.soldTo is string)) &&
-             (!('soldPrice' in data) || (data.soldPrice is number)) &&
-             (!('paymentStatus' in data) || (data.paymentStatus is string)) &&
-             (!('payoutTrxId' in data) || (data.payoutTrxId is string)) &&
-             (!('emailHash' in data) || (data.emailHash is string)) &&
-             (!('createdAt' in data) || (data.createdAt is timestamp)) &&
-             (!('updatedAt' in data) || (data.updatedAt is timestamp));
+             (!('sellerId' in data) || (data.sellerId == null || data.sellerId is string)) &&
+             (!('sellerNumericId' in data) || (data.sellerNumericId == null || data.sellerNumericId is string)) &&
+             (!('bkashNumber' in data) || (data.bkashNumber == null || data.bkashNumber is string)) &&
+             (!('description' in data) || (data.description == null || (data.description is string && data.description.size() <= 4000))) &&
+             (!('soldTo' in data) || (data.soldTo == null || data.soldTo is string)) &&
+             (!('soldPrice' in data) || (data.soldPrice == null || data.soldPrice is number)) &&
+             (!('paymentStatus' in data) || (data.paymentStatus == null || data.paymentStatus is string)) &&
+             (!('payoutTrxId' in data) || (data.payoutTrxId == null || data.payoutTrxId is string)) &&
+             (!('emailHash' in data) || (data.emailHash == null || data.emailHash is string)) &&
+             (!('createdAt' in data) || (data.createdAt == null || data.createdAt is timestamp)) &&
+             (!('updatedAt' in data) || (data.updatedAt == null || data.updatedAt is timestamp));
     }
 
     function isValidCredential(data) {
@@ -127,14 +128,22 @@ service cloud.firestore {
     }
 
     function isValidFacebookListing(data) {
-      return data.sellerId == request.auth.uid &&
-             data.category is string && data.category.size() <= 200 &&
+      return data.category is string && data.category.size() <= 200 &&
              data.phone is string && data.phone.size() <= 100 &&
              data.password is string && data.password.size() <= 100 &&
              data.twoFA is string && data.twoFA.size() <= 200 &&
              data.status in ['Live', 'Pending', 'Sold', 'Dispute'] &&
+             (!('title' in data) || (data.title is string && data.title.size() <= 500)) &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 4000)) &&
+             (!('price' in data) || (data.price is number)) &&
+             (!('imageUrl' in data) || (data.imageUrl == null || (data.imageUrl is string && data.imageUrl.size() <= 1000000))) &&
+             (!('isLiveMarket' in data) || (data.isLiveMarket is bool)) &&
+             (!('sellerId' in data) || (data.sellerId is string)) &&
              (!('sellerEmail' in data) || (data.sellerEmail is string && data.sellerEmail.size() <= 256)) &&
-             (data.createdAt is timestamp);
+             (!('soldTo' in data) || (data.soldTo == null || data.soldTo is string)) &&
+             (!('soldPrice' in data) || (data.soldPrice == null || data.soldPrice is number)) &&
+             (!('soldAt' in data) || (data.soldAt == null || data.soldAt is timestamp)) &&
+             (!('createdAt' in data) || (data.createdAt is timestamp));
     }
 
     function isValidPurchase(data) {
@@ -159,17 +168,18 @@ service cloud.firestore {
              data.trxId is string && data.trxId.size() <= 128 &&
              data.amount is number && data.amount >= 0 &&
              data.status in ['pending', 'verified', 'rejected'] &&
-             (!('listingId' in data) || (data.listingId is string)) &&
-             (!('userEmail' in data) || (data.userEmail is string)) &&
-             (!('itemIds' in data) || (data.itemIds is list)) &&
-             (!('itemCount' in data) || (data.itemCount is number)) &&
-             (!('createdAt' in data) || (data.createdAt is timestamp)) &&
-             (!('updatedAt' in data) || (data.updatedAt is timestamp));
+             (!('listingId' in data) || (data.listingId == null || data.listingId is string)) &&
+             (!('userEmail' in data) || (data.userEmail == null || data.userEmail is string)) &&
+             (!('itemIds' in data) || (data.itemIds == null || data.itemIds is list)) &&
+             (!('itemCount' in data) || (data.itemCount == null || data.itemCount is number)) &&
+             (!('method' in data) || (data.method == null || data.method is string)) &&
+             (!('createdAt' in data) || (data.createdAt == null || data.createdAt is timestamp)) &&
+             (!('updatedAt' in data) || (data.updatedAt == null || data.updatedAt is timestamp));
     }
 
     function isValidTrxRegistration(data) {
       return data.userId == request.auth.uid &&
-             (data.createdAt is timestamp);
+             (!('createdAt' in data) || (data.createdAt == null || data.createdAt is timestamp));
     }
 
     function isValidReview(data) {
@@ -243,7 +253,7 @@ service cloud.firestore {
         // We trust these specific keys because they are only updated in transactions
         (incoming().diff(existing()).affectedKeys().hasOnly([
           'totalSales', 'totalEarned', 'earningsBalance', 'updatedAt', 'balance', 'totalOrders', 
-          'totalSpent', 'successfulReferrals', 'hasTransacted'
+          'totalSpent', 'successfulReferrals', 'hasTransacted', 'hasDeposited'
         ])) ||
         // Owner updates own profile (Self care)
         (isOwner(userId) && isValidProfile(incoming()) && (
@@ -319,14 +329,32 @@ service cloud.firestore {
 
     // Facebook Listings
     match /facebook_listings/{listingId} {
-      allow list: if isSignedIn() && (resource.data.sellerId == request.auth.uid || isAdmin());
-      allow get: if isSignedIn() && (resource.data.sellerId == request.auth.uid || isAdmin());
-      allow create: if isSignedIn() && isValidFacebookListing(incoming()) && (incoming().createdAt == request.time);
-      allow update: if isSignedIn() && (
+      allow list: if (resource.data.status == 'Live') || (isSignedIn() && (
+        resource.data.sellerId == request.auth.uid || 
+        resource.data.soldTo == request.auth.uid || 
+        isAdmin()
+      ));
+      allow get: if (resource.data.status == 'Live') || (isSignedIn() && (
+        resource.data.sellerId == request.auth.uid || 
+        resource.data.soldTo == request.auth.uid || 
+        isAdmin()
+      ));
+      allow create: if isSignedIn() && isValidFacebookListing(incoming()) && (
         isAdmin() ||
-        (resource.data.sellerId == request.auth.uid && isValidFacebookListing(incoming()) && (
-          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'phone', 'password', 'twoFA'])
-        ))
+        (incoming().sellerId == request.auth.uid && incoming().status == 'Live')
+      ) && (incoming().createdAt == request.time);
+      allow update: if isSignedIn() && isValidFacebookListing(incoming()) && (
+        isAdmin() ||
+        // Action: Seller updates their listing credentials or details
+        (resource.data.sellerId == request.auth.uid && 
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'phone', 'password', 'twoFA']) &&
+          incoming().sellerId == existing().sellerId) ||
+        // Action: Buyer/Market checkout flow
+        (existing().status == 'Live' && 
+          incoming().status == 'Sold' && 
+          incoming().soldTo == request.auth.uid &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'soldTo', 'soldPrice', 'soldAt']) &&
+          incoming().sellerId == existing().sellerId)
       );
       allow delete: if isSignedIn() && (resource.data.sellerId == request.auth.uid || isAdmin());
     }

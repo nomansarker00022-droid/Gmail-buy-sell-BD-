@@ -1,76 +1,17 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { ExternalLink, HelpCircle, X, Sparkles, AlertCircle, Coins, Flame } from 'lucide-react';
+import { ExternalLink, HelpCircle, X, Flame } from 'lucide-react';
 
 interface AdSenseSlotProps {
-  pubId?: string;
-  slotId?: string;
-  format?: 'auto' | 'fluid' | 'rectangle' | 'horizontal' | 'vertical';
   type: 'banner' | 'square' | 'sidebar' | 'in-feed' | 'sticky-bottom';
   className?: string;
 
-  // New configurations for dual monetization
-  adsenseEnabled?: boolean;
   adsterraEnabled?: boolean;
   adsterraBannerKey?: string;
   adsterraMobileBannerKey?: string;
   adsterraInFeedKey?: string;
   adsterraStickyKey?: string;
 }
-
-// Highly appealing simulated Google AdSense ads matching Bengali marketplace theme
-const SIMULATED_ADS_ADSENSE = [
-  {
-    title: "বিকাশ অ্যাপ ডাউনলোড করুন",
-    descr: "বিকাশ অ্যাপে প্রথম লগইনে পাচ্ছেন ১০০ টাকা পর্যন্ত ইনস্ট্যান্ট বোনাস! এখনই ডাউনলোড করে সেলফ-রেজিস্ট্রেশন করুন।",
-    cta: "অফারটি নিন",
-    url: "https://www.bkash.com",
-    bg: "from-[#e2136e]/10 to-[#e2136e]/5",
-    accent: "text-[#e2136e]",
-    border: "border-pink-500/20",
-    badge: "bKash Exclusive"
-  },
-  {
-    title: "Namecheap - $0.99 Domains",
-    descr: "Register your custom domain with namecheap starting from just $0.99! Reliable domain service & 24/7 client support.",
-    cta: "Get Domain",
-    url: "https://www.namecheap.com",
-    bg: "from-orange-500/10 to-orange-500/5",
-    accent: "text-orange-600",
-    border: "border-orange-500/20",
-    badge: "Web Domain"
-  },
-  {
-    title: "সবচেয়ে ফাস্ট বিডি হোস্টিং - ৳৯৯/মাস",
-    descr: "Dhaka NVMe SSD Server-এ চমৎকার স্পিড ও ৯৯.৯% আপটাইম গ্যারান্টি। ডোমেইন ও ফ্রি SSL সহ হোস্টিং কিনুন ১ মিনিটে।",
-    cta: "হোস্টিং দেখুন",
-    url: "https://www.namecheap.com",
-    bg: "from-[#2E7D32]/10 to-[#2E7D32]/5",
-    accent: "text-[#2E7D32]",
-    border: "border-green-500/20",
-    badge: "Ultra BD Hosting"
-  },
-  {
-    title: "Google Cloud - Start your Free Trial",
-    descr: "Get $300 in free credits to build and deploy your scalable applications globally on Google high-performance network.",
-    cta: "Start Free",
-    url: "https://cloud.google.com",
-    bg: "from-blue-500/10 to-blue-500/5",
-    accent: "text-blue-600",
-    border: "border-blue-500/20",
-    badge: "Google Cloud Tech"
-  },
-  {
-    title: "Daraz - ১০% ক্যাশব্যাক অফার",
-    descr: "নগদ ও বিকাশ পেমেন্টে দারাজ থেকে কেনাকাটায় অতিরিক্ত ১০% ডিসকাউন্ট উপভোগ করুন। মোবাইল, গ্যাজেট ও কিচেন আইটেমে সেরা ছাড়!",
-    cta: "শপিং করুন",
-    url: "https://www.daraz.com.bd",
-    bg: "from-yellow-500/10 to-yellow-500/5",
-    accent: "text-yellow-600",
-    border: "border-yellow-500/20",
-    badge: "Super Shopping"
-  }
-];
 
 // Beautiful high-CPM direct offers for Adsterra simulation
 const SIMULATED_ADS_ADSTERRA = [
@@ -117,15 +58,11 @@ const SIMULATED_ADS_ADSTERRA = [
 ];
 
 export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
-  pubId,
-  slotId = "886784280898",
-  format = "auto",
   type,
   className = "",
 
   // Props with default fallback values connected to local storage or fallback to system active status
-  adsenseEnabled = true,
-  adsterraEnabled = false,
+  adsterraEnabled = true,
   adsterraBannerKey = "",
   adsterraMobileBannerKey = "",
   adsterraInFeedKey = "",
@@ -148,23 +85,11 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
 
   // Pick a random simulated ad index on load
   useEffect(() => {
-    const listLength = adsterraEnabled ? SIMULATED_ADS_ADSTERRA.length : SIMULATED_ADS_ADSENSE.length;
-    setAdIndex(Math.floor(Math.random() * listLength));
-  }, [adsterraEnabled]);
+    setAdIndex(Math.floor(Math.random() * SIMULATED_ADS_ADSTERRA.length));
+  }, []);
 
-  // Handle live Google AdSense or Adsterra scripts
+  // Handle live Adsterra script execution
   useEffect(() => {
-    // If we're displaying Google AdSense
-    if (!adsterraEnabled && adsenseEnabled && pubId) {
-      try {
-        const adsbygoogle = (window as any).adsbygoogle || [];
-        adsbygoogle.push({});
-      } catch (err) {
-        console.warn("Google AdSense pushing error (safely skipped in workspace):", err);
-      }
-    }
-    
-    // If we're displaying live Adsterra script inside container
     if (adsterraEnabled && containerRef.current) {
       // Clear containers
       containerRef.current.innerHTML = '';
@@ -231,14 +156,12 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
         }
       }
     }
-  }, [adsenseEnabled, adsterraEnabled, pubId, adsterraBannerKey, adsterraMobileBannerKey, adsterraInFeedKey, adsterraStickyKey, type, isMobile]);
+  }, [adsterraEnabled, adsterraBannerKey, adsterraMobileBannerKey, adsterraInFeedKey, adsterraStickyKey, type, isMobile]);
 
-  if (dismissed) return null;
+  if (dismissed || !adsterraEnabled) return null;
 
   // Set active simulated ad information
-  const currentAd = adsterraEnabled 
-    ? SIMULATED_ADS_ADSTERRA[adIndex] || SIMULATED_ADS_ADSTERRA[0]
-    : SIMULATED_ADS_ADSENSE[adIndex] || SIMULATED_ADS_ADSENSE[0];
+  const currentAd = SIMULATED_ADS_ADSTERRA[adIndex] || SIMULATED_ADS_ADSTERRA[0];
 
   // ============================================
   // CASE 1: REAL LIVE ADSTERRA SCRIPT RENDERING
@@ -249,7 +172,7 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
     (type === 'sticky-bottom' && adsterraStickyKey)
   );
 
-  if (adsterraEnabled && hasLiveAdsterraKey) {
+  if (hasLiveAdsterraKey) {
     let containerWidth = "w-full max-w-[728px]";
     let containerHeight = "min-h-[90px]";
     if (type === 'in-feed') {
@@ -281,34 +204,7 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
   }
 
   // ============================================
-  // CASE 2: REAL LIVE GOOGLE ADSENSE RENDERING
-  // ============================================
-  if (!adsterraEnabled && adsenseEnabled && pubId) {
-    return (
-      <div className={`adsense-wrapper my-6 overflow-hidden ${className}`}>
-        <div className="flex items-center justify-between px-3 py-1 bg-slate-50 border border-slate-100 rounded-t-xl text-[10px] text-slate-400 font-bold">
-          <div className="flex items-center gap-1.5 font-sans">
-            <Sparkles size={10} className="text-emerald-500 animate-pulse" />
-            <span>SPONSORED BY GOOGLE ADSENSE</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="hover:underline cursor-pointer">Ad Choices</span>
-          </div>
-        </div>
-        <div className="bg-white border-x border-b border-slate-100 p-4 rounded-b-xl flex justify-center items-center">
-          <ins className="adsbygoogle"
-               style={{ display: 'block', minHeight: type === 'banner' ? '90px' : '250px' }}
-               data-ad-client={pubId}
-               data-ad-slot={slotId}
-               data-ad-format={format}
-               data-full-width-responsive="true"></ins>
-        </div>
-      </div>
-    );
-  }
-
-  // ============================================
-  // CASE 3: HIGH-FIDELITY SIMULATED AD DESIGN
+  // CASE 2: HIGH-FIDELITY SIMULATED AD DESIGN
   // ============================================
   
   if (type === 'sticky-bottom') {
@@ -319,15 +215,9 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
         transition={{ delay: 0.8 }}
         className="fixed bottom-16 sm:bottom-20 left-0 right-0 z-[40] px-4 md:px-8 pointer-events-none"
       >
-        <div className={`max-w-4xl mx-auto rounded-2xl p-3 md:p-4 border shadow-2xl flex items-center justify-between gap-4 pointer-events-auto ${
-          adsterraEnabled 
-            ? 'bg-slate-950/95 border-indigo-500/20 text-white' 
-            : 'bg-slate-900/95 border-white/10 text-white'
-        }`}>
+        <div className="max-w-4xl mx-auto rounded-2xl p-3 md:p-4 border shadow-2xl flex items-center justify-between gap-4 pointer-events-auto bg-slate-950/95 border-indigo-500/20 text-white">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shrink-0 ${
-              adsterraEnabled ? 'bg-indigo-600 text-white animate-pulse' : 'bg-[#FFEB3B] text-slate-900'
-            }`}>
+            <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shrink-0 bg-indigo-600 text-white animate-pulse">
               AD
             </span>
             <div className="min-w-0">
@@ -340,9 +230,7 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
               href={currentAd.url} 
               target="_blank" 
               rel="noreferrer"
-              className={`px-3.5 py-2 text-white font-black text-[10.5px] uppercase tracking-wider rounded-xl transition-all active:scale-95 flex items-center gap-1 shadow-sm ${
-                adsterraEnabled ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-emerald-500 hover:bg-emerald-600'
-              }`}
+              className="px-3.5 py-2 text-white font-black text-[10.5px] uppercase tracking-wider rounded-xl transition-all active:scale-95 flex items-center gap-1 shadow-sm bg-indigo-600 hover:bg-indigo-700"
             >
               <span>{currentAd.cta}</span>
               <ExternalLink size={10} />
@@ -363,22 +251,18 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
     return (
       <div className={`bg-gradient-to-r ${currentAd.bg} rounded-[2rem] border ${currentAd.border} p-4 sm:p-6 space-y-4 shadow-sm relative overflow-hidden transition-all hover:shadow-md ${className}`}>
         {/* Decorative elements */}
-        <div className={`absolute top-0 right-0 w-24 h-24 rounded-full blur-xl pointer-events-none ${
-          adsterraEnabled ? 'bg-gradient-to-br from-indigo-500/10 to-transparent' : 'bg-gradient-to-br from-emerald-500/10 to-transparent'
-        }`} />
+        <div className="absolute top-0 right-0 w-24 h-24 rounded-full blur-xl pointer-events-none bg-gradient-to-br from-indigo-500/10 to-transparent" />
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
-            <span className={`border border-black/10 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest shrink-0 shadow-sm ${
-              adsterraEnabled ? 'bg-indigo-600 text-white' : 'bg-[#FFEB3B] text-slate-900'
-            }`}>
+            <span className="border border-black/10 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest shrink-0 shadow-sm bg-indigo-600 text-white">
               AD
             </span>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{currentAd.badge}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[9px] font-bold text-slate-400 flex items-center gap-1">
-              {adsterraEnabled ? 'Adsterra Ads' : 'Google AdSense'} <HelpCircle size={10} />
+              Adsterra Ads <HelpCircle size={10} />
             </span>
             <button 
               onClick={() => setDismissed(true)}
@@ -390,7 +274,7 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
         </div>
 
         <div className="space-y-2 text-left">
-          <h4 className={`font-display text-base sm:text-lg font-black tracking-tight ${adsterraEnabled ? 'text-indigo-700 font-extrabold' : currentAd.accent}`}>
+          <h4 className="font-display text-base sm:text-lg font-black tracking-tight text-indigo-700 font-extrabold font-display">
             {currentAd.title}
           </h4>
           <p className="text-[11px] sm:text-xs font-semibold text-slate-600 leading-relaxed">
@@ -400,15 +284,13 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
 
         <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold">
-            <span>{adsterraEnabled ? 'adsterra-invoke.js' : 'adsbygoogle.js'}</span>
+            <span>adsterra-invoke.js</span>
           </div>
           <a
             href={currentAd.url}
             target="_blank"
             rel="noreferrer"
-            className={`px-4.5 py-2.5 text-white font-black text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-sm active:scale-95 flex items-center gap-1.5 cursor-pointer ${
-              adsterraEnabled ? 'bg-indigo-600 hover:bg-slate-900' : 'bg-slate-900 text-white hover:bg-black'
-            }`}
+            className="px-4.5 py-2.5 text-white font-black text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-sm active:scale-95 flex items-center gap-1.5 cursor-pointer bg-indigo-600 hover:bg-slate-900"
           >
             <span>{currentAd.cta}</span>
             <ExternalLink size={11} />
@@ -418,17 +300,15 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
     );
   }
 
-  // General Banner style for Top/Bottom placements
+  // General Banner style for Top/Bottom placements (default)
   return (
     <div className={`bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-2xs ${className}`}>
       <div className="flex items-center justify-between px-4 py-2 bg-slate-50/80 border-b border-slate-100/50 text-[9px] text-slate-400 font-bold">
         <div className="flex items-center gap-1">
-          <span className={`px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider mr-1 text-white ${
-            adsterraEnabled ? 'bg-indigo-600' : 'bg-orange-500'
-          }`}>
+          <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider mr-1 text-white bg-indigo-600">
             SPONSORED
           </span>
-          <span>{adsterraEnabled ? 'ADSTERRA PREMIUM MONETIZATION SIMULATOR' : 'GOOGLE ADSENSE SIMULATOR'}</span>
+          <span>ADSTERRA PREMIUM MONETIZATION SIMULATOR</span>
         </div>
         <div className="flex items-center gap-3">
           <span className="hover:underline cursor-pointer">Ad Choices</span>
@@ -439,19 +319,15 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
       </div>
 
       <div className={`p-5 sm:p-6 md:p-8 flex flex-col md:flex-row items-center gap-4 bg-gradient-to-r ${currentAd.bg}`}>
-        <div className={`w-12 h-12 rounded-xl border flex items-center justify-center shrink-0 shadow-2xs font-bold text-lg ${
-          adsterraEnabled 
-            ? 'bg-indigo-500/10 border-indigo-500/10 text-indigo-600' 
-            : 'bg-orange-500/10 border-orange-500/10 text-orange-600'
-        }`}>
+        <div className="w-12 h-12 rounded-xl border flex items-center justify-center shrink-0 shadow-2xs font-bold text-lg bg-indigo-500/10 border-indigo-500/10 text-indigo-600">
           {currentAd.title.charAt(0)}
         </div>
         
         <div className="flex-1 min-w-0 text-center md:text-left space-y-1">
-          <h4 className={`text-sm sm:text-base font-black tracking-tight ${adsterraEnabled ? 'text-indigo-600' : currentAd.accent} truncate`}>
+          <h4 className="text-sm sm:text-base font-black tracking-tight text-indigo-600 truncate">
             {currentAd.title}
           </h4>
-          <p className="text-[11px] sm:text-xs text-slate-600 font-semibold line-clamp-2 leading-relaxed">
+          <p className="text-[11px] sm:text-xs text-slate-600 font-semibold line-clamp-2 leading-relaxed font-sans">
             {currentAd.descr}
           </p>
         </div>
@@ -461,9 +337,7 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
             href={currentAd.url}
             target="_blank"
             rel="noreferrer"
-            className={`flex-1 md:flex-initial px-5 py-3 text-white font-black text-[10px] uppercase tracking-widest transition-all text-center rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95 ${
-              adsterraEnabled ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-emerald-600 hover:bg-emerald-700'
-            }`}
+            className="flex-1 md:flex-initial px-5 py-3 text-white font-black text-[10px] uppercase tracking-widest transition-all text-center rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95 bg-indigo-600 hover:bg-indigo-700"
           >
             <span>{currentAd.cta}</span>
             <ExternalLink size={10} />

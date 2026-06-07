@@ -14,7 +14,7 @@ import {
   BadgeCheck, MessageSquare, Gift, Bell, ArrowLeft, RefreshCw, Edit,
   MessageCircle, Crown, Filter, Layers, Clock, Calendar, Trophy, Users, Zap, Activity, Sparkles,
   ShoppingCart, Shield, Trash2, CheckCircle, Check, CheckSquare, Copy, Globe, Info, Tag,
-  PlusSquare, Megaphone, Save, Share2, Camera, Facebook, Archive, Package, Download, Youtube, Upload,
+  PlusSquare, Megaphone, Save, Share2, Camera, Facebook, Archive, Package, Download, Youtube, Upload, FileText,
   AlertTriangle, ExternalLink, ShieldAlert, Flame, Coins,
 } from 'lucide-react';
 import emailjs from '@emailjs/browser';
@@ -87,23 +87,96 @@ const fallbackRewards = [
   }
 ];
 
-export default function App() {
-  const [adsensePubId, setAdsensePubId] = useState(() => localStorage.getItem('cache_adsense_pubid') || "");
-  const [adsenseEnabled, setAdsenseEnabled] = useState(() => localStorage.getItem('cache_adsense_enabled') !== 'false');
-  const [pendingAdsensePubId, setPendingAdsensePubId] = useState(() => localStorage.getItem('cache_adsense_pubid') || "");
+const renderCardBanner = (item: any) => {
+   if (item.imageUrl) {
+      return (
+         <div className="h-28 rounded-xl overflow-hidden bg-slate-900 relative border border-slate-200/40 shrink-0 flex items-center justify-center">
+            <img 
+               src={item.imageUrl} 
+               referrerPolicy="no-referrer" 
+               alt={item.title} 
+               className="w-full h-full object-cover transition-transform duration-250 group-hover:scale-103" 
+            />
+            <div className="absolute top-1.5 left-1.5 flex gap-1 bg-black/45 px-1.5 py-0.5 rounded-md backdrop-blur-xs">
+               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mt-1" />
+               <span className="text-[7.5px] font-bold text-white uppercase tracking-widest leading-none">Live Item</span>
+            </div>
+         </div>
+      );
+   }
+   if (item.imageType === 'facebook') {
+      return (
+         <div className="h-28 bg-gradient-to-tr from-[#1877F2]/10 via-[#1877F2]/5 to-[#E7F3FF] rounded-xl flex flex-col items-center justify-center p-3 relative overflow-hidden border border-[#D2E2FC]/50 shrink-0">
+            <div className="absolute top-1.5 left-1.5 flex gap-1">
+               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+               <span className="text-[7px] font-bold text-emerald-600 uppercase tracking-widest leading-none">Healthy</span>
+            </div>
+            <Facebook size={36} className="text-[#1877F2] drop-shadow-sm transform group-hover:scale-105 transition-transform" fill="currentColor" />
+            <div className="mt-2 text-[8px] font-black text-[#1877F2]/70 uppercase tracking-widest text-center leading-none">Verified Profile</div>
+         </div>
+      );
+   }
+   if (item.imageType === 'youtube') {
+      return (
+         <div className="h-28 bg-gradient-to-tr from-[#FF0000]/10 via-[#FF0000]/5 to-[#FFF0F0] rounded-xl flex flex-col items-center justify-center p-3 relative overflow-hidden border border-red-100 shrink-0">
+            <div className="absolute top-1.5 left-1.5 flex gap-1">
+               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+               <span className="text-[7px] font-bold text-emerald-600 uppercase tracking-widest leading-none">Active</span>
+            </div>
+            <Youtube size={36} className="text-[#FF0000] drop-shadow-sm transform group-hover:scale-105 transition-transform" />
+            <div className="mt-2 text-[8px] font-black text-[#FF0000]/70 uppercase tracking-widest text-center leading-none">Partner Channel</div>
+         </div>
+      );
+   }
+   if (item.imageType === 'prompt') {
+      return (
+         <div className="h-28 bg-gradient-to-tr from-[#EA4335]/15 via-[#F28B27]/10 to-[#FFF9F5] rounded-xl flex flex-col items-center justify-center p-3 relative overflow-hidden border border-orange-100 shrink-0">
+            <div className="absolute inset-0 flex items-center justify-center bg-[#F28B27] p-2 text-center text-white font-display uppercase tracking-wider text-xs font-black select-none pointer-events-none rounded-xl leading-none">
+               Prompt Hub ⭐
+            </div>
+         </div>
+      );
+   }
+   if (item.imageType === 'payment') {
+      return (
+         <div className="h-28 bg-gradient-to-tr from-pink-500/10 via-pink-400/5 to-white rounded-xl flex flex-col items-center justify-center p-2 relative overflow-hidden border border-pink-100 shrink-0">
+            <div className="w-full bg-white border border-pink-100/50 rounded-lg p-1.5 space-y-1 shadow-xs text-[8px] text-left transform -rose-1 translate-y-2 scale-95">
+               <div className="flex justify-between font-bold text-pink-600 border-b border-pink-50 pb-1">
+                  <span>বিকাশ ক্যাশআউট</span>
+                  <span className="font-extrabold text-[9px]">পরে ✅</span>
+               </div>
+               <div className="text-[7px] text-slate-500 space-y-0.5 leading-none pt-0.5 font-sans font-medium">
+                  <div>একাউন্ট নং: 018****6962</div>
+                  <div>পরিমাণ: 300 টাকা</div>
+                  <div className="text-emerald-500 font-bold">সফল ক্যাশআউট 🗸</div>
+               </div>
+            </div>
+         </div>
+      );
+   }
+   return (
+      <div className="h-28 bg-gradient-to-tr from-slate-100 via-slate-50/50 to-white rounded-xl flex flex-col items-center justify-center p-3 relative overflow-hidden border border-slate-200/60 shrink-0">
+         <div className="absolute top-1.5 left-1.5 flex gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+            <span className="text-[7px] font-bold text-indigo-600 uppercase tracking-widest leading-none">Verified</span>
+         </div>
+         <Store size={36} className="text-slate-500 drop-shadow-sm transform group-hover:scale-105 transition-transform" />
+         <div className="mt-2 text-[8px] font-black text-slate-500/70 uppercase tracking-widest text-center leading-none">Premium Asset</div>
+      </div>
+   );
+};
 
-  const [adsterraEnabled, setAdsterraEnabled] = useState(() => localStorage.getItem('cache_adsterra_enabled') === 'true');
+export default function App() {
+  const [adsterraEnabled, setAdsterraEnabled] = useState(() => localStorage.getItem('cache_adsterra_enabled') !== 'false');
   const [adsterraBannerKey, setAdsterraBannerKey] = useState(() => localStorage.getItem('cache_adsterra_banner_key') || "");
   const [adsterraMobileBannerKey, setAdsterraMobileBannerKey] = useState(() => localStorage.getItem('cache_adsterra_mobile_banner_key') || "");
   const [adsterraInFeedKey, setAdsterraInFeedKey] = useState(() => localStorage.getItem('cache_adsterra_infeed_key') || "");
   const [adsterraStickyKey, setAdsterraStickyKey] = useState(() => localStorage.getItem('cache_adsterra_sticky_key') || "");
-  const [adsterraDirectLink, setAdsterraDirectLink] = useState(() => localStorage.getItem('cache_adsterra_direct_link') || "");
 
   const [pendingAdsterraBannerKey, setPendingAdsterraBannerKey] = useState(() => localStorage.getItem('cache_adsterra_banner_key') || "");
   const [pendingAdsterraMobileBannerKey, setPendingAdsterraMobileBannerKey] = useState(() => localStorage.getItem('cache_adsterra_mobile_banner_key') || "");
   const [pendingAdsterraInFeedKey, setPendingAdsterraInFeedKey] = useState(() => localStorage.getItem('cache_adsterra_infeed_key') || "");
   const [pendingAdsterraStickyKey, setPendingAdsterraStickyKey] = useState(() => localStorage.getItem('cache_adsterra_sticky_key') || "");
-  const [pendingAdsterraDirectLink, setPendingAdsterraDirectLink] = useState(() => localStorage.getItem('cache_adsterra_direct_link') || "");
 
   // Reward ads custom controls states
   const [rewardAds, setRewardAds] = useState<any[]>(() => {
@@ -163,32 +236,6 @@ export default function App() {
     };
   }, []);
 
-  // Dynamic Google AdSense Loader Effect
-  useEffect(() => {
-    if (adsenseEnabled && adsensePubId) {
-      let clientID = adsensePubId.trim();
-      if (clientID && !clientID.startsWith("ca-pub-")) {
-        // Automatically format if they only passed the numeric ID, e.g. 5259160538058203
-        if (/^\d+$/.test(clientID)) {
-          clientID = "ca-pub-" + clientID;
-        } else {
-          clientID = "ca-pub-" + clientID; // Default prefix wrapper
-        }
-      }
-      
-      const existingScript = document.head.querySelector('script[src*="pagead2.googlesyndication.com"]');
-      if (existingScript) {
-        existingScript.remove();
-      }
-      
-      const script = document.createElement('script');
-      script.async = true;
-      script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${clientID}`;
-      script.crossOrigin = "anonymous";
-      document.head.appendChild(script);
-      console.log("Dynamically loaded Google AdSense Script for client:", clientID);
-    }
-  }, [adsenseEnabled, adsensePubId]);
 
   // --- Local Virtual DB & Quota Resilience Engine (Absolute Zero Data Loss & Seamless Execution) ---
   const getLocalItems = (collectionName: string): any[] => {
@@ -845,10 +892,17 @@ export default function App() {
     const isQuota = msg.toLowerCase().includes('quota') || 
                     msg.toLowerCase().includes('resource') || 
                     err?.code === 'resource-exhausted';
+    const isOffline = msg.toLowerCase().includes('could not reach') ||
+                      msg.toLowerCase().includes('unavailable') ||
+                      msg.toLowerCase().includes('connection failed') ||
+                      err?.code === 'unavailable';
+                      
     if (isQuota) {
       console.warn(`${name} listener error (Quota Exceeded handled):`, err);
       setIsQuotaExceeded(true);
       setQuotaExceeded(true);
+    } else if (isOffline) {
+      console.warn(`${name} connection error (operating in resilient offline/cached mode):`, err);
     } else {
       console.error(`${name} listener error:`, err);
     }
@@ -1258,28 +1312,9 @@ export default function App() {
       return;
     }
 
-    let chosenAd;
-    if (adsterraEnabled && adsterraDirectLink) {
-      const rand = Math.random();
-      if (rand < 0.75) {
-        chosenAd = {
-          id: 'adsterra_direct',
-          title: "🔥 HIGH-CPM SPONSOR REGISTER / APP OFFER",
-          description: "স্পন্সর অফারটি লোড করতে এবং আপনার সঠিক ভিউ ভেরিফিকেশন সম্পন্ন করতে নিচের বাটনে ক্লিক করে অফারটি সম্পূর্ণ করুন!",
-          cta: "👉 GET REWARD OFFER (ক্লিক করুন)",
-          url: adsterraDirectLink,
-          image: "https://images.unsplash.com/photo-1614064641938-3bbee52942c7?w=500&auto=format&fit=crop&q=60"
-        };
-      } else {
-        const pool = rewardAds && rewardAds.length > 0 ? rewardAds : fallbackRewards;
-        const randomIndex = Math.floor(Math.random() * pool.length);
-        chosenAd = pool[randomIndex];
-      }
-    } else {
-      const pool = rewardAds && rewardAds.length > 0 ? rewardAds : fallbackRewards;
-      const randomIndex = Math.floor(Math.random() * pool.length);
-      chosenAd = pool[randomIndex];
-    }
+    const pool = rewardAds && rewardAds.length > 0 ? rewardAds : fallbackRewards;
+    const randomIndex = Math.floor(Math.random() * pool.length);
+    const chosenAd = pool[randomIndex];
     setActiveRewardAd(chosenAd);
 
     setAdWatchStatus('watching');
@@ -1581,34 +1616,12 @@ export default function App() {
     };
     fetchGlobalStats();
 
-    // Today's Sold Count - Optimized
-    const fetchTodayStats = async () => {
-      try {
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
-        const qTodayCount = query(
-          collection(db, 'listings'),
-          where('status', 'in', ['Sold', 'Approved']),
-          where('createdAt', '>=', startOfToday)
-        );
-        const todaySnap = await getCountFromServer(qTodayCount);
-        setTodaySoldCount(todaySnap.data().count);
-      } catch (err) {
-        console.warn('Failed to fetch today stats:', err);
-      }
-    };
-    fetchTodayStats();
-
-    // Real-time Leaderboards & Activity Feed - Enhanced with offline/quota cache pre-loads
+    // Real-time Leaderboards - Enhanced with offline/quota cache pre-loads
     const cachedSellers = localStorage.getItem('cache_top_sellers');
     const cachedBuyers = localStorage.getItem('cache_top_buyers');
-    const cachedSold = localStorage.getItem('cache_today_sold');
-    const cachedSales = localStorage.getItem('cache_live_sales');
 
     if (cachedSellers) { try { setTopSellers(JSON.parse(cachedSellers)); } catch (e) {} }
     if (cachedBuyers) { try { setTopBuyers(JSON.parse(cachedBuyers)); } catch (e) {} }
-    if (cachedSold) { try { setTodaySold(JSON.parse(cachedSold)); } catch (e) {} }
-    if (cachedSales) { try { setLiveSales(JSON.parse(cachedSales)); } catch (e) {} }
 
     let unsubscribeSellers = () => {};
     let unsubscribeBuyers = () => {};
@@ -1636,34 +1649,10 @@ export default function App() {
         if (cached) { try { setTopBuyers(JSON.parse(cached)); } catch (e) {} }
       });
     }
-    
-    const qSold = query(collection(db, 'listings'), where('status', 'in', ['Sold', 'Pending', 'Approved']), orderBy('createdAt', 'desc'), limit(10));
-    const unsubscribeSold = onSnapshot(qSold, (snap) => {
-      const soldItems = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setTodaySold(soldItems);
-      localStorage.setItem('cache_today_sold', JSON.stringify(soldItems));
-    }, (err) => {
-      handleListenerError('Sold', err);
-      const cached = localStorage.getItem('cache_today_sold');
-      if (cached) { try { setTodaySold(JSON.parse(cached)); } catch (e) {} }
-    });
-
-    const qSellerActivity = query(collection(db, 'listings'), where('status', 'in', ['SellRequest', 'Pending', 'Approved', 'Available', 'Dispute', 'Sold']), orderBy('createdAt', 'desc'), limit(10));
-    const unsubscribeActivity = onSnapshot(qSellerActivity, (snap) => {
-      const activeItems = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setLiveSales(activeItems);
-      localStorage.setItem('cache_live_sales', JSON.stringify(activeItems));
-    }, (err) => {
-      handleListenerError('Activity', err);
-      const cached = localStorage.getItem('cache_live_sales');
-      if (cached) { try { setLiveSales(JSON.parse(cached)); } catch (e) {} }
-    });
 
     return () => {
       unsubscribeSellers();
       unsubscribeBuyers();
-      unsubscribeSold();
-      unsubscribeActivity();
     };
   }, [user]);
 
@@ -5224,24 +5213,6 @@ export default function App() {
           localStorage.setItem('cache_notice', data.text);
         }
 
-        // Fetch Google AdSense Configurations
-        const adsenseDocRef = doc(db, 'settings', 'adsense');
-        try {
-          const adsenseSnap = await getDoc(adsenseDocRef);
-          if (adsenseSnap.exists()) {
-            const data = adsenseSnap.data();
-            if (data) {
-              setAdsensePubId(data.pubId || "");
-              setPendingAdsensePubId(data.pubId || "");
-              setAdsenseEnabled(data.enabled !== false);
-              localStorage.setItem('cache_adsense_pubid', data.pubId || "");
-              localStorage.setItem('cache_adsense_enabled', String(data.enabled !== false));
-            }
-          }
-        } catch (adsenseErr) {
-          console.warn("Skipping dynamic adsense config fetch from firestore (using cache):", adsenseErr);
-        }
-
         // Fetch Adsterra Configurations
         const adsterraDocRef = doc(db, 'settings', 'adsterra');
         try {
@@ -5258,15 +5229,12 @@ export default function App() {
               setPendingAdsterraInFeedKey(data.inFeedKey || "");
               setAdsterraStickyKey(data.stickyKey || "");
               setPendingAdsterraStickyKey(data.stickyKey || "");
-              setAdsterraDirectLink(data.directLink || "");
-              setPendingAdsterraDirectLink(data.directLink || "");
 
               localStorage.setItem('cache_adsterra_enabled', String(data.enabled === true));
               localStorage.setItem('cache_adsterra_banner_key', data.bannerKey || "");
               localStorage.setItem('cache_adsterra_mobile_banner_key', data.mobileBannerKey || "");
               localStorage.setItem('cache_adsterra_infeed_key', data.inFeedKey || "");
               localStorage.setItem('cache_adsterra_sticky_key', data.stickyKey || "");
-              localStorage.setItem('cache_adsterra_direct_link', data.directLink || "");
             }
           }
         } catch (adsterraErr) {
@@ -5332,31 +5300,13 @@ export default function App() {
     }
   };
 
-  const updateAdSenseSettings = async (pubId: string, enabled: boolean) => {
-    if (!isAdmin) return;
-    try {
-      await setDoc(doc(db, 'settings', 'adsense'), { 
-        pubId: pubId.trim(), 
-        enabled,
-        updatedAt: serverTimestamp() 
-      });
-      setAdsensePubId(pubId.trim());
-      setAdsenseEnabled(enabled);
-      localStorage.setItem('cache_adsense_pubid', pubId.trim());
-      localStorage.setItem('cache_adsense_enabled', String(enabled));
-      alert('Google AdSense configurations successfully updated and saved securely to Cloud Firestore!');
-    } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, 'settings/adsense');
-    }
-  };
 
   const updateAdsterraSettings = async (
     enabled: boolean,
     bannerKey: string,
     mobileBannerKey: string,
     inFeedKey: string,
-    stickyKey: string,
-    directLink: string
+    stickyKey: string
   ) => {
     if (!isAdmin) return;
     try {
@@ -5366,7 +5316,6 @@ export default function App() {
         mobileBannerKey: mobileBannerKey.trim(),
         inFeedKey: inFeedKey.trim(),
         stickyKey: stickyKey.trim(),
-        directLink: directLink.trim(),
         updatedAt: serverTimestamp()
       });
       setAdsterraEnabled(enabled);
@@ -5374,14 +5323,12 @@ export default function App() {
       setAdsterraMobileBannerKey(mobileBannerKey.trim());
       setAdsterraInFeedKey(inFeedKey.trim());
       setAdsterraStickyKey(stickyKey.trim());
-      setAdsterraDirectLink(directLink.trim());
 
       localStorage.setItem('cache_adsterra_enabled', String(enabled));
       localStorage.setItem('cache_adsterra_banner_key', bannerKey.trim());
       localStorage.setItem('cache_adsterra_mobile_banner_key', mobileBannerKey.trim());
       localStorage.setItem('cache_adsterra_infeed_key', inFeedKey.trim());
       localStorage.setItem('cache_adsterra_sticky_key', stickyKey.trim());
-      localStorage.setItem('cache_adsterra_direct_link', directLink.trim());
       alert('Adsterra monetization configurations successfully updated and saved securely to Cloud Firestore!');
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'settings/adsterra');
@@ -5942,10 +5889,8 @@ export default function App() {
 
                 {/* Google AdSense or Adsterra Revenue Banner Block */}
                 <AdSenseSlot 
-                  pubId={adsensePubId} 
                   type="banner" 
                   className="mb-4"
-                  adsenseEnabled={adsenseEnabled}
                   adsterraEnabled={adsterraEnabled}
                   adsterraBannerKey={adsterraBannerKey}
                   adsterraMobileBannerKey={adsterraMobileBannerKey}
@@ -6366,177 +6311,7 @@ export default function App() {
                   )}
                 </div>
 
-                {/* Live Seller Activity Feed */}
-                <section className="mb-4 space-y-2">
-                  <div className="flex items-center justify-between px-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-[#FF5252] rounded-full animate-pulse shadow-[0_0_8px_rgba(255,82,82,0.6)]" />
-                      <h3 className="font-display text-[10px] font-black tracking-[0.05em] text-slate-900 uppercase text-xs">Live Sell Activity</h3>
-                    </div>
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.1em] bg-slate-100/80 px-2 py-0.5 rounded-full border border-slate-100">Realtime</span>
-                  </div>
 
-                  <div className="space-y-1 px-1">
-                    <AnimatePresence initial={false}>
-                      {[...filteredLiveSales]
-                        .sort((a, b) => {
-                          const isConfirmedA = a.status === 'Sold' || a.status === 'Approved';
-                          const isConfirmedB = b.status === 'Sold' || b.status === 'Approved';
-                          if (isConfirmedA !== isConfirmedB) return isConfirmedA ? 1 : -1;
-                          return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
-                        })
-                        .map((sale) => {
-                          const email = sale.gmailAccount || sale.realGmail || 'gmail@gmail.com';
-                          const maskedEmail = getMaskedGmail(email);
-                        
-                        const isConfirmed = sale.status === 'Approved' || sale.status === 'Sold';
-                        const isRejected = sale.status === 'Dispute';
-                        
-                        return (
-                          <motion.div 
-                            key={sale.id}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white border border-slate-50 rounded-lg p-1.5 shadow-sm flex items-center justify-between group hover:border-indigo-100 transition-colors"
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isConfirmed ? 'bg-[#4CAF50]' : isRejected ? 'bg-red-500' : 'bg-[#FFC107] animate-pulse'}`} />
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-1.5 mb-0.5">
-                                  <p className="text-[10px] font-black text-[#1E293B] truncate leading-none tracking-tight">{maskedEmail}</p>
-                                  {sale.sellerNumericId && (
-                                    <span className="text-[7px] font-black bg-indigo-50 text-indigo-600 px-1 py-0.5 rounded leading-none border border-indigo-100/50">ID: {sale.sellerNumericId}</span>
-                                  )}
-                                </div>
-                                <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tight leading-none">
-                                  {sale.type || 'Full Fresh New'}
-                                </p>
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-3 shrink-0">
-                               <div className="text-right">
-                                 {(() => {
-                                   const type = sale.type || 'Full Fresh New';
-                                   const priceObj = gmailPrices[type] || Object.values(gmailPrices).find((_, i) => Object.keys(gmailPrices)[i].startsWith(type)) || gmailPrices['Full Fresh New'];
-                                   const sellerPrice = priceObj?.seller ? parseFloat(priceObj.seller) : null;
-                                   const displayPrice = sellerPrice || sale.price || 0;
-                                   return (
-                                     <p className="text-[11px] font-black text-[#5E35B1] leading-none mb-0.5">৳{typeof displayPrice === 'number' ? displayPrice.toFixed(0) : displayPrice}</p>
-                                   );
-                                 })()}
-                               </div>
-
-                              <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-[#fdfdfd] border border-slate-50">
-                                <div className={`w-1 h-1 rounded-full ${sale.paymentStatus === 'Paid' ? 'bg-[#4CAF50]' : isRejected ? 'bg-red-500' : 'bg-[#FFC107] animate-pulse'}`} />
-                                <div className="flex flex-col items-end">
-                                  <span className={`text-[7px] font-black uppercase tracking-widest leading-none ${sale.paymentStatus === 'Paid' ? 'text-green-600' : isRejected ? 'text-red-600' : 'text-yellow-600'}`}>
-                                    {sale.paymentStatus === 'Paid' ? 'Payment confirm' : isRejected ? 'Rejected' : 'Payment pending'}
-                                  </span>
-                                  {sale.paymentStatus === 'Paid' && sale.payoutTrxId && (
-                                    <span className="text-[5px] font-bold text-slate-400 mt-0.5 tracking-tighter">TRX: {sale.payoutTrxId.slice(0, 10)}</span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                    </AnimatePresence>
-                    
-                    {liveSales.length === 0 && (
-                      <div className="w-full py-12 text-center border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/10">
-                        <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.3em] animate-pulse">Syncing Network...</p>
-                      </div>
-                    )}
-                  </div>
-                </section>
-
-                {/* Today's Gmail Sold Section */}
-                <section className="mb-6 space-y-2">
-                  <div className="flex items-center justify-between px-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-[#4CAF50] rounded-full shadow-[0_0_8px_rgba(76,175,80,0.6)]" />
-                      <h3 className="font-display text-[10px] font-black tracking-[0.05em] text-slate-900 uppercase">Today's Gmail Sold</h3>
-                    </div>
-                    <div className="bg-green-50 border border-green-50 px-2 py-0.5 rounded-full">
-                      <span className="text-[7px] font-black text-green-600 uppercase tracking-[0.1em]">
-                        {todaySoldCount || todaySold.length} Sold Today
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1 px-1">
-                    <AnimatePresence initial={false}>
-                      {[...filteredTodaySold]
-                        .sort((a, b) => {
-                          const isConfirmedA = a.status === 'Sold' || a.status === 'Approved';
-                          const isConfirmedB = b.status === 'Sold' || b.status === 'Approved';
-                          if (isConfirmedA !== isConfirmedB) return isConfirmedA ? 1 : -1;
-                          return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
-                        })
-                        .map((sale) => {
-                          const email = sale.gmailAccount || sale.realGmail || 'gmail@gmail.com';
-                          const maskedEmail = getMaskedGmail(email);
-                        
-                        const isConfirmed = sale.status === 'Sold' || sale.status === 'Approved';
-                        const isPending = !isConfirmed && sale.status !== 'Dispute' && sale.status !== 'Rejected';
-                        
-                        return (
-                          <motion.div 
-                            key={sale.id}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className="bg-white border border-slate-50 rounded-lg p-1.5 shadow-sm flex items-center justify-between group hover:border-slate-200 transition-colors"
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div className={`w-1.5 h-1.5 rounded-full ${isConfirmed ? 'bg-[#4CAF50] shadow-[0_0_4px_rgba(76,175,80,0.4)]' : 'bg-[#FFC107] animate-pulse'}`} />
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-1.5 mb-0.5">
-                                  <p className="text-[10px] font-black text-[#1E293B] truncate leading-none tracking-tight">{maskedEmail}</p>
-                                  {sale.sellerNumericId && (
-                                    <span className="text-[7px] font-black bg-indigo-50 text-indigo-600 px-1 py-0.5 rounded leading-none border border-indigo-100/50">ID: {sale.sellerNumericId}</span>
-                                  )}
-                                </div>
-                                <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tight leading-none">
-                                  {sale.type || 'Full Fresh New'}
-                                </p>
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-3 shrink-0">
-                               <div className="text-right">
-                                 {(() => {
-                                   const type = sale.type || 'Full Fresh New';
-                                   const priceObj = gmailPrices[type] || Object.values(gmailPrices).find((_, i) => Object.keys(gmailPrices)[i].startsWith(type)) || gmailPrices['Full Fresh New'];
-                                   const marketPrice = priceObj?.buyer ? parseFloat(priceObj.buyer) : null;
-                                   const displayPrice = marketPrice || sale.price || 0;
-                                   return (
-                                     <p className="text-[11px] font-black text-[#5E35B1] leading-none mb-0.5">৳{typeof displayPrice === 'number' ? displayPrice.toFixed(0) : displayPrice}</p>
-                                   );
-                                 })()}
-                               </div>
-
-                              <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border ${isConfirmed ? 'bg-green-50 border-green-50' : 'bg-yellow-50 border-yellow-50'}`}>
-                                <div className={`w-1 h-1 rounded-full ${isConfirmed ? 'bg-[#4CAF50]' : 'bg-[#FFC107] animate-pulse'}`} />
-                                <span className={`text-[7px] font-black uppercase tracking-widest leading-none ${isConfirmed ? 'text-green-600' : 'text-yellow-600'}`}>
-                                  {isConfirmed ? 'Order Confirm' : 'Order pending'}
-                                </span>
-                              </div>
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                    </AnimatePresence>
-                    
-                    {todaySold.length === 0 && (
-                      <div className="w-full py-12 text-center border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/10">
-                        <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.3em]">No Sales Activity Yet Today</p>
-                      </div>
-                    )}
-                  </div>
-                </section>
 
                 {/* Quick Stats Grid */}
                 <section className="mb-6 grid grid-cols-2 gap-2 px-1">
@@ -6899,12 +6674,10 @@ export default function App() {
                     ) : (
                       filteredMarketListings.map((item, i) => (
                         <React.Fragment key={item.id}>
-                          {(adsenseEnabled || adsterraEnabled) && (i === 1 || i === 4) && (
+                          {adsterraEnabled && (i === 1 || i === 4) && (
                             <AdSenseSlot 
-                              pubId={adsensePubId} 
                               type="in-feed" 
                               className="my-1"
-                              adsenseEnabled={adsenseEnabled}
                               adsterraEnabled={adsterraEnabled}
                               adsterraBannerKey={adsterraBannerKey}
                               adsterraMobileBannerKey={adsterraMobileBannerKey}
@@ -7520,7 +7293,7 @@ export default function App() {
                         { title: "Sell Facebook Accounts", badge: "Active", color: "bg-blue-50 text-blue-600", icon: Facebook, desc: "Verified Facebook accounts বিক্রি করুন। Dynamic fields ও escrow protection সহ।", action: () => setView('facebook-sell-center') },
                         { title: "Sell Telegram OTP", badge: "Active", color: "bg-indigo-50 text-indigo-600", icon: Send, desc: "Telegram OTP numbers বিক্রি করুন। Buyer-এর সাথে chat-এ OTP deliver করুন।", action: () => {} },
                         { title: "Sell WhatsApp OTP", badge: "Active", color: "bg-emerald-50 text-emerald-600", icon: MessageSquare, desc: "WhatsApp OTP numbers বিক্রি করুন। Secure escrow-এ payment রাখা হয়।", action: () => {} },
-                        { title: "Ads view Earn", badge: "100% Payment", color: "bg-amber-50 text-amber-600", icon: Megaphone, desc: "এড থেকে ইনকাম করুন 100% পেমেন্ট নিশ্চিত", action: () => setShowAdsEarnModal(true) },
+
                      ].map((item, idx) => (
                         <button 
                            key={idx}
@@ -8224,7 +7997,7 @@ export default function App() {
                       className="w-full bg-white border border-slate-200/80 rounded-2xl p-4 text-[13px] font-semibold text-slate-850 placeholder:text-slate-400/80 focus:outline-none focus:border-[#2D8A4E] transition-all resize-none leading-relaxed shadow-xs"
                     />
                     <div className="text-right pr-1">
-                      <span className="text-[11px] font-bold text-slate-400">
+                      <span className="text-[11px] font-bold text-slate-400 flex items-center justify-end">
                         {fbForm.description.length}/2000
                       </span>
                     </div>
@@ -8336,7 +8109,7 @@ export default function App() {
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-6 pb-24 relative"
               >
-                  {/* Absolute Top Error Banner matching screenshot */}
+                  {/* Absolute Top Error Banner */}
                   {fbPurchaseError && (
                     <motion.div 
                       initial={{ opacity: 0, y: -20, scale: 0.98 }}
@@ -8349,7 +8122,7 @@ export default function App() {
                     </motion.div>
                   )}
 
-                  {/* Purchase Confirmation Modal matching mock exactly */}
+                  {/* Purchase Confirmation Modal */}
                   {showFbConfirmModal && fbConfirmingItem && (
                     <div className="fixed inset-0 bg-slate-900/35 backdrop-blur-xs flex items-center justify-center p-4 z-50">
                       <motion.div 
@@ -8358,7 +8131,7 @@ export default function App() {
                         className="bg-white rounded-[26px] border border-slate-100 shadow-2xl w-full max-w-sm overflow-hidden p-6 relative"
                       >
                         {/* Header */}
-                        <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center justify-between mb-4 text-left">
                           <div className="flex items-center gap-2 text-[#2D8A4E]">
                             <ShoppingCart size={18} className="stroke-[2.5]" />
                             <h3 className="font-extrabold text-slate-800 text-[14px]">Purchase Confirm করুন</h3>
@@ -8377,12 +8150,11 @@ export default function App() {
                           <div className="flex justify-between items-start gap-4">
                             <span className="text-slate-500 font-bold text-[11px] pt-0.5">Category</span>
                             <div className="text-right">
-                              <div className="font-extrabold text-slate-800 text-[11.5px] leading-tight">NUM 00 FRD</div>
-                              <div className="text-[10px] font-bold text-slate-500 mt-0.5">2FA 🔻 Number+PASS+2FA</div>
+                              <div className="font-extrabold text-slate-800 text-[11.5px] leading-tight">{fbConfirmingItem.category || "NUM 00 FRD"}</div>
+                              <div className="text-[10px] font-bold text-slate-500 mt-0.5">2FA 🔻 Active Facebook ID</div>
                             </div>
                           </div>
 
-                          {/* Separator line */}
                           <div className="border-t border-slate-200/50" />
 
                           {/* Quantity */}
@@ -8391,22 +8163,19 @@ export default function App() {
                             <span className="font-extrabold text-slate-800 text-[11.5px]">1 Account</span>
                           </div>
 
-                          {/* Separator line */}
                           <div className="border-t border-slate-200/50" />
 
                           {/* Total Price */}
                           <div className="flex justify-between items-center">
                             <span className="text-slate-900 font-black text-[12px]">Total</span>
-                            <span className="font-black text-[#2D8A4E] text-sm md:text-base">BDT 4.40</span>
+                            <span className="font-black text-[#2D8A4E] text-sm md:text-base">BDT {fbConfirmingItem.price || 4.40}</span>
                           </div>
                         </div>
 
-                        {/* Subtext */}
                         <p className="text-[10.5px] font-bold text-slate-400 text-left mt-3.5 leading-relaxed">
                           Balance থেকে কেটে নেওয়া হবে। ২৪ ঘণ্টার মধ্যে সমস্যা report করতে পারবেন।
                         </p>
 
-                        {/* Action buttons */}
                         <div className="flex gap-2.5 mt-5">
                           <button 
                             onClick={() => { setShowFbConfirmModal(false); setFbConfirmingItem(null); setFbPurchaseError(null); }}
@@ -8433,441 +8202,190 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* Header Box matching mockup */}
-                  <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-5 w-full text-left">
-                     <div className="flex items-center gap-3">
-                        <div className="w-14 h-14 bg-[#FFF6EE] border border-[#FFE7D6] rounded-2xl flex items-center justify-center shrink-0 shadow-xs">
-                           <Store size={24} className="text-[#F28B27]" strokeWidth={2} />
+                  {/* Search, Filter Tabs and Items list container (Header UI) */}
+                  <div className="bg-white rounded-[2rem] border border-slate-100 p-6 shadow-sm space-y-6 text-left">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <h2 className="text-lg font-black text-slate-800 tracking-tight leading-none">Facebook & YouTube Assets</h2>
+                        <p className="text-[11px] text-slate-400 font-bold mt-1.5 uppercase tracking-wider">Premium Accounts with Active Credentials</p>
+                      </div>
+                      
+                      {/* Search and Tab selectors */}
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <div className="relative">
+                          <input 
+                            value={fbMarketSearch}
+                            onChange={(e) => setFbMarketSearch(e.target.value)}
+                            placeholder="আইডি বা ক্যাটাগরি খুঁজুন..."
+                            className="pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl font-semibold text-xs focus:outline-none focus:border-[#2E7D32] transition-colors w-48 text-left"
+                          />
+                          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                         </div>
-                        <h2 className="text-[20px] font-black text-slate-900 tracking-tight leading-none font-sans">Live Market</h2>
-                     </div>
-                     <div className="flex items-center justify-end gap-2.5 w-full sm:w-auto self-end sm:self-auto">
-                        {/* Bought/Orders tab icon button */}
-                        <button 
-                          onClick={() => setFbMarketTab(fbMarketTab === 'Market' ? 'Bought' : 'Market')}
-                          className={`w-11 h-11 rounded-2xl flex items-center justify-center border transition-all cursor-pointer relative shadow-xs ${fbMarketTab === 'Bought' ? 'bg-[#111827] text-white border-[#111827]' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
-                          title={fbMarketTab === 'Bought' ? "Go to Market" : "Your Purchases"}
-                        >
-                           <ShoppingBag size={18} strokeWidth={2.2} />
-                           {fbMyPurchases.length > 0 && (
-                             <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center ring-2 ring-white animate-pulse">
-                               {fbMyPurchases.length}
-                             </span>
-                           )}
-                        </button>
-
-                        {/* Support / Market Chat Inbox button */}
-                        <button 
-                          onClick={() => setIsChatInboxOpen(true)}
-                          className="w-11 h-11 bg-[#F0FDF4] hover:bg-emerald-100 text-[#2D8A4E] border border-emerald-100 rounded-2xl flex items-center justify-center transition-all cursor-pointer shadow-xs relative group active:scale-90"
-                          title="মেসেজ ও ইনবক্স"
-                        >
-                           <MessageSquare size={18} strokeWidth={2.2} className="group-hover:scale-105 transition-transform" />
-                           {totalUnreadCount > 0 && (
-                             <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center ring-2 ring-white">
-                                {totalUnreadCount}
-                             </span>
-                           )}
-                        </button>
-
-                        {/* + Post Button */}
-                        {selectedCategoryFilter !== 'Facebook' && (
-                          <button 
-                            onClick={() => setView('facebook-create-post')}
-                            className="h-11 px-5 bg-[#2D8A4E] hover:bg-emerald-800 text-white font-extrabold text-[13px] rounded-2xl flex items-center justify-center gap-1.5 shadow-md shadow-emerald-50 active:scale-95 transition-all text-center cursor-pointer font-sans"
-                          >
-                             <span>+ পোস্ট করুন</span>
-                          </button>
-                        )}
-                     </div>
-                  </div>
-
-                  {/* Tabs info notice if in Bought tab */}
-                  {fbMarketTab === 'Bought' && (
-                     <div className="bg-slate-900 text-white/90 p-3 px-4 rounded-xl text-xs font-semibold leading-relaxed text-left border border-slate-800 flex items-start gap-2.5">
-                        <Info size={16} className="text-blue-400 shrink-0 mt-0.5" />
-                        <span>আপনার কেনা ডিজিটাল প্রোডাক্টগুলোর তালিকা নিচে দেওয়া হল। Credentials কপি করতে ডানদিকের কপি বোতাম চাপুন।</span>
-                     </div>
-                  )}
-
-                  {/* Search and Category Filter Bar matching mockup */}
-                  <div className="flex flex-col gap-3.5">
-                     <div className="relative w-full">
-                        <Search size={16} className="absolute left-4.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input 
-                           type="text"
-                           placeholder="খুঁজুন..."
-                           value={fbMarketSearch}
-                           onChange={(e) => setFbMarketSearch(e.target.value)}
-                           className="w-full h-12 pl-12 pr-4 bg-white border border-slate-200/80 rounded-2xl font-bold text-slate-850 placeholder:text-slate-400 focus:outline-none focus:border-[#2D8A4E]/60 transition-all text-xs shadow-xs"
-                        />
-                     </div>
-                     <div className="relative w-full">
-                        <select 
-                           value={selectedCategoryFilter}
-                           onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-                           className="w-full h-12 pl-4 pr-10 bg-white border border-slate-200/80 rounded-2xl font-bold text-slate-850 appearance-none focus:outline-none focus:border-[#2D8A4E]/60 transition-all text-xs cursor-pointer shadow-xs"
-                        >
-                           <option value="All">সব ধরন</option>
-                           <option value="Facebook">Facebook</option>
-                           <option value="YouTube">YouTube</option>
-                           <option value="অন্যান্য">অন্যান্য</option>
-                        </select>
-                        <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                     </div>
-                  </div>
-
-                  {/* Accounts List Container as a 2-Column Grid */}
-                  <div>
-                    {fbMarketTab === 'Market' ? (
-                      (() => {
-                        // Beautiful, realistic simulated fallbacks when real listings are empty or database is out of quota
-                        const MOCK_LIVE_MARKET_ITEMS = (fbMarketListings.length === 0 || isQuotaExceeded) ? [
-                          {
-                            id: "mock-fb-1",
-                            category: "Facebook Account",
-                            title: "Verified 2018 Facebook Professional Profile",
-                            description: "2018-এ খোলা রিয়েল আইডি। ২,৫০০+ অর্গানিক ফলোয়ার আছে, প্রোফাইল ড্যাশবোর্ড গ্রীন এবং পে-আউট সেটআপ রেডি। আইডি কার্ড দিয়ে ১০০% ভেরিফাই করা এবং এড অ্যাকাউন্ট সক্রিয়। সম্পূর্ণ রিয়েল ও সিকিউর আইডি।",
-                            price: 450,
-                            views: 182,
-                            comments: 7,
-                            status: "Live",
-                            isMock: true,
-                            phone: "017XXXXXXXX",
-                            password: "••••••••",
-                            twoFA: "Active (2FA)",
-                            imageUrl: null,
-                            imageType: "facebook"
-                          },
-                          {
-                            id: "mock-yt-2",
-                            category: "YouTube Channel",
-                            title: "15K Subs Tech YouTube Channel (Monetized)",
-                            description: "১৫,০০০+ অ্যাক্টিভ সাবস্ক্রাইবার সম্পন্ন টেক ক্যাটাগরির ইউটিউব চ্যানেল। চ্যানেলটি সম্পুর্ণ অর্গানিক ভিউজ ও ওয়াচটাইম সহ মনিটাইজড। গুগিল এডসেন্স রেডি করা আছে, কোনো কপিরাইট স্ট্রাইক বা ওয়ার্নিং নেই। সরাসরি বায়ার ডিল করা যাবে।",
-                            price: 9500,
-                            views: 412,
-                            comments: 19,
-                            status: "Live",
-                            isMock: true,
-                            phone: "019XXXXXXXX",
-                            password: "••••••••",
-                            twoFA: "Active (2FA)",
-                            imageUrl: null,
-                            imageType: "youtube"
-                          },
-                          {
-                            id: "mock-tg-3",
-                            category: "Telegram Account/ID",
-                            title: "Premium Telegram Aged Account (2021) + ID",
-                            description: "২০২১ সালের পুরাতন প্রিমিয়াম টেলিগ্রাম অ্যাকাউন্ট। কোনো স্প্যাম বা রেস্ট্রিকশন নেই। অ্যাকাউন্টটিতে অনেকগুলো বড় গ্রুপ ও চ্যানেলের অনারশিপ রয়েছে। বায়ার সরাসরি ইউজারনেম ও লগইন অ্যাক্সেস পাবেন।",
-                            price: 180,
-                            views: 98,
-                            comments: 3,
-                            status: "Live",
-                            isMock: true,
-                            phone: "018XXXXXXXX",
-                            password: "••••••••",
-                            twoFA: "Active (2FA)",
-                            imageUrl: null,
-                            imageType: "other"
-                          }
-                        ] : [];
-
-                        const combinedListings = [
-                          ...MOCK_LIVE_MARKET_ITEMS.map((item: any) => ({
-                             ...item,
-                             views: (item.views || 0) + (extraViews[item.id] || 0),
-                             clicks: (item.clicks || 0) + (extraClicks[item.id] || 0)
-                          })),
-                          ...fbMarketListings.map(item => {
-                             const baseViews = item.views !== undefined ? item.views : getDeterministicStat(item.id, 80, 25);
-                             const baseClicks = item.clicks !== undefined ? item.clicks : getDeterministicStat(item.id, 15, 3);
-                             return {
-                                id: item.id,
-                                category: item.category || "Facebook",
-                                title: item.title || item.phone || "Facebook Account",
-                                description: item.description || "Verified credentials and secure delivery",
-                                price: Number(item.price) || 0,
-                                imageUrl: item.imageUrl || null,
-                                views: baseViews + (extraViews[item.id] || 0),
-                                clicks: baseClicks + (extraClicks[item.id] || 0),
-                                comments: item.comments || 0,
-                                phone: item.phone,
-                                password: item.password,
-                                twoFA: item.twoFA,
-                                sellerId: item.sellerId,
-                                sellerEmail: item.sellerEmail,
-                                isMock: false,
-                                isLiveMarket: item.isLiveMarket || item.phone === "Escrow Dynamic Delivery" || item.password === "Contact support via chat to claim",
-                                imageType: (item.category || "Facebook").toLowerCase().includes("youtube") ? "youtube" : (item.category || "Facebook").toLowerCase().includes("facebook") ? "facebook" : "other"
-                             };
-                          })
-                        ];
-
-                        const query = fbMarketSearch.toLowerCase();
-                        const filtered = combinedListings.filter(item => {
-                          if (!item.isLiveMarket) return false;
-
-                          const matchesSearch = 
-                            item.title.toLowerCase().includes(query) ||
-                            item.description.toLowerCase().includes(query) ||
-                            item.category.toLowerCase().includes(query);
-                          
-                          if (!matchesSearch) return false;
-
-                          if (selectedCategoryFilter === 'All') return true;
-                          const itemCat = item.category.toLowerCase();
-                          const filterCat = selectedCategoryFilter.toLowerCase();
-                          return itemCat === filterCat || itemCat.includes(filterCat) || filterCat.includes(itemCat);
-                        });
-
-                        if (filtered.length === 0) {
-                          return (
-                            <div className="border border-dashed border-slate-200 bg-white rounded-[2rem] p-12 text-center min-h-[160px] flex items-center justify-center shadow-xs">
-                              <p className="text-[#94A3B8] font-bold text-xs uppercase tracking-widest leading-relaxed">বর্তমানে কোনো ডিজিটাল অ্যাকাউন্ট লিস্টিং নেই।</p>
-                            </div>
-                          );
-                        }
-
-                        // Beautiful grid helper image builder
-                        const renderCardBanner = (item: any) => {
-                           if (item.imageUrl) {
-                              return (
-                                 <div className="h-28 rounded-xl overflow-hidden bg-slate-900 relative border border-slate-200/40 shrink-0 flex items-center justify-center">
-                                    <img 
-                                      src={item.imageUrl} 
-                                      referrerPolicy="no-referrer" 
-                                      alt={item.title} 
-                                      className="w-full h-full object-cover transition-transform duration-250 group-hover:scale-103" 
-                                    />
-                                    <div className="absolute top-1.5 left-1.5 flex gap-1 bg-black/45 px-1.5 py-0.5 rounded-md backdrop-blur-xs">
-                                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mt-1" />
-                                       <span className="text-[7.5px] font-bold text-white uppercase tracking-widest leading-none">Live Item</span>
-                                    </div>
-                                 </div>
-                              );
-                           }
-                           if (item.imageType === 'facebook') {
-                              return (
-                                 <div className="h-28 bg-gradient-to-tr from-[#1877F2]/10 via-[#1877F2]/5 to-[#E7F3FF] rounded-xl flex flex-col items-center justify-center p-3 relative overflow-hidden border border-[#D2E2FC]/50 shrink-0">
-                                    <div className="absolute top-1.5 left-1.5 flex gap-1">
-                                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                       <span className="text-[7px] font-bold text-emerald-600 uppercase tracking-widest leading-none">Healthy</span>
-                                    </div>
-                                    <Facebook size={36} className="text-[#1877F2] drop-shadow-sm transform group-hover:scale-105 transition-transform" fill="currentColor" />
-                                    <div className="mt-2 text-[8px] font-black text-[#1877F2]/70 uppercase tracking-widest text-center leading-none">Verified Profile</div>
-                                 </div>
-                              );
-                           }
-                           if (item.imageType === 'youtube') {
-                              return (
-                                 <div className="h-28 bg-gradient-to-tr from-[#FF0000]/10 via-[#FF0000]/5 to-[#FFF0F0] rounded-xl flex flex-col items-center justify-center p-3 relative overflow-hidden border border-red-100 shrink-0">
-                                    <div className="absolute top-1.5 left-1.5 flex gap-1">
-                                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                       <span className="text-[7px] font-bold text-emerald-600 uppercase tracking-widest leading-none">Active</span>
-                                    </div>
-                                    <Youtube size={36} className="text-[#FF0000] drop-shadow-sm transform group-hover:scale-105 transition-transform animate-pulse" />
-                                    <div className="mt-2 text-[8px] font-black text-[#FF0000]/70 uppercase tracking-widest text-center leading-none">Partner Channel</div>
-                                 </div>
-                              );
-                           }
-                           if (item.imageType === 'prompt') {
-                              return (
-                                 <div className="h-28 bg-gradient-to-tr from-[#EA4335]/15 via-[#F28B27]/10 to-[#FFF9F5] rounded-xl flex flex-col items-center justify-center p-3 relative overflow-hidden border border-orange-100 shrink-0">
-                                    <div className="absolute inset-0 flex items-center justify-center bg-[#F28B27] p-2 text-center text-white font-display uppercase tracking-wider text-xs font-black select-none pointer-events-none rounded-xl leading-none">
-                                       Prompt Hub ⭐
-                                    </div>
-                                 </div>
-                              );
-                           }
-                           if (item.imageType === 'payment') {
-                              return (
-                                 <div className="h-28 bg-gradient-to-tr from-pink-500/10 via-pink-400/5 to-white rounded-xl flex flex-col items-center justify-center p-2 relative overflow-hidden border border-pink-100 shrink-0">
-                                    <div className="w-full bg-white border border-pink-100/50 rounded-lg p-1.5 space-y-1 shadow-xs text-[8px] text-left transform -rose-1 translate-y-2 scale-95">
-                                       <div className="flex justify-between font-bold text-pink-600 border-b border-pink-50 pb-1">
-                                          <span>বিকাশ ক্যাশআউট</span>
-                                          <span className="font-extrabold text-[9px]">পরে ✅</span>
-                                       </div>
-                                       <div className="text-[7px] text-slate-500 space-y-0.5 leading-none pt-0.5 font-sans font-medium">
-                                          <div>একাউন্ট নং: 018****6962</div>
-                                          <div>পরিমাণ: 300 টাকা</div>
-                                          <div className="text-emerald-500 font-bold">সফল ক্যাশআউট 🗸</div>
-                                       </div>
-                                    </div>
-                                 </div>
-                              );
-                           }
-                           return (
-                              <div className="h-28 bg-gradient-to-tr from-slate-100 via-slate-50/50 to-white rounded-xl flex flex-col items-center justify-center p-3 relative overflow-hidden border border-slate-200/60 shrink-0">
-                                 <div className="absolute top-1.5 left-1.5 flex gap-1">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
-                                    <span className="text-[7px] font-bold text-indigo-600 uppercase tracking-widest leading-none">Verified</span>
-                                 </div>
-                                 <Store size={36} className="text-slate-500 drop-shadow-sm transform group-hover:scale-105 transition-transform" />
-                                 <div className="mt-2 text-[8px] font-black text-slate-500/70 uppercase tracking-widest text-center leading-none">Premium Asset</div>
-                              </div>
-                           );
-                        };
-
-                        return (
-                          <div className="grid grid-cols-2 gap-3.5 md:gap-5 pb-10">
-                            {filtered.map((item) => (
-                              <div 
-                                key={item.id} 
-                                onClick={() => handleViewPost(item)}
-                                className="group bg-white rounded-2xl p-3 md:p-3.5 border border-slate-100 shadow-xs flex flex-col justify-between text-left transition-all hover:-translate-y-0.5 hover:shadow-md cursor-pointer relative overflow-hidden"
-                              >
-                                <div className="space-y-3">
-                                  {/* Render standard visual card top banner */}
-                                  {renderCardBanner(item)}
-
-                                  {/* Detail meta text below */}
-                                  <div className="space-y-1">
-                                    <div className="flex items-center justify-between">
-                                       <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md leading-none uppercase tracking-wider ${
-                                          item.category.toLowerCase().includes("facebook") ? "bg-[#1877F2]/10 text-[#1877F2]" :
-                                          item.category.toLowerCase().includes("youtube") ? "bg-red-50 text-red-600" : "bg-orange-50 text-orange-600"
-                                       }`}>
-                                          {item.category}
-                                       </span>
-                                       <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded-md flex items-center gap-0.5 border border-emerald-100 shrink-0 scale-90">
-                                          Available
-                                       </span>
-                                    </div>
-
-                                    <h3 className="text-xs font-black text-slate-800 tracking-tight leading-tight pt-1 group-hover:text-indigo-600 transition-colors truncate">{item.title}</h3>
-                                    <p className="text-[10px] text-slate-400 font-medium leading-snug line-clamp-1">{item.description}</p>
-                                  </div>
-                                </div>
-
-                                {/* Purchase action / Click block */}
-                                <div className="border-t border-slate-50 mt-4.5 pt-3">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Price</span>
-                                    <div className="text-xs font-black text-[#2D8A4E] shrink-0">
-                                       {item.price === 0 ? "আলোচনা সাপেক্ষে" : `৳${item.price}`}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      })()
-                    ) : (
-                      fbMyPurchases.length === 0 ? (
-                        <div className="bg-white rounded-[24px] p-12 text-center border border-dashed border-slate-200 shadow-xs mb-10">
-                          <p className="text-slate-400 font-bold text-xs uppercase tracking-wider font-sans">আপনি কোনো Facebook অ্যাকাউন্ট এখনো কিনেননি।</p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-12">
-                          {fbMyPurchases.map((item) => (
-                            <div key={item.id} className="bg-slate-900 rounded-[22px] p-5 border border-slate-800 shadow-xl space-y-4 text-white relative overflow-hidden text-left font-sans flex flex-col justify-between">
-                              <div className="space-y-4">
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-white/10 text-white rounded-xl flex items-center justify-center shrink-0">
-                                       <Facebook size={20} fill="currentColor" />
-                                    </div>
-                                    <div className="space-y-0.5 min-w-0">
-                                      <h4 className="font-bold text-white text-xs leading-tight truncate">{item.phone || "Purchased Account"}</h4>
-                                      <span className="inline-block bg-white/5 text-white/60 text-[9px] font-semibold px-2 py-0.5 rounded-md border border-white/5 truncate max-w-full">
-                                        {item.category || "num-00-frd-2fa"}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20 shrink-0">
-                                    <CheckCircle size={10} />
-                                    SUCCESSFUL
-                                  </div>
-                                </div>
-
-                                {/* Credentials layout with high legibility */}
-                                <div className="p-3 bg-white/5 border border-white/5 rounded-xl space-y-2 text-xs">
-                                  <div className="space-y-0.5">
-                                    <span className="text-[9px] text-white/40 font-bold uppercase tracking-wider block">ID / Phone</span>
-                                    <div className="font-mono text-white text-xs font-bold flex items-center justify-between bg-white/5 px-2.5 py-1.5 rounded-lg">
-                                      <span className="truncate mr-2 font-mono select-all">{item.phone}</span>
-                                      <button onClick={() => { navigator.clipboard.writeText(item.phone || ''); alert('Copied ID!'); }} className="p-1 hover:bg-white/10 rounded-md text-blue-400 transition-colors"><Copy size={12} /></button>
-                                    </div>
-                                  </div>
-                                  <div className="space-y-0.5">
-                                    <span className="text-[9px] text-white/40 font-bold uppercase tracking-wider block">Password</span>
-                                    <div className="font-mono text-amber-300 text-xs font-bold flex items-center justify-between bg-white/5 px-2.5 py-1.5 rounded-lg">
-                                      <span className="truncate mr-2 font-mono select-all">{item.password || '••••••••'}</span>
-                                      <button onClick={() => { navigator.clipboard.writeText(item.password || ''); alert('Copied Password!'); }} className="p-1 hover:bg-white/10 rounded-md text-white transition-colors"><Copy size={12} /></button>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex items-center justify-between text-white/40 text-[9px] pt-4 border-t border-white/5 font-semibold mt-3 font-sans">
-                                 <span>ID: {item.id ? item.id.substring(0, 10) : "mock_item"}</span>
-                                 <span className="font-bold text-white/60">Bought for BDT {Number(item.soldPrice || 4.40).toFixed(2)}</span>
-                              </div>
-                            </div>
+                        
+                        <div className="bg-slate-100/80 p-1 rounded-xl flex gap-1">
+                          {['Market', 'My Purchases'].map((tab) => (
+                            <button
+                              key={tab}
+                              onClick={() => setFbMarketTab(tab as any)}
+                              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors cursor-pointer ${
+                                fbMarketTab === tab ? 'bg-[#2D8A4E] text-white shadow-xs' : 'text-slate-600 hover:text-slate-905'
+                              }`}
+                            >
+                              {tab === 'Market' ? 'Market' : 'My Boughts'}
+                            </button>
                           ))}
                         </div>
-                      )
-                    )}
+                      </div>
+                    </div>
                   </div>
-              </motion.div>
-            ) : view === 'facebook-view-post' ? (
-              (() => {
-                const liveItem = getLivePostDetail(selectedFbPostForDetail);
-                 return liveItem ? (
-                  <motion.div
-                    key="facebook-view-post"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    className="space-y-6 pb-24 text-left max-w-2xl mx-auto"
-                  >
-                    {/* Back Button matching screenshot */}
-                    <button
-                      onClick={() => setView('facebook-market')}
-                      className="flex items-center gap-2 text-slate-800 hover:text-[#2D8A4E] font-bold transition-all text-sm mb-4 cursor-pointer"
-                    >
-                      <ArrowLeft size={16} strokeWidth={2.5} />
-                      <span>সব পোস্ট</span>
-                    </button>
 
-                    <div className="space-y-6">
+                  {/* Render the lists */}
+                  {fbMarketTab === 'Market' ? (
+                     <div className="grid grid-cols-2 gap-3.5 md:gap-5 pb-10">
+                       {fbMarketListings.filter(item => (item.title || '').toLowerCase().includes((fbMarketSearch || '').toLowerCase()) || (item.category || '').toLowerCase().includes((fbMarketSearch || '').toLowerCase())).map((item) => (
+                         <div 
+                           key={item.id} 
+                           onClick={() => handleViewPost(item)}
+                           className="group bg-white rounded-2xl p-3 md:p-3.5 border border-slate-100 shadow-xs flex flex-col justify-between text-left transition-all hover:-translate-y-0.5 hover:shadow-md cursor-pointer relative overflow-hidden"
+                         >
+                           <div className="space-y-3">
+                             {/* Render standard visual card top banner */}
+                             {renderCardBanner(item)}
+
+                             {/* Detail meta text below */}
+                             <div className="space-y-1">
+                               <div className="flex items-center justify-between font-sans">
+                                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md leading-none uppercase tracking-wider ${
+                                     item.category.toLowerCase().includes("facebook") ? "bg-[#1877F2]/10 text-[#1877F2]" :
+                                     item.category.toLowerCase().includes("youtube") ? "bg-red-50 text-red-650" : "bg-orange-50 text-orange-600"
+                                  }`}>
+                                     {item.category}
+                                  </span>
+                                  <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded-md flex items-center gap-0.5 border border-emerald-100 shrink-0 scale-90">
+                                     Available
+                                  </span>
+                               </div>
+
+                               <h3 className="text-xs font-black text-slate-800 tracking-tight leading-tight pt-1 group-hover:text-indigo-600 transition-colors truncate">{item.title}</h3>
+                               <p className="text-[10px] text-slate-450 font-medium leading-snug line-clamp-1">{item.description}</p>
+                             </div>
+                           </div>
+
+                           {/* Purchase action / Click block */}
+                           <div className="border-t border-slate-50 mt-4.5 pt-3">
+                             <div className="flex items-center justify-between">
+                               <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest font-sans">Price</span>
+                               <div className="text-xs font-black text-[#2D8A4E] shrink-0 font-sans">
+                                  {item.price === 0 ? "আলোচনা সাপেক্ষে" : `৳${item.price}`}
+                               </div>
+                             </div>
+                           </div>
+                         </div>
+                       ))}
+                     </div>
+                  ) : (
+                     fbMyPurchases.length === 0 ? (
+                       <div className="bg-white rounded-[24px] p-12 text-center border border-dashed border-slate-200 shadow-xs mb-10 text-left font-sans">
+                         <p className="text-slate-400 font-bold text-xs uppercase tracking-wider text-center">আপনি কোনো Facebook অ্যাকাউন্ট এখনো কিনেননি।</p>
+                       </div>
+                     ) : (
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-12 font-sans">
+                         {fbMyPurchases.map((item) => (
+                           <div key={item.id} className="bg-slate-900 rounded-[22px] p-5 border border-slate-800 shadow-xl space-y-4 text-white relative overflow-hidden text-left flex flex-col justify-between">
+                             <div className="space-y-4">
+                               <div className="flex items-start justify-between gap-3">
+                                 <div className="flex items-center gap-3">
+                                   <div className="w-10 h-10 bg-white/10 text-white rounded-xl flex items-center justify-center shrink-0">
+                                      <Facebook size={20} fill="currentColor" />
+                                   </div>
+                                   <div className="space-y-0.5 min-w-0">
+                                     <h4 className="font-bold text-white text-xs leading-tight truncate">{item.phone || "Purchased Account"}</h4>
+                                     <span className="inline-block bg-white/5 text-white/60 text-[9px] font-semibold px-2 py-0.5 rounded-md border border-white/5 truncate max-w-full">
+                                       {item.category || "num-00-frd-2fa"}
+                                     </span>
+                                   </div>
+                                 </div>
+                                 <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20 shrink-0">
+                                   <CheckCircle size={10} />
+                                   SUCCESSFUL
+                                 </div>
+                               </div>
+
+                               <div className="p-3 bg-white/5 border border-white/5 rounded-xl space-y-2 text-xs">
+                                 <div className="space-y-0.5">
+                                   <span className="text-[9px] text-white/40 font-bold uppercase tracking-wider block">ID / Phone</span>
+                                   <div className="font-mono text-white text-xs font-bold flex items-center justify-between bg-white/5 px-2.5 py-1.5 rounded-lg">
+                                     <span className="truncate mr-2 font-mono select-all">{item.phone}</span>
+                                     <button onClick={() => { navigator.clipboard.writeText(item.phone || ''); alert('Copied ID!'); }} className="p-1 hover:bg-white/10 rounded-md text-blue-400 transition-colors"><Copy size={12} /></button>
+                                   </div>
+                                 </div>
+                                 <div className="space-y-0.5">
+                                   <span className="text-[9px] text-white/40 font-bold uppercase tracking-wider block">Password</span>
+                                   <div className="font-mono text-amber-300 text-xs font-bold flex items-center justify-between bg-white/5 px-2.5 py-1.5 rounded-lg">
+                                     <span className="truncate mr-2 font-mono select-all">{item.password || '••••••••'}</span>
+                                     <button onClick={() => { navigator.clipboard.writeText(item.password || ''); alert('Copied Password!'); }} className="p-1 hover:bg-white/10 rounded-md text-white transition-colors"><Copy size={12} /></button>
+                                   </div>
+                                 </div>
+                               </div>
+                             </div>
+                             <div className="flex items-center justify-between text-white/40 text-[9px] pt-4 border-t border-white/5 font-semibold mt-3">
+                                <span>ID: {item.id ? item.id.substring(0, 10) : "mock_item"}</span>
+                                <span className="font-bold text-white/60">Bought for BDT {Number(item.soldPrice || 4.40).toFixed(2)}</span>
+                             </div>
+                           </div>
+                         ))}
+                       </div>
+                     )
+                  )}
+              </motion.div>
+            ) : view === 'facebook-view-post' ? (() => {
+               const liveItem = selectedFbPostForDetail;
+               return (
+                 <motion.div
+                   key="facebook-view-post"
+                   initial={{ opacity: 0, scale: 0.98 }}
+                   animate={{ opacity: 1, scale: 1 }}
+                   exit={{ opacity: 0, scale: 0.98 }}
+                   className="space-y-6 pb-24 text-left"
+                 >
+                     {liveItem && (
+                     <div className="space-y-6">
                       {/* Unified Product Card holding both Image and Info with combined borders */}
-                      <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+                      <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden font-sans">
                         {/* Image section atop */}
                         {liveItem.imageUrl ? (
-                          <div className="w-full bg-slate-50 flex items-center justify-center relative select-none border-b border-slate-100">
-                            <img 
-                              src={liveItem.imageUrl} 
-                              referrerPolicy="no-referrer" 
-                              alt={liveItem.title} 
-                              className="w-full h-auto max-h-[480px] object-contain" 
-                            />
-                          </div>
+                           <div className="w-full bg-slate-50 flex items-center justify-center relative select-none border-b border-slate-100">
+                             <img 
+                               src={liveItem.imageUrl} 
+                               referrerPolicy="no-referrer" 
+                               alt={liveItem.title} 
+                               className="w-full h-auto max-h-[480px] object-contain" 
+                             />
+                           </div>
                         ) : (
-                          /* Category Specific Streamlined Fallback Card */
-                          <div className="border-b border-slate-100">
-                            {liveItem.category.toLowerCase().includes('youtube') ? (
-                              <div className="w-full h-48 bg-gradient-to-r from-red-600 to-amber-600 flex flex-col items-center justify-center text-white p-6 text-center select-none relative">
-                                <span className="text-white/20 uppercase font-black tracking-widest text-2xl">YOUTUBE ITEM</span>
-                                <p className="text-sm font-bold mt-2 font-sans">premium monetized channel / video asset</p>
-                              </div>
-                            ) : liveItem.category.toLowerCase().includes('facebook') ? (
-                              <div className="w-full h-48 bg-gradient-to-tr from-[#1877F2] via-indigo-600 to-slate-800 flex flex-col items-center justify-center text-white p-6 text-center select-none relative">
-                                <span className="text-white/20 uppercase font-black tracking-widest text-xl">FACEBOOK ASSET</span>
-                                <p className="text-sm font-bold mt-2 font-sans">verified profile, page or account</p>
-                              </div>
-                            ) : (
-                              <div className="w-full h-48 bg-gradient-to-r from-[#2D8A4E] to-emerald-700 flex flex-col items-center justify-center text-white p-6 text-center select-none relative">
-                                <span className="text-white/20 uppercase font-black tracking-widest text-xl">DIGITAL ASSET</span>
-                                <p className="text-sm font-bold mt-2 font-sans">verified digital credential or service</p>
-                              </div>
-                            )}
-                          </div>
+                           /* Category Specific Streamlined Fallback Card */
+                           <div className="border-b border-slate-100">
+                             {liveItem.category.toLowerCase().includes('youtube') ? (
+                               <div className="w-full h-48 bg-gradient-to-r from-red-600 to-amber-600 flex flex-col items-center justify-center text-white p-6 text-center select-none relative font-sans">
+                                 <span className="text-white/20 uppercase font-black tracking-widest text-2xl font-sans font-sans">YOUTUBE ITEM</span>
+                                 <p className="text-sm font-bold mt-2 font-sans font-sans">premium monetized channel / video asset</p>
+                               </div>
+                             ) : liveItem.category.toLowerCase().includes('facebook') ? (
+                               <div className="w-full h-48 bg-gradient-to-tr from-[#1877F2] via-indigo-600 to-slate-800 flex flex-col items-center justify-center text-white p-6 text-center select-none relative font-sans">
+                                 <span className="text-white/20 uppercase font-black tracking-widest text-xl font-sans font-sans">FACEBOOK ASSET</span>
+                                 <p className="text-sm font-bold mt-2 font-sans font-sans">verified profile, page or account</p>
+                               </div>
+                             ) : (
+                               <div className="w-full h-48 bg-gradient-to-r from-[#2D8A4E] to-emerald-700 flex flex-col items-center justify-center text-white p-6 text-center select-none relative font-sans">
+                                 <span className="text-white/20 uppercase font-black tracking-widest text-xl font-sans font-sans">DIGITAL ASSET</span>
+                                 <p className="text-sm font-bold mt-2 font-sans font-sans">verified digital credential or service</p>
+                               </div>
+                             )}
+                           </div>
                         )}
 
                         {/* Metadata Card Info directly inside */}
-                        <div className="p-6 space-y-5 text-left">
+                        <div className="p-6 space-y-5 text-left font-sans">
                           <div className="flex items-center justify-between gap-3">
                             <span className="text-[10px] uppercase font-black tracking-wider bg-[#1877F2]/10 text-[#1877F2] px-3.5 py-1 rounded-full border border-[#1877F2]/10 leading-none">
                               {liveItem.category}
@@ -8878,7 +8396,7 @@ export default function App() {
                                 navigator.clipboard.writeText(window.location.href);
                                 alert("লিংক কপি হয়েছে!");
                               }}
-                              className="px-3.5 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-full font-extrabold text-[10px] uppercase tracking-wider flex items-center gap-1.5 hover:bg-slate-100 transition-all cursor-pointer shadow-2xs"
+                              className="px-3.5 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-full font-extrabold text-[10px] uppercase tracking-wider flex items-center gap-1.5 hover:bg-slate-100 transition-all cursor-pointer shadow-xs"
                             >
                               <Share2 size={11} strokeWidth={2.5} />
                               <span>Share</span>
@@ -8922,7 +8440,7 @@ export default function App() {
                       <h4 className="text-[14px] font-black text-slate-800 tracking-tight pl-1.5 flex items-center gap-1">
                         <span>বিবরণ</span>
                       </h4>
-                      <div className="bg-slate-50/60 border border-slate-100 rounded-[1.5rem] p-5.5 text-xs text-slate-700 leading-relaxed font-bold shadow-2xs">
+                      <div className="bg-slate-50/60 border border-slate-100 rounded-[1.5rem] p-5.5 text-xs text-slate-700 leading-relaxed font-bold shadow-xs">
                         {liveItem.description || "কোনো বিবরণ প্রদান করা হয়নি। স্পেসিফিক আইডি ইনফোর জন্য দয়া করে বাটন চেপে কানেক্ট করুন।"}
                       </div>
                     </div>
@@ -8941,314 +8459,99 @@ export default function App() {
                         onClick={() => {
                           startListingChat(liveItem);
                         }}
-                        className="w-full py-4.5 bg-[#2D8A4E] hover:bg-emerald-800 text-white font-black text-[14px] rounded-[1.5rem] flex items-center justify-center gap-2.5 active:scale-[0.98] transition-all cursor-pointer shadow-md shadow-emerald-200"
+                        className="w-full py-4.5 bg-[#2D8A4E] hover:bg-emerald-800 text-white font-black text-[14px] rounded-[1.5rem] flex items-center justify-center gap-2.5 active:scale-[0.98] transition-all cursor-pointer shadow-md shadow-emerald-250"
                       >
                         <MessageCircle size={18} strokeWidth={2.5} />
                         <span>Seller-এর সাথে কথা বলুন</span>
                       </button>
                     </div>
                   </div>
-                </motion.div>
-              ) : (
-                  <div className="bg-white rounded-[2.5rem] p-12 text-center border">
-                    <p className="text-slate-500 font-bold text-xs">অ্যাকাউন্টের কোনো তথ্য পাওয়া যায়নি।</p>
-                  </div>
-                );
-              })()
-            ) : view === 'admin' ? (
+                 )}
+                 </motion.div>
+               );
+            })()
+              : view === 'admin' ? (
               <motion.div
                 key="admin"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="space-y-8 pb-20"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                className="space-y-6 pb-24 text-left"
               >
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-xl">
-                      <Shield size={24} />
-                    </div>
-                    <div>
-                      <h2 className="font-display text-3xl font-black text-slate-900 tracking-tight">Admin Dashboard</h2>
-                      <p className="text-slate-500 text-sm font-bold">Manage all marketplace activities</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-4 w-full md:w-auto">
-                    <div className="flex-1 md:flex-initial bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm">
-                      <span className="text-xs font-black text-slate-400 uppercase tracking-widest block">Total Users</span>
-                      <span className="text-xl font-black text-indigo-600">{totalUsersCount}</span>
-                    </div>
-                    <div className="flex-1 md:flex-initial bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm">
-                      <span className="text-xs font-black text-slate-400 uppercase tracking-widest block">Total Listings</span>
-                      <span className="text-xl font-black text-[#2E7D32]">{marketListings.length}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Headline Control */}
-                  <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-[#2E7D32]">
-                        <Bell size={20} />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-800">Headline Control</h3>
-                        <p className="text-xs text-slate-400 font-bold">Manage the scrolling announcement bar</p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                      <div className="md:col-span-2 space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Headline Text</label>
-                        <input 
-                          value={pendingHeadline}
-                          onChange={(e) => setPendingHeadline(e.target.value)}
-                          placeholder="Enter announcement text..."
-                          className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold focus:outline-none focus:border-[#2E7D32]"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Speed</label>
-                        <div className="flex gap-2">
-                          <input 
-                            type="number"
-                            value={pendingSpeed}
-                            onChange={(e) => setPendingSpeed(Number(e.target.value))}
-                            className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold focus:outline-none focus:border-[#2E7D32]"
-                          />
-                          <button 
-                            onClick={() => updateHeadline(pendingHeadline, pendingSpeed)}
-                            className="px-6 py-3 bg-[#2E7D32] text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-green-200 hover:bg-[#1B5E20] transition-all whitespace-nowrap"
-                          >
-                            Update
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Notice Board Control */}
-                  <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600">
-                        <Megaphone size={20} />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-800">Notice Board Control</h3>
-                        <p className="text-xs text-slate-400 font-bold">Manage the main banner notice text</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Notice Content</label>
-                        <textarea 
-                          value={pendingNotice}
-                          onChange={(e) => setPendingNotice(e.target.value)}
-                          placeholder="What would you like to show in the main banner?"
-                          rows={3}
-                          className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:border-orange-500 transition-all shadow-inner resize-none text-xs"
-                        />
-                      </div>
-                      <button 
-                        onClick={() => updateNotice(pendingNotice)}
-                        className="w-full py-4 bg-orange-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-orange-200 hover:bg-orange-700 transition-all active:scale-95 flex items-center justify-center gap-2"
-                      >
-                        <Save size={16} />
-                        Update Notice Board
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Reward Ads Control */}
+                {/* Admin Headline Controls */}
                 <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600">
-                      <Sparkles size={20} />
+                    <div className="w-10 h-10 bg-[#E8F5E9] rounded-xl flex items-center justify-center text-[#2E7D32]">
+                      <Megaphone size={20} />
                     </div>
                     <div>
-                      <h3 className="font-bold text-slate-800">Customize Reward Ads (রিওয়ার্ড এডস কনট্রোল)</h3>
-                      <p className="text-xs text-slate-400 font-bold">👉 VIEW (৳০.৫০ আয় করুন) বাটনে ক্লিক করলে যে এড পেজ আসবে তা নিয়ন্ত্রণ করুন</p>
+                      <h3 className="font-bold text-slate-800">Headline Control (হেডলাইন নোটিশ)</h3>
+                      <p className="text-xs text-slate-400 font-bold">👉 স্ক্রিনের ওপরে স্ক্রলিং টেক্সট নোটিশ নিয়ন্ত্রণ করুন</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Add Ad Form */}
-                    <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
-                      <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest pl-1">নতুন রিওয়ার্ড এড যুক্ত করুন</h4>
-                      
-                      <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">বিজ্ঞাপনের শিরোনাম (Ad Title) *</label>
-                        <input
-                          value={newRewardAdTitle}
-                          onChange={(e) => setNewRewardAdTitle(e.target.value)}
-                          placeholder="যেমন: bKash App Download করুন"
-                          className="w-full px-4 py-3 bg-white border border-slate-200/60 rounded-xl font-bold focus:outline-none focus:border-amber-500 text-xs"
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">বিজ্ঞাপনের বর্ণনা (Ad Description) *</label>
-                        <textarea
-                          value={newRewardAdDescription}
-                          onChange={(e) => setNewRewardAdDescription(e.target.value)}
-                          placeholder="যেমন: বিকাশ অ্যাপে প্রথমবার সাইনআপ করে ১০০ টাকা বোনাস পান!"
-                          rows={2}
-                          className="w-full px-4 py-3 bg-white border border-slate-200/60 rounded-xl font-bold focus:outline-none focus:border-amber-500 text-xs resize-none"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">বাটন টেক্সট (CTA Text)</label>
-                          <input
-                            value={newRewardAdCta}
-                            onChange={(e) => setNewRewardAdCta(e.target.value)}
-                            placeholder="যেমন: 👉 CLAIM / ডাউনলোড করুন"
-                            className="w-full px-4 py-3 bg-white border border-slate-200/60 rounded-xl font-bold focus:outline-none focus:border-amber-500 text-xs"
-                          />
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">ব্যানার ইমেজ লিংক (Image URL - Optional)</label>
-                          <input
-                            value={newRewardAdImage}
-                            onChange={(e) => setNewRewardAdImage(e.target.value)}
-                            placeholder="https://example.com/banner.png"
-                            className="w-full px-4 py-3 bg-white border border-slate-200/60 rounded-xl font-bold focus:outline-none focus:border-amber-500 text-xs"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">বিজ্ঞাপনের লিংক (Redirect Destination URL) *</label>
-                        <input
-                          value={newRewardAdUrl}
-                          onChange={(e) => setNewRewardAdUrl(e.target.value)}
-                          placeholder="https://www.bkash.com/app-download"
-                          className="w-full px-4 py-3 bg-white border border-slate-200/60 rounded-xl font-bold focus:outline-none focus:border-amber-500 text-xs"
-                        />
-                      </div>
-
-                      <button
-                        onClick={async () => {
-                          if (!newRewardAdTitle.trim() || !newRewardAdDescription.trim() || !newRewardAdUrl.trim()) {
-                            alert("দয়া করে শিরোনাম, বর্ণনা এবং বিজ্ঞাপনের লিংক অবশই পূরণ করুন!");
-                            return;
-                          }
-                          const newAdItem = {
-                            id: 'rad_' + Math.random().toString(36).substr(2, 9),
-                            title: newRewardAdTitle.trim(),
-                            description: newRewardAdDescription.trim(),
-                            cta: newRewardAdCta.trim() || "👉 CLAIM",
-                            url: newRewardAdUrl.trim(),
-                            image: newRewardAdImage.trim(),
-                            createdAt: new Date().toISOString()
-                          };
-                          const updated = [newAdItem, ...rewardAds];
-                          await updateRewardAds(updated);
-                          
-                          // Clear inputs
-                          setNewRewardAdTitle("");
-                          setNewRewardAdDescription("");
-                          setNewRewardAdCta("👉 CLAIM");
-                          setNewRewardAdUrl("");
-                          setNewRewardAdImage("");
-                          alert("নতুন রিওয়ার্ড এডস সফলভাবে যুক্ত হয়েছে!");
-                        }}
-                        className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 font-sans text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-md hover:from-amber-600 hover:to-amber-700 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-                      >
-                        <PlusSquare size={14} />
-                        রিওয়ার্ড এড যুক্ত করুন (Add Reward Ad)
-                      </button>
-
-                      {/* Reward Ad Duration Settings */}
-                      <div className="space-y-2 mt-4 p-4 bg-amber-50/40 rounded-2xl border border-amber-100 text-left">
-                        <label className="text-[10px] font-black text-amber-700 uppercase tracking-widest leading-none block">
-                          ⏱️ বিজ্ঞাপনের সময়সীমা (Reward Ad Timing Option)
-                        </label>
-                        <p className="text-[9px] text-slate-400 font-bold leading-normal">
-                          ইউজারদেরকে কত সেকেন্ড ভিউ করার পর ব্যালেন্স দেওয়া হবে তা নির্বাচন করুন:
-                        </p>
-                        <div className="grid grid-cols-3 gap-2 mt-1">
-                          {[5, 30, 60].map((sec) => (
-                            <button
-                              key={sec}
-                              onClick={async () => {
-                                if (confirm(`বিজ্ঞাপন দেখার সময়সীমা কি পরিবর্তন করে ${sec} সেকেন্ড করতে চান?`)) {
-                                  await updateRewardAds(rewardAds, sec);
-                                  alert(`বিজ্ঞাপন দেখার সময়সীমা ${sec} সেকেন্ড এ সেট করা হয়েছে!`);
-                                }
-                              }}
-                              className={`py-2 px-3 rounded-xl text-[10px] font-black uppercase transition-all tracking-wider cursor-pointer ${
-                                rewardAdDuration === sec
-                                  ? 'bg-amber-500 text-slate-950 shadow-sm border-2 border-amber-500'
-                                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                              }`}
-                            >
-                              {sec}s ({sec === 5 ? 'টেস্ট' : sec === 30 ? 'স্ট্যান্ডার্ড' : 'ভেরি হাই'})
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">নোটিশ টেক্সট (HTML allowed)</label>
+                      <input 
+                        value={pendingHeadline}
+                        onChange={(e) => setPendingHeadline(e.target.value)}
+                        placeholder="হেডলাইন নোটিশ টাইপ করুন..."
+                        className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:border-[#2E7D32] transition-all text-xs"
+                      />
                     </div>
-
-                    {/* Ads List */}
-                    <div className="space-y-4">
-                      <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest pl-1 flex items-center justify-between">
-                        <span>সক্রিয় বিজ্ঞাপনের তালিকা ({rewardAds.length})</span>
-                        <span className="text-[9px] text-slate-400 font-bold font-mono">Real-time DB Sync</span>
-                      </h4>
-
-                      <div className="space-y-3.5 max-h-[380px] overflow-y-auto pr-1">
-                        {rewardAds.length === 0 ? (
-                          <div className="p-12 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                            <Sparkles size={28} className="text-slate-300 mx-auto mb-2 animate-pulse" />
-                            <p className="text-[11px] text-slate-400 font-bold leading-relaxed">কোনো রিওয়ার্ড এড যুক্ত করা হয়নি।</p>
-                            <p className="text-[9px] text-slate-300 mt-1">খালি থাকলে ইউজারদেরকে Adsterra/Adsense বা সলিড সিমুলেটেড বিজ্ঞাপন দেখানো হবে।</p>
-                          </div>
-                        ) : (
-                          rewardAds.map((ad, idx) => (
-                            <div key={ad.id || idx} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex gap-3.5 relative hover:border-amber-200 transition-colors">
-                              {ad.image && (
-                                <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-slate-50 border border-slate-100 flex items-center justify-center">
-                                  <img referrerPolicy="no-referrer" src={ad.image} alt="Ad banner" className="w-full h-full object-cover" onError={(e)=>{ (e.target as HTMLImageElement).style.display = 'none'; }} />
-                                </div>
-                              )}
-                              <div className="space-y-1.5 flex-1 min-w-0">
-                                <h5 className="font-extrabold text-[#111] text-xs leading-snug truncate">{ad.title}</h5>
-                                <p className="text-[10px] text-slate-500 font-medium leading-relaxed line-clamp-2">{ad.description}</p>
-                                <div className="flex items-center gap-3">
-                                  <a href={ad.url} target="_blank" rel="noreferrer" className="text-[9px] font-black text-indigo-600 hover:underline uppercase tracking-wider font-sans shrink-0 flex items-center gap-0.5">
-                                    <span>Link: {ad.cta || '👉 CLAIM'}</span>
-                                    <ExternalLink size={8} />
-                                  </a>
-                                  <span className="text-[8px] text-slate-300 font-mono">|</span>
-                                  <span className="text-[9px] text-slate-400 font-mono truncate">{ad.url}</span>
-                                </div>
-                              </div>
-                              <button
-                                onClick={async () => {
-                                  if (confirm("এই রিওয়ার্ড এডটি কি তালিকা থেকে মুছে ফেলতে চান?")) {
-                                    const updated = rewardAds.filter((_, i) => i !== idx);
-                                    await updateRewardAds(updated);
-                                  }
-                                }}
-                                className="p-1.5 h-7 w-7 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg absolute top-2 right-2 transition-all self-start flex items-center justify-center"
-                              >
-                                <X size={14} />
-                              </button>
-                            </div>
-                          ))
-                        )}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">স্ক্রলিং স্পিড (সেকেন্ড)</label>
+                      <div className="flex gap-3">
+                        <input 
+                          type="number"
+                          value={pendingSpeed}
+                          onChange={(e) => setPendingSpeed(Number(e.target.value))}
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold focus:outline-none focus:border-[#2E7D32]"
+                        />
+                        <button 
+                          onClick={() => updateHeadline(pendingHeadline, pendingSpeed)}
+                          className="px-6 py-3 bg-[#2E7D32] text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-green-200 hover:bg-[#1B5E20] transition-all whitespace-nowrap"
+                        >
+                          Update
+                        </button>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Notice Board Control */}
+                <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600">
+                      <FileText size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-800">Notice Board Control</h3>
+                      <p className="text-xs text-slate-400 font-bold">👉 হোমপেজে Notice Board এ প্রদর্শিত বার্তা পরিবর্তন করুন</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Notice Board Message (HTML list or simple paragraphs)</label>
+                      <textarea
+                        value={pendingNotice}
+                        onChange={(e) => setPendingNotice(e.target.value)}
+                        placeholder="হোমপেজে কি নোটিশ দেখাতে চান তা লিখুন..."
+                        rows={4}
+                        className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:border-orange-600 transition-all text-xs resize-none"
+                      />
+                    </div>
+                    <button 
+                      onClick={() => updateNotice(pendingNotice)}
+                      className="w-full py-4 bg-orange-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-orange-200 hover:bg-orange-700 transition-all active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <Save size={16} />
+                      Update Notice Board
+                    </button>
+                  </div>
+                </div>
                   {/* User Account Recovery Section */}
                   <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6">
                     <div className="flex items-center gap-4">
@@ -9339,7 +8642,7 @@ export default function App() {
                         <input 
                           id="balance-email"
                           placeholder="user@example.com"
-                          className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:border-blue-500 transition-all shadow-inner"
+                          className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:border-blue-500 transition-all shadow-inner text-xs"
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -9349,7 +8652,7 @@ export default function App() {
                             id="balance-amount"
                             type="number"
                             placeholder="0.00"
-                            className="flex-1 px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:border-blue-500 transition-all shadow-inner"
+                            className="flex-1 px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:border-blue-500 transition-all shadow-inner text-xs"
                           />
                           <button 
                             onClick={() => {
@@ -9389,7 +8692,7 @@ export default function App() {
                     </div>
 
                   {/* Notification Center */}
-                  <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6">
+                  <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6 mb-6">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
                         <Send size={20} />
@@ -9439,7 +8742,7 @@ export default function App() {
                             onChange={(e) => setAdminNotifyForm({ ...adminNotifyForm, message: e.target.value })}
                             placeholder="Write your message..."
                             rows={1}
-                            className="flex-1 px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:border-indigo-500 transition-all shadow-inner resize-none"
+                            className="flex-1 px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:border-indigo-500 transition-all shadow-inner resize-none text-xs"
                           />
                         </div>
                       </div>
@@ -9467,7 +8770,7 @@ export default function App() {
                   </div>
 
                   {/* Pricing Configuration */}
-                  <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6">
+                  <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6 mb-6">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-[#2E7D32]">
                         <Tag size={20} />
@@ -9520,7 +8823,7 @@ export default function App() {
                   </div>
 
                   {/* Site Configuration */}
-                  <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6">
+                  <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6 mb-6">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600">
                         <Layers size={20} />
@@ -9555,247 +8858,8 @@ export default function App() {
                       </button>
                     </div>
                   </div>
-                </div>
 
-                {/* Google AdSense Revenue Hub & Monetization Console */}
-                <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6 mt-6">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 border border-amber-100 shadow-sm animate-pulse">
-                        <Sparkles size={24} />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-black text-slate-800 text-lg tracking-tight">Google AdSense Revenue Board</h3>
-                          <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${adsenseEnabled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            {adsenseEnabled ? '● ACTIVE' : '○ DISABLED'}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Dynamic ads.txt serving & live income simulator</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <a 
-                        href="/ads.txt" 
-                        target="_blank" 
-                        rel="noreferrer"
-                        className="px-3.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-lg text-[10px] font-black uppercase tracking-wider border border-slate-200/60 flex items-center gap-1.5 transition-all"
-                      >
-                        <Globe size={11} />
-                        View Live ads.txt
-                      </a>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Controls */}
-                    <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
-                      <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Configure Publisher ID</h4>
-                      
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">AdSense Publisher ID</label>
-                        <div className="relative">
-                          <input 
-                            value={pendingAdsensePubId}
-                            onChange={(e) => setPendingAdsensePubId(e.target.value)}
-                            placeholder="pub-XXXXXXXXXXXXXXXX"
-                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-800 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all placeholder:text-slate-300 shadow-2xs"
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">ID</span>
-                        </div>
-                        <p className="text-[9px] text-slate-400 font-semibold leading-relaxed">
-                          Enter your exact AdSense publisher ID in the form <code className="bg-slate-100 px-1 py-0.5 rounded text-red-500">pub-XXXXXXXX</code> or <code className="bg-slate-100 px-1 py-0.5 rounded text-red-500">ca-pub-XXXXXXXX</code>.
-                        </p>
-                      </div>
-
-                      <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200/60 shadow-2xs">
-                        <div>
-                          <span className="block font-bold text-slate-800 text-sm">Enable Banner & In-Feed Ads</span>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase">Toggle visibility of ads onsite</span>
-                        </div>
-                        <button 
-                          onClick={() => {
-                            const nextState = !adsenseEnabled;
-                            setAdsenseEnabled(nextState);
-                            localStorage.setItem('cache_adsense_enabled', String(nextState));
-                          }}
-                          className={`w-12 h-6 rounded-full p-1 flex transition-colors duration-300 ${adsenseEnabled ? 'bg-amber-500 justify-end' : 'bg-slate-200 justify-start'}`}
-                        >
-                          <div className="w-4 h-4 bg-white rounded-full shadow-sm" />
-                        </button>
-                      </div>
-
-                      <button 
-                        onClick={() => updateAdSenseSettings(pendingAdsensePubId, adsenseEnabled)}
-                        className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-amber-200/50 hover:opacity-95 transition-all text-center flex items-center justify-center gap-2 cursor-pointer"
-                      >
-                        <Sparkles size={12} />
-                        Save & Apply Changes
-                      </button>
-                    </div>
-
-                    {/* Dynamic ads.txt row display */}
-                    <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100 flex flex-col justify-between">
-                      <div>
-                        <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Compliance & Verifications</h4>
-                        <p className="text-[10.5px] text-slate-500 font-semibold leading-relaxed mb-3">
-                          Google AdSense crawlers require a valid <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700">ads.txt</code> declaration inside your domain's root folder to prevent unauthorized ad inventory placement.
-                        </p>
-                      </div>
-
-                      <div className="bg-slate-900 rounded-2xl p-4 font-mono text-[10px] sm:text-xs text-amber-400 border border-slate-800 shadow-inner select-all relative group break-all">
-                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <span className="bg-slate-800 text-white text-[8px] px-1.5 py-0.5 rounded font-sans uppercase font-bold tracking-widest">Select All</span>
-                        </div>
-                        # Google AdSense Declaration<br/>
-                        google.com, {adsensePubId ? (adsensePubId.trim().startsWith("pub-") || adsensePubId.trim().startsWith("ca-pub-") ? adsensePubId.trim().replace("ca-pub-", "") : adsensePubId.trim()) : "pub-0000000000000000"}, DIRECT, f08c47fec0942fa0
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => {
-                            const formatted = `google.com, ${adsensePubId ? (adsensePubId.trim().startsWith("pub-") || adsensePubId.trim().startsWith("ca-pub-") ? adsensePubId.trim().replace("ca-pub-", "") : adsensePubId.trim()) : "pub-0000000000000000"}, DIRECT, f08c47fec0942fa0`;
-                            navigator.clipboard.writeText(formatted);
-                            alert('ads.txt line copied to clipboard!');
-                          }}
-                          className="flex-1 py-3 bg-white hover:bg-slate-100 text-slate-700 rounded-xl font-black text-[9px] uppercase tracking-widest border border-slate-200 transition-all text-center flex items-center justify-center gap-1 shadow-sm"
-                        >
-                          Copy ads.txt Content
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Profit Estimator Dashboard */}
-                  <div className="bg-emerald-50/20 border border-emerald-500/10 rounded-3xl p-6 space-y-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center text-sm font-black">
-                        ৳
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-slate-800 text-sm">Interactive Marketplace Ad Income Calculator</h4>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Forecast your static and in-feed adsense revenue potentials</p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      {/* Range 1: Traffic */}
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between items-center text-[10px] font-black uppercase">
-                          <span className="text-slate-400">Daily Traffic (Pageviews)</span>
-                          <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 font-sans">{estTraffic.toLocaleString()} views</span>
-                        </div>
-                        <input 
-                          type="range"
-                          min="100"
-                          max="50000"
-                          step="100"
-                          value={estTraffic}
-                          onChange={(e) => setEstTraffic(Number(e.target.value))}
-                          className="w-full h-1.5 bg-emerald-100 rounded-lg appearance-none cursor-pointer accent-emerald-500 focus:outline-none"
-                        />
-                      </div>
-
-                      {/* Range 2: CTR */}
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between items-center text-[10px] font-black uppercase text-sans">
-                          <span className="text-slate-400">Estimate Ad CTR (%)</span>
-                          <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 font-sans">{estCTR}%</span>
-                        </div>
-                        <input 
-                          type="range"
-                          min="0.5"
-                          max="10.0"
-                          step="0.1"
-                          value={estCTR}
-                          onChange={(e) => setEstCTR(Number(e.target.value))}
-                          className="w-full h-1.5 bg-emerald-100 rounded-lg appearance-none cursor-pointer accent-emerald-500 focus:outline-none"
-                        />
-                      </div>
-
-                      {/* Range 3: CPC */}
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between items-center text-[10px] font-black uppercase">
-                          <span className="text-slate-400">Cost Per Click (CPC)</span>
-                          <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 font-emerald-700">৳{estCPC}</span>
-                        </div>
-                        <input 
-                          type="range"
-                          min="5"
-                          max="150"
-                          step="1"
-                          value={estCPC}
-                          onChange={(e) => setEstCPC(Number(e.target.value))}
-                          className="w-full h-1.5 bg-emerald-100 rounded-lg appearance-none cursor-pointer accent-emerald-500 focus:outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Result outputs */}
-                    <div className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-2xl p-5 text-white flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md shadow-emerald-100/50">
-                      <div className="space-y-0.5 text-center sm:text-left">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-[#FFEB3B] drop-shadow-xs">ESTIMATED REVENUE STREAM</span>
-                        <h5 className="text-3xl font-black tracking-tight flex items-baseline gap-1.5 justify-center sm:justify-start">
-                          ৳{Math.round(estTraffic * 30 * (estCTR / 100) * estCPC).toLocaleString()}
-                          <span className="text-xs font-semibold text-emerald-100 uppercase tracking-widest font-sans">/ month</span>
-                        </h5>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4 divide-x divide-white/20 text-center w-full sm:w-auto shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-white/10 sm:flex sm:gap-6 sm:divide-x">
-                        <div className="px-2">
-                          <span className="block text-[8px] sm:text-[9px] font-black text-emerald-100 uppercase tracking-widest">Daily Estimate</span>
-                          <span className="text-sm sm:text-base font-black text-white">৳{Math.round(estTraffic * (estCTR / 100) * estCPC).toLocaleString()}</span>
-                        </div>
-                        <div className="px-2">
-                          <span className="block text-[8px] sm:text-[9px] font-black text-emerald-100 uppercase tracking-widest">Annual Potential</span>
-                          <span className="text-sm sm:text-base font-black text-[#FFEB3B]">৳{Math.round(estTraffic * 365 * (estCTR / 100) * estCPC).toLocaleString()}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Checklist and Blogger guides */}
-                  <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 space-y-4">
-                    <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Google AdSense Free Monetization & Setup Roadmap</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2.5">
-                        <div className="flex items-start gap-3 bg-white p-3 rounded-xl border border-slate-200/50 shadow-2xs">
-                          <input type="checkbox" defaultChecked className="mt-1 accent-emerald-500 rounded border-slate-300" />
-                          <div>
-                            <span className="block text-[11px] font-black text-slate-700 uppercase">1. Google compliance ads.txt verification</span>
-                            <p className="text-[9.5px] text-slate-500 font-semibold leading-relaxed">System compiles and hosts target ads.txt dynamics automatically at your root path.</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3 bg-white p-3 rounded-xl border border-slate-200/50 shadow-2xs">
-                          <input type="checkbox" defaultChecked className="mt-1 accent-emerald-500 rounded border-slate-300" />
-                          <div>
-                            <span className="block text-[11px] font-black text-slate-700 uppercase">2. Automated XML Sitemaps Setup</span>
-                            <p className="text-[9.5px] text-slate-500 font-semibold leading-relaxed">Search engines automatically fetch list profiles and indices at our live `sitemap.xml` feeds.</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2.5">
-                        <div className="flex items-start gap-3 bg-white p-3 rounded-xl border border-slate-200/50 shadow-2xs">
-                          <input type="checkbox" className="mt-1 accent-emerald-500 rounded border-slate-300" />
-                          <div>
-                            <span className="block text-[11px] font-black text-[#e2136e] uppercase font-sans">3. Set up Custom Blogger Domain mapping</span>
-                            <p className="text-[9.5px] text-slate-500 font-semibold leading-relaxed">Map custom top-level domains (e.g. .com, .net, .org) inside Blogger DNS configuration panels before review.</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3 bg-white p-3 rounded-xl border border-slate-200/50 shadow-2xs">
-                          <input type="checkbox" className="mt-1 accent-emerald-500 rounded border-slate-300" />
-                          <div>
-                            <span className="block text-[11px] font-black text-slate-700 uppercase">4. Apply on AdSense control panel</span>
-                            <p className="text-[9.5px] text-slate-500 font-semibold leading-relaxed">Add your verified site url to your Google AdSense Dashboard, copy Publisher ID, and activate.</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Adsterra Revenue Hub & Monetization Console */}
+                  {/* Adsterra Revenue Hub & Monetization Console */}
                 <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6 mt-6">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
                     <div className="flex items-center gap-4">
@@ -9893,31 +8957,11 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Adsterra Direct Link (Highest CPM) */}
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-rose-500 uppercase tracking-wider flex justify-between">
-                          <span>🔥 Adsterra Direct Link (সবচেয়ে বেশি ইনকামের ডাইরেক্ট লিংক)</span>
-                          <span className="text-rose-600 lowercase font-mono">adsterraDirectLink</span>
-                        </label>
-                        <div className="relative">
-                          <input 
-                            value={pendingAdsterraDirectLink}
-                            onChange={(e) => setPendingAdsterraDirectLink(e.target.value)}
-                            placeholder="e.g. https://www.highperformanceformat.com/xyz123abc..."
-                            className="w-full pl-4 pr-12 py-3 bg-white border border-rose-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-rose-500/20 focus:border-rose-450 outline-none transition-all placeholder:text-rose-205 shadow-2xs"
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded uppercase">direct</span>
-                        </div>
-                        <p className="text-[9.5px] text-slate-400 font-bold leading-relaxed">
-                          ⚠️ Adsterra ডাইরেক্ট লিংক (Direct Link) সেট করলে Reward Ads ভিউ অপশনে এটি সবার ওপরে লোড হবে এবং আপনার প্রতি ক্লিকে অনেক বেশি ইনকাম আসবে!
-                        </p>
-                      </div>
-
                       {/* Enable Switch */}
                       <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200/60 shadow-2xs">
                         <div>
                           <span className="block font-bold text-slate-800 text-sm">Enable Adsterra Ads</span>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase">Activate high-CPM Adsterra placements</span>
+                          <span className="text-[10px] text-slate-450 font-bold uppercase">Activate high-CPM Adsterra placements</span>
                         </div>
                         <button 
                           onClick={() => {
@@ -9937,8 +8981,7 @@ export default function App() {
                           pendingAdsterraBannerKey,
                           pendingAdsterraMobileBannerKey,
                           pendingAdsterraInFeedKey,
-                          pendingAdsterraStickyKey,
-                          pendingAdsterraDirectLink
+                          pendingAdsterraStickyKey
                         )}
                         className="w-full py-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-indigo-200/50 hover:opacity-95 transition-all text-center flex items-center justify-center gap-2 cursor-pointer"
                       >
@@ -12443,10 +11486,8 @@ export default function App() {
                                       </div>
                                       
                                       <AdSenseSlot 
-                                        pubId={adsensePubId} 
                                         type="in-feed" 
                                         className="mb-2 max-w-full rounded-lg overflow-hidden flex items-center justify-center opacity-85 hover:opacity-100 transition-opacity"
-                                        adsenseEnabled={adsenseEnabled}
                                         adsterraEnabled={adsterraEnabled}
                                         adsterraBannerKey={adsterraBannerKey}
                                         adsterraMobileBannerKey={adsterraMobileBannerKey}
@@ -13383,11 +12424,9 @@ export default function App() {
         </AnimatePresence>
 
         {/* Sticky bottom Google AdSense banner */}
-        {(adsenseEnabled || adsterraEnabled) && view !== 'admin' && view !== 'login' && view !== 'register' && view !== 'forgot' && view !== 'reset' && (
+        {adsterraEnabled && view !== 'admin' && view !== 'login' && view !== 'register' && view !== 'forgot' && view !== 'reset' && (
           <AdSenseSlot 
-            pubId={adsensePubId} 
             type="sticky-bottom" 
-            adsenseEnabled={adsenseEnabled}
             adsterraEnabled={adsterraEnabled}
             adsterraBannerKey={adsterraBannerKey}
             adsterraMobileBannerKey={adsterraMobileBannerKey}

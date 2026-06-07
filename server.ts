@@ -2,10 +2,11 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import admin from "firebase-admin";
+import { getFirestore } from "firebase-admin/firestore";
 import fs from "fs";
 
 // Initialize Firebase Admin lazily
-let db: admin.firestore.Firestore | null = null;
+let db: any = null;
 
 function getDb() {
   if (!db) {
@@ -17,7 +18,8 @@ function getDb() {
         projectId: firebaseConfig.projectId,
       });
     }
-    db = admin.firestore(firebaseConfig.firestoreDatabaseId);
+    const app = admin.apps[0];
+    db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
   }
   return db;
 }
