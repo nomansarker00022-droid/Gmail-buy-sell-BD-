@@ -2476,11 +2476,22 @@ export default function App() {
 
       // Send Push Notification via our Backend
       try {
+        let recipientFcmToken = null;
+        try {
+          const profileDoc = await getDoc(doc(db, 'profiles', finalToUserId));
+          if (profileDoc.exists()) {
+            recipientFcmToken = profileDoc.data()?.fcmToken || null;
+          }
+        } catch (fcmErr) {
+          console.warn('Could not read recipient FCM token from client Firestore:', fcmErr);
+        }
+
         fetch('/api/send-push', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             toUserId: finalToUserId,
+            fcmToken: recipientFcmToken,
             title: isAdmin ? 'New Admin Message' : 'New Notification',
             body: message,
             data: { 
@@ -10901,26 +10912,33 @@ export default function App() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 30 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className={`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] max-w-[380px] ${(paymentForm.method === 'bkash' ? 'bg-[#e2136e] border-[#d11264]' : 'bg-[#ed1c24] border-[#d11218]')} rounded-[2rem] shadow-2xl z-[101] overflow-hidden border transition-colors duration-500`}
+                className={`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] max-w-[380px] ${showPaymentModal.listingId === 'deposit' ? (paymentForm.method === 'bkash' ? 'bg-[#e2136e] border-[#d11264]' : 'bg-[#ed1c24] border-[#d11218]') : 'bg-slate-900 border-slate-950'} rounded-[2rem] shadow-2xl z-[101] overflow-hidden border transition-colors duration-500`}
               >
                 <div className="py-2.5 px-4 text-white relative font-sans">
                    <div className="flex items-center justify-between mb-2">
-                     <div className="flex gap-2.5 p-0.5 flex-1 max-w-[280px]">
-                       <button 
-                         onClick={() => setPaymentForm(prev => ({...prev, method: 'bkash'}))}
-                         className={`flex-1 h-10 rounded-xl flex items-center justify-center p-1 shadow-md transition-all relative ${paymentForm.method === 'bkash' ? 'bg-white scale-105 ring-2 ring-white/30' : 'bg-white/40 hover:bg-white/60 opacity-70 hover:opacity-100'}`}
-                       >
-                         <img src="https://www.logo.wine/a/logo/BKash/BKash-Logo.wine.svg" alt="bKash" className="w-full h-full object-contain scale-125" referrerPolicy="no-referrer" />
-                         {paymentForm.method === 'bkash' && <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-pink-600 rounded-full border border-white"></div>}
-                       </button>
-                       <button 
-                         onClick={() => setPaymentForm(prev => ({...prev, method: 'nagad'}))}
-                         className={`flex-1 h-10 rounded-xl flex items-center justify-center p-1 shadow-md transition-all relative ${paymentForm.method === 'nagad' ? 'bg-white scale-105 ring-2 ring-white/30' : 'bg-white/45 hover:bg-white/65 opacity-70 hover:opacity-100'}`}
-                       >
-                         <img src="https://www.logo.wine/a/logo/Nagad/Nagad-Logo.wine.svg" alt="Nagad" className="w-full h-full object-contain scale-125" referrerPolicy="no-referrer" />
-                         {paymentForm.method === 'nagad' && <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-600 rounded-full border border-white"></div>}
-                       </button>
-                     </div>
+                     {showPaymentModal.listingId === 'deposit' ? (
+                       <div className="flex gap-2.5 p-0.5 flex-1 max-w-[280px]">
+                         <button 
+                           onClick={() => setPaymentForm(prev => ({...prev, method: 'bkash'}))}
+                           className={`flex-1 h-10 rounded-xl flex items-center justify-center p-1 shadow-md transition-all relative ${paymentForm.method === 'bkash' ? 'bg-white scale-105 ring-2 ring-white/30' : 'bg-white/40 hover:bg-white/60 opacity-70 hover:opacity-100'}`}
+                         >
+                           <img src="https://www.logo.wine/a/logo/BKash/BKash-Logo.wine.svg" alt="bKash" className="w-full h-full object-contain scale-125" referrerPolicy="no-referrer" />
+                           {paymentForm.method === 'bkash' && <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-pink-600 rounded-full border border-white"></div>}
+                         </button>
+                         <button 
+                           onClick={() => setPaymentForm(prev => ({...prev, method: 'nagad'}))}
+                           className={`flex-1 h-10 rounded-xl flex items-center justify-center p-1 shadow-md transition-all relative ${paymentForm.method === 'nagad' ? 'bg-white scale-105 ring-2 ring-white/30' : 'bg-white/45 hover:bg-white/65 opacity-70 hover:opacity-100'}`}
+                         >
+                           <img src="https://www.logo.wine/a/logo/Nagad/Nagad-Logo.wine.svg" alt="Nagad" className="w-full h-full object-contain scale-125" referrerPolicy="no-referrer" />
+                           {paymentForm.method === 'nagad' && <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-600 rounded-full border border-white"></div>}
+                         </button>
+                       </div>
+                     ) : (
+                       <div className="flex items-center gap-2 py-1 pl-1">
+                         <Wallet size={16} className="text-white animate-pulse" />
+                         <span className="text-[11px] font-black uppercase tracking-widest text-[#FFEB3B]">GMAIL MARKETPLACE CHECKOUT</span>
+                       </div>
+                     )}
                      <button 
                        onClick={handleClosePaymentModal}
                        className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors ml-2"
@@ -11178,21 +11196,27 @@ export default function App() {
                                     )}
                                   </button>
                                 ) : (
-                                  <div className="bg-amber-50 border border-amber-100 p-2.5 rounded-xl text-left">
-                                    <p className="text-[9.5px] font-bold text-amber-800 leading-normal flex items-start gap-1.5">
-                                      <AlertCircle size={12} className="shrink-0 mt-0.5 text-amber-600" />
+                                  <div className="bg-amber-50 border border-amber-100 p-3.5 rounded-xl text-left space-y-2.5">
+                                    <p className="text-[9.5px] font-bold text-amber-850 leading-normal flex items-start gap-1.5 font-sans">
+                                      <AlertCircle size={12} className="shrink-0 mt-0.5 text-amber-600 animate-pulse" />
                                       <span>
-                                        অপর্যাপ্ত ব্যালেন্স! ওয়ালেট ব্যালেন্স দিয়ে কিনতে চাইলে আগে <b>টাকা ডেপোজিট করুন</b>, অথবা সরাসরি নিচে বিকাশ/নগদ এর মাধ্যমে পেমেন্ট করুন।
+                                        আপনার ওয়ালেট ব্যালেন্স পর্যাপ্ত নয়! জিমেইল কিনতে চাইলে দয়া করে আগে ব্যালেন্স ডেপোজিট করুন।
                                       </span>
                                     </p>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setView('profile');
+                                        setShowDepositArea(true);
+                                        setShowPaymentModal({ show: true, price: 100, listingId: 'deposit' });
+                                      }}
+                                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl text-[9.5px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md font-sans"
+                                    >
+                                      <Wallet size={11} />
+                                      টাকা ডেপোজিট করুন (Deposit Balance)
+                                    </button>
                                   </div>
                                 )}
-                              </div>
-
-                              <div className="flex items-center gap-2 py-1">
-                                <div className="h-px bg-slate-200 flex-1"></div>
-                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">অথবা সরাসরি পেমেন্ট করুন</span>
-                                <div className="h-px bg-slate-200 flex-1"></div>
                               </div>
                             </div>
                           )}
@@ -11217,7 +11241,9 @@ export default function App() {
                              </div>
                            </div>
                          )}
-                        <div className={`p-2.5 rounded-2xl border relative overflow-hidden group transition-colors ${paymentForm.method === 'bkash' ? 'bg-pink-50 border-pink-100' : 'bg-red-50 border-red-100'}`}>
+                        {showPaymentModal.listingId === 'deposit' && (
+                          <>
+                            <div className={`p-2.5 rounded-2xl border relative overflow-hidden group transition-colors ${paymentForm.method === 'bkash' ? 'bg-pink-50 border-pink-100' : 'bg-red-50 border-red-100'}`}>
                           <div className={`absolute top-0 right-0 w-16 h-16 ${paymentForm.method === 'bkash' ? 'bg-pink-100/50' : 'bg-red-100/50'} rounded-full -mr-8 -mt-8 group-hover:scale-110 transition-transform`}></div>
                           <div className="relative z-10 flex items-center justify-between">
                             <div className="space-y-0.5">
@@ -11378,6 +11404,8 @@ export default function App() {
                               <span className="text-[8px] font-black uppercase tracking-widest">Rapid</span>
                            </div>
                         </div>
+                          </>
+                        )}
                       </motion.div>
                     )}
                   </AnimatePresence>

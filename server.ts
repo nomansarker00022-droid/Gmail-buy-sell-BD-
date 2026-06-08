@@ -39,15 +39,21 @@ async function startServer() {
         return res.status(400).json({ error: "toUserId is required" });
       }
 
-      const firestore = getDb();
-      // 1. Get User's FCM tokens from Firestore profile
-      const userDoc = await firestore.collection("profiles").doc(toUserId).get();
-      if (!userDoc.exists) {
-        return res.status(404).json({ error: "User profile not found" });
-      }
+      let fcmToken = req.body.fcmToken;
 
-      const userData = userDoc.data();
-      const fcmToken = userData?.fcmToken;
+      if (!fcmToken) {
+        try {
+          const firestore = getDb();
+          // 1. Get User's FCM tokens from Firestore profile
+          const userDoc = await firestore.collection("profiles").doc(toUserId).get();
+          if (userDoc.exists) {
+            const userData = userDoc.data();
+            fcmToken = userData?.fcmToken;
+          }
+        } catch (dbErr: any) {
+          console.warn(`Could not retrieve fcmToken from Firestore, bypassing Firestore lookup: ${dbErr?.message || dbErr}`);
+        }
+      }
 
       if (!fcmToken) {
         console.log(`No FCM token found for user ${toUserId}`);
