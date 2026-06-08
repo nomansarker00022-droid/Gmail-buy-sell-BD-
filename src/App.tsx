@@ -5538,8 +5538,75 @@ export default function App() {
   if (user) {
     const hasDeposited = userProfile?.hasDeposited || (userProfile?.balance !== undefined && userProfile.balance > 0);
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex justify-center font-sans selection:bg-indigo-600/10 text-slate-900">
-        <div className="w-full max-w-[480px] bg-white min-h-screen relative flex flex-col shadow-[0_0_100px_rgba(0,0,0,0.04)] overflow-x-hidden">
+      <div className="min-h-screen bg-[#F1F5F9] flex justify-center items-start font-sans selection:bg-indigo-600/10 text-slate-900 lg:p-6 lg:gap-8 overflow-x-hidden">
+        {/* Left Desktop Sidebar Widget for v4.0 */}
+        <div className="hidden lg:flex w-[320px] shrink-0 flex-col gap-4 self-stretch justify-start py-4">
+          {/* Brand Card */}
+          <div className="bg-white border border-slate-200/80 p-6 rounded-[2rem] space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.03)] relative overflow-hidden text-slate-800 flex flex-col justify-between shrink-0">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
+            <div className="space-y-4 font-sans text-left">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 ring-4 ring-indigo-500/10 relative overflow-hidden shrink-0">
+                  <div className="absolute inset-0 bg-gradient-to-tr from-indigo-50 to-white opacity-25" />
+                  <Mail size={22} strokeWidth={2.5} />
+                </div>
+                <div>
+                  <h1 className="font-display text-lg font-black tracking-tight text-slate-900 flex items-center gap-1.5 leading-none">
+                    Gmail Hub <span className="text-[9px] font-black tracking-[0.1em] text-yellow-600 bg-yellow-400/10 px-2 py-0.5 rounded-full border border-yellow-400/20">BD</span>
+                  </h1>
+                  <p className="text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase mt-0.5">V4.0 ULTIMATE</p>
+                </div>
+              </div>
+              
+              <p className="text-[11.5px] text-slate-600 leading-relaxed font-sans font-medium">
+                Bangladesh's most trusted secure digital escrow and verification network. Built for instant transactions and complete user privacy.
+              </p>
+            </div>
+
+            <div className="h-px bg-slate-100" />
+            
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
+                <span className="flex items-center gap-1.5"><Shield size={13} className="text-indigo-600 font-extrabold" /> Security Protocol</span>
+                <span className="text-emerald-600 font-bold">256-Bit AES</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
+                <span className="flex items-center gap-1.5"><Zap size={13} className="text-yellow-600 font-extrabold" /> Escrow Engine</span>
+                <span className="text-slate-800 font-bold">Smart Wallet v4</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
+                <span className="flex items-center gap-1.5"><Activity size={13} className="text-cyan-600 font-extrabold" /> Gateway Route</span>
+                <span className="text-slate-800 font-bold">Cloud Cluster</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Card */}
+          <div className="bg-white border border-slate-200/80 p-6 rounded-[2rem] space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.03)] relative overflow-hidden text-slate-800 flex flex-col shrink-0 text-left">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Ecosystem Statistics</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl">
+                <div className="text-[8px] font-bold uppercase tracking-widest text-slate-400 leading-none">Escrow Deals</div>
+                <div className="text-lg font-display font-black text-emerald-600 mt-1">50,000+</div>
+                <div className="text-[7.5px] font-bold text-slate-400 uppercase mt-0.5 leading-none">Verified Success</div>
+              </div>
+              <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl">
+                <div className="text-[8px] font-bold uppercase tracking-widest text-slate-400 leading-none">Active Clients</div>
+                <div className="text-lg font-display font-black text-indigo-600 mt-1">4,800+</div>
+                <div className="text-[7.5px] font-bold text-slate-400 uppercase mt-0.5 leading-none">Daily Payout</div>
+              </div>
+            </div>
+            <div className="bg-emerald-500/5 border border-emerald-500/10 p-3 rounded-2xl flex items-center gap-2.5">
+              <Sparkles size={16} className="text-emerald-500 shrink-0" />
+              <p className="text-[10px] text-emerald-700 leading-relaxed font-semibold">
+                v4.0 integrates instant ledger tracking for automated user payouts & lightning OTP delivery.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Centralized Mobile App Screen Container */}
+        <div className="w-full lg:max-w-[850px] bg-white min-h-screen lg:min-h-[85vh] relative flex flex-col shadow-[0_12px_45px_rgba(0,0,0,0.03)] rounded-none lg:rounded-[2.5rem] overflow-x-hidden border-0 lg:border lg:border-slate-200/50 shrink-0 flex-1">
           {/* Sidebar Overlay */}
         <AnimatePresence>
           {isSidebarOpen && (
@@ -5709,7 +5776,7 @@ export default function App() {
 
                 {/* Footer Credits */}
                 <div className="p-6 border-t border-slate-50">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] text-center">Version 2.4.0</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] text-center">Version 4.0</p>
                 </div>
               </motion.aside>
             </>
@@ -12721,17 +12788,83 @@ export default function App() {
               <span>&bull;</span>
               <span>Secure 256-bit AES</span>
               <span>&bull;</span>
-              <span>v2.4.0</span>
+              <span>v4.0</span>
             </div>
           </div>
         </footer>
+      </div>
+
+      {/* Right Desktop Sidebar Widget */}
+      <div className="hidden lg:flex w-[320px] shrink-0 flex-col gap-4 self-stretch justify-start py-4">
+        <div className="bg-white border border-slate-200/80 p-6 rounded-[2rem] space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.03)] relative overflow-hidden text-slate-800 flex flex-col shrink-0 text-left">
+          <div className="flex items-center justify-between">
+            <h3 className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] leading-none">HELP desk</h3>
+            <div className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-[8.5px] font-black uppercase tracking-wider flex items-center gap-1 leading-none">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping shrink-0" />
+              ONLINE
+            </div>
+          </div>
+          
+          <a 
+            href="https://wa.me/8801410731308" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="block group bg-emerald-50/5 hover:bg-emerald-50/20 border border-emerald-500/20 hover:border-emerald-500/40 p-4 rounded-2xl transition-all shadow-xs"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-emerald-500/15 rounded-xl flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
+                <Phone size={18} strokeWidth={2.5} />
+              </div>
+              <div className="text-left font-sans">
+                <span className="block text-[8px] font-black tracking-widest text-[#2D8A4E] uppercase">WhatsApp Service</span>
+                <span className="text-slate-950 text-xs font-bold leading-none block mt-1 hover:underline">01410-731308</span>
+              </div>
+            </div>
+          </a>
+
+          <div className="space-y-3 pt-1">
+            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Guaranteed Quality</div>
+            <div className="space-y-2.5">
+              {[
+                "100% Verified Escrow Deals",
+                "Direct Admin Assistance Link",
+                "Instant Cash Out Guarantee",
+                "Secure AES Encrypted Keyboards"
+              ].map((std, idx) => (
+                <div key={idx} className="flex items-center gap-2 text-[11px] text-slate-700 font-semibold leading-none font-sans">
+                  <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
+                  <span>{std}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200/80 p-6 rounded-[2rem] space-y-3.5 shadow-[0_8px_30px_rgba(0,0,0,0.03)] relative overflow-hidden text-slate-800 flex flex-col shrink-0 text-left">
+          <div className="flex items-center gap-2">
+            <Trophy size={16} className="text-yellow-600 shrink-0" />
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider leading-none">Trade Safety Guide</span>
+          </div>
+          <p className="text-[11.5px] text-slate-600 leading-relaxed font-sans font-medium">
+            লেনদেন জালিয়াতি এড়াতে সর্বদা ওয়েবসাইট Escrow ব্যবহার করুন। Admin-কে সরাসরি WhatsApp/টেলিগ্রাম চুক্তির প্রমাণ প্রদান করতে পারেন।
+          </p>
+          <div className="bg-red-500/5 border border-red-500/15 p-3 rounded-2xl flex items-start gap-2.5">
+            <AlertTriangle size={14} className="text-red-500 shrink-0 mt-0.5" />
+            <p className="text-[9.5px] text-red-800 leading-snug font-semibold">
+              পাসওয়ার্ড বা রিকভারি ডাটা শেয়ার করার আগে পেমেন্ট ব্যালেন্স চেক করতে ভুলবেন না।
+            </p>
+          </div>
+        </div>
       </div>
     </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 font-sans selection:bg-[#2E7D32]/20">
+    <div className="min-h-screen bg-slate-950 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black flex items-center justify-center p-4 font-sans selection:bg-[#2E7D32]/20 relative overflow-hidden">
+      {/* Background neon elements */}
+      <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[125px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-[125px] pointer-events-none" />
       <AnimatePresence mode="wait">
         <motion.div
           key={view}
@@ -12748,10 +12881,17 @@ export default function App() {
           {view === 'login' && (
             <div className="space-y-10 relative z-10">
               <div className="text-center space-y-3">
-                <div className="w-24 h-24 bg-white rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-slate-200 border-4 border-slate-50 relative overflow-hidden group">
+                <div className="w-24 h-24 bg-white rounded-[2rem] flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-slate-200 border-4 border-slate-50 relative overflow-hidden group">
                   <div className="absolute inset-0 bg-gradient-to-tr from-indigo-50 to-white opacity-50" />
                   <Mail size={42} strokeWidth={2.5} className="text-indigo-600 relative z-10 group-hover:scale-110 transition-transform" />
                 </div>
+                
+                {/* v4.0 Engine Active Pill */}
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-100 text-[10px] font-black uppercase tracking-[0.15em] shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                  v4.0 Ultimate Engine
+                </div>
+
                 <h1 className="font-display text-4xl font-black tracking-tight text-[#0D1B3E] leading-tight">
                   Gmail Buy & Sell<span className="text-[#0D1B3E]/80"> BD</span>
                 </h1>
@@ -12933,7 +13073,7 @@ export default function App() {
                 <span className="hidden sm:inline opacity-30">&bull;</span>
                 <span>Secure 256-bit AES</span>
                 <span className="hidden sm:inline opacity-30">&bull;</span>
-                <span>v2.4.0</span>
+                <span>v4.0</span>
               </div>
             </div>
           )}
