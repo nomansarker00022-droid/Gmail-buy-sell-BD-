@@ -290,9 +290,9 @@ service cloud.firestore {
       allow list: if true;
       allow get: if true; 
 
-      allow create: if isSignedIn() && (
-        (isAdmin() && isValidListing(incoming())) ||
-        (!isAdmin() && isValidListing(incoming()) && incoming().status == 'SellRequest' && incoming().sellerId == request.auth.uid)
+      allow create: if isSignedIn() && isValidListing(incoming()) && (
+        (isAdmin()) ||
+        (incoming().status == 'SellRequest' && incoming().sellerId == request.auth.uid)
       );
 
       allow update: if isSignedIn() && isValidListing(incoming()) && (
