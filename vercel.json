@@ -10,7 +10,7 @@
       "destination": "/ads.txt"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!assets/|favicon.ico|robots.txt|ads.txt).*)",
       "destination": "/index.html"
     }
   ]
