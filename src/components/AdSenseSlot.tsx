@@ -11,6 +11,7 @@ interface AdSenseSlotProps {
   adsterraMobileBannerKey?: string;
   adsterraInFeedKey?: string;
   adsterraStickyKey?: string;
+  bgColor?: string;
 }
 
 // Beautiful high-CPM direct offers for Adsterra simulation
@@ -66,7 +67,8 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
   adsterraBannerKey = "",
   adsterraMobileBannerKey = "",
   adsterraInFeedKey = "",
-  adsterraStickyKey = ""
+  adsterraStickyKey = "",
+  bgColor = ""
 }) => {
   const [adIndex, setAdIndex] = useState(0);
   const [dismissed, setDismissed] = useState(false);
@@ -208,21 +210,55 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
   // ============================================
   
   if (type === 'sticky-bottom') {
+    const isColorDark = (hexColor: string) => {
+      if (!hexColor) return true; // default dark safety
+      if (!hexColor.startsWith('#')) return true;
+      const hex = hexColor.replace('#', '');
+      if (hex.length === 3) {
+        const r = parseInt(hex[0] + hex[0], 16);
+        const g = parseInt(hex[1] + hex[1], 16);
+        const b = parseInt(hex[2] + hex[2], 16);
+        const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+        return yiq < 128;
+      }
+      if (hex.length === 6) {
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+        return yiq < 128;
+      }
+      return true;
+    };
+
+    const isBgDark = isColorDark(bgColor);
+    const resolvedBg = bgColor || 'rgba(15, 23, 42, 0.95)'; // fallback Slate-900
+
     return (
       <motion.div 
         initial={{ y: 80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.8 }}
-        className="fixed bottom-16 sm:bottom-20 left-0 right-0 z-[40] px-4 md:px-8 pointer-events-none"
+        className="fixed bottom-16 sm:bottom-20 left-0 right-0 z-[40] px-4 md:px-8 pointer-events-none animate-in fade-in duration-300"
       >
-        <div className="max-w-4xl mx-auto rounded-2xl p-3 md:p-4 border shadow-2xl flex items-center justify-between gap-4 pointer-events-auto bg-slate-950/95 border-indigo-500/20 text-white">
+        <div 
+          className="max-w-4xl mx-auto rounded-2xl p-3 md:p-4 border shadow-2xl flex items-center justify-between gap-4 pointer-events-auto transition-all duration-300"
+          style={{ 
+            backgroundColor: resolvedBg, 
+            borderColor: isBgDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)' 
+          }}
+        >
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shrink-0 bg-indigo-600 text-white animate-pulse">
+            <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shrink-0 animate-pulse ${isBgDark ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-700 border border-indigo-100'}`}>
               AD
             </span>
             <div className="min-w-0">
-              <h5 className="text-xs md:text-sm font-black truncate">{currentAd.title}</h5>
-              <p className="text-slate-300 text-[10px] md:text-xs truncate hidden sm:block">{currentAd.descr}</p>
+              <h5 className={`text-xs md:text-sm font-black truncate transition-colors ${isBgDark ? 'text-white' : 'text-slate-800'}`}>
+                {currentAd.title}
+              </h5>
+              <p className={`text-[10px] md:text-xs truncate hidden sm:block transition-colors ${isBgDark ? 'text-slate-300' : 'text-slate-500'}`}>
+                {currentAd.descr}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -230,14 +266,14 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
               href={currentAd.url} 
               target="_blank" 
               rel="noreferrer"
-              className="px-3.5 py-2 text-white font-black text-[10.5px] uppercase tracking-wider rounded-xl transition-all active:scale-95 flex items-center gap-1 shadow-sm bg-indigo-600 hover:bg-indigo-700"
+              className="px-3.5 py-2 text-white font-black text-[10.5px] uppercase tracking-wider rounded-xl transition-all active:scale-95 flex items-center gap-1 shadow-sm bg-[#6366F1] hover:bg-indigo-700"
             >
               <span>{currentAd.cta}</span>
               <ExternalLink size={10} />
             </a>
             <button 
               onClick={() => setDismissed(true)}
-              className="p-2 text-slate-400 hover:text-white transition-colors animate-pulse"
+              className={`p-2 transition-colors animate-pulse cursor-pointer ${isBgDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'}`}
             >
               <X size={14} />
             </button>

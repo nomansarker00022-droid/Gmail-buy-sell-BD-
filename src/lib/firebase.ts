@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { initializeAuth, browserLocalPersistence, browserPopupRedirectResolver } from 'firebase/auth';
-import { initializeFirestore, doc, getDocFromServer, setLogLevel } from 'firebase/firestore';
+import { initializeFirestore, doc, getDocFromServer, setLogLevel, memoryLocalCache } from 'firebase/firestore';
 import { getMessaging } from 'firebase/messaging';
 import firebaseConfig from '@/firebase-applet-config.json';
 
@@ -24,10 +24,10 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes('remixed')) {
 
 const app = initializeApp(firebaseConfig);
 
-// Use initializeFirestore with enhanced settings for iframe environments.
+// Use initializeFirestore with memoryLocalCache to avoid IndexedDB issues in sandboxed iframes
 export const db = initializeFirestore(app, {
+  localCache: memoryLocalCache(),
   experimentalForceLongPolling: true,
-  // Ensure that memory-only persistence is NOT used if possible, but standard persistence is usually fine.
 }, firebaseConfig.firestoreDatabaseId || '(default)');
 
 // Robust Auth initialization for iframes and cross-origin environments
