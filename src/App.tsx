@@ -12211,24 +12211,22 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* Global Floating Chat Button */}
-        <button 
-          onClick={() => {
-            if (!user) {
-              setView('login');
-            } else {
-              setIsChatInboxOpen(true);
-            }
-          }}
-          className="fixed bottom-24 right-6 w-14 h-14 bg-[#00B56C] hover:bg-[#009b5c] text-white rounded-full shadow-[0_16px_48px_-12px_rgba(0,181,108,0.5)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-40 group cursor-pointer relative"
+        {/* Global Floating WhatsApp Support Button */}
+        <a 
+          id="site-chat-button"
+          href="https://wa.me/8801410731308"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed bottom-24 right-6 w-14 h-14 bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-full shadow-[0_16px_48px_-12px_rgba(37,211,102,0.5)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-40 group cursor-pointer"
+          title="Contact Support on WhatsApp"
         >
-          <MessageCircle size={28} strokeWidth={2.5} />
-          {totalUnreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-600 text-white font-black text-xs min-w-[20px] h-5 rounded-full flex items-center justify-center px-1 border-2 border-white shadow-md animate-bounce">
-              {totalUnreadCount}
-            </span>
-          )}
-        </button>
+          <svg 
+            className="w-8 h-8 fill-current" 
+            viewBox="0 0 24 24"
+          >
+            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.963C16.578 1.98 14.115 1.053 11.5 1.053c-5.442 0-9.868 4.371-9.872 9.799-.001 1.761.464 3.481 1.347 4.981l-.972 3.548 3.65-.955zm11.163-5.263c-.302-.15-1.78-.876-2.053-.974-.273-.098-.472-.147-.671.15-.197.297-.767.974-.94 1.169-.173.195-.347.218-.648.069-.302-.15-1.272-.469-2.423-1.493-.895-.796-1.5-1.78-1.275-2.17.223-.389.023-.601-.176-.797-.18-.177-.347-.405-.52-.607-.173-.203-.23-.347-.13-.548.1-.2.05-.376-.025-.525-.075-.15-.671-1.616-.92-2.215-.242-.582-.488-.504-.671-.513-.173-.008-.372-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.78-.727 2.03-1.429.25-.701.25-1.3.173-1.43-.075-.129-.273-.203-.574-.353z" />
+          </svg>
+        </a>
 
         {/* Mobile Footer Navigation */}
         <AnimatePresence>
