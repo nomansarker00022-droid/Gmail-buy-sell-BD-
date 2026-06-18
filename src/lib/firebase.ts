@@ -27,7 +27,6 @@ const app = initializeApp(firebaseConfig);
 // Use initializeFirestore with memoryLocalCache to avoid IndexedDB issues in sandboxed iframes
 export const db = initializeFirestore(app, {
   localCache: memoryLocalCache(),
-  experimentalForceLongPolling: true,
 }, firebaseConfig.firestoreDatabaseId || '(default)');
 
 // Robust Auth initialization for iframes and cross-origin environments

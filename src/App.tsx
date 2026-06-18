@@ -4765,76 +4765,13 @@ export default function App() {
         createdAt: serverTimestamp()
       });
 
-      const isInstantBkashDeposit = paymentForm.method === 'bkash' && isDeposit && trxIdClean.length === 10;
-      
-      if (isInstantBkashDeposit) {
-        // Increment balance in Firestore profile collection
-        const userProfileRef = doc(db, 'profiles', user!.uid);
-        await updateDoc(userProfileRef, {
-          balance: increment(Number(depositPrice)),
-          hasDeposited: true,
-          updatedAt: serverTimestamp()
-        });
-
-        // Set state locally
-        setUserProfile((prev: any) => ({
-          ...prev,
-          balance: (prev?.balance || 0) + Number(depositPrice),
-          hasDeposited: true
-        }));
-
-        // Log the payment as 'verified'
-        const paymentDoc = await addDoc(collection(db, 'payments'), {
-          userId: user?.uid,
-          userEmail: user?.email,
-          senderNumber: paymentForm.senderNumber,
-          trxId: trxIdClean,
-          method: paymentForm.method,
-          amount: Number(depositPrice),
-          listingId: 'deposit',
-          itemIds: [],
-          itemCount: 0,
-          status: 'verified', // Directly verified!
-          createdAt: serverTimestamp()
-        });
-
-        // Notify admins for ledger tracking
-        try {
-          const adminsSnapshot = await getDocs(query(collection(db, 'profiles'), where('role', '==', 'admin')));
-          const adminIds = adminsSnapshot.docs.map(doc => doc.id);
-          for (const adminId of adminIds) {
-            await sendNotification(adminId, `Instant Deposit: ৳${depositPrice} by ${user?.email} via bKash`, 'success', { type: 'instant_deposit', trxId: trxIdClean });
-          }
-          sendWhatsApp(`💳 INSTANT bKash Deposit! \nTrxID: ${trxIdClean} \nAmount: ৳${depositPrice} \nSenderAmount: ${paymentForm.senderNumber} \nUser: ${user?.email}`);
-        } catch (err) {
-          console.error("Instant notification error:", err);
-        }
-
-        // Complete the state resetting and show custom success animation
-        setPaymentForm(prev => ({ ...prev, senderNumber: '', trxId: '' }));
-        setSelectedListings([]);
-        setIsPaymentSent(false);
-        setCurrentPaymentId(null);
-        
-        setIsDepositCompleted(true);
-        setTimeout(() => {
-          setIsDepositCompleted(false);
-          setShowPaymentModal({ show: false, price: 0 });
-          setView('profile');
-        }, 3200);
-        return;
-      }
-
-      const idsToProcess = selectedListings.length > 0 ? selectedListings : [showPaymentModal.listingId].filter(Boolean) as string[];
+      const idsToProcess = isDeposit ? [] : (selectedListings.length > 0 ? selectedListings : [showPaymentModal.listingId].filter(Boolean) as string[]);
       
       if (idsToProcess.length === 0 && !isDeposit) {
-        throw new Error('No items selected for purchase');
+        throw new Error('No items selected for purchase / পণ্য নির্বাচন করা হয়নি');
       }
 
-      // Register TRX ID to prevent reuse immediately
-      // (Already done above, so we keep the signature correct but skip duplicate write is safe since overwrite is same)
-
-      // 1. Log the payment attempt for Admin review
+      // 1. Log the payment attempt for Admin review (and all deposits are set to 'pending' to prevent fraud)
       const paymentDoc = await addDoc(collection(db, 'payments'), {
         userId: user?.uid,
         userEmail: user?.email,
@@ -4842,7 +4779,7 @@ export default function App() {
         trxId: trxIdClean,
         method: paymentForm.method,
         amount: Number(depositPrice),
-        listingId: idsToProcess.length > 1 ? `bulk_${idsToProcess.length}` : (showPaymentModal.listingId || 'deposit'),
+        listingId: isDeposit ? 'deposit' : (idsToProcess.length > 1 ? `bulk_${idsToProcess.length}` : (showPaymentModal.listingId || 'deposit')),
         itemIds: idsToProcess,
         itemCount: idsToProcess.length,
         status: 'pending',
@@ -4885,7 +4822,7 @@ export default function App() {
           setShowPaymentModal({ show: false, price: 0 });
           setIsPaymentSent(false);
           setCurrentPaymentId(null);
-          setView('profile');
+          setView('transactions');
         }, 3200);
         return;
       }
@@ -5116,7 +5053,11 @@ export default function App() {
             hasDeposited: true,
             updatedAt: serverTimestamp()
           });
-          transaction.delete(paymentRef);
+          // Instead of deleting, mark it as verified so user can see it in transaction history
+          transaction.update(paymentRef, {
+            status: 'verified',
+            updatedAt: serverTimestamp()
+          });
         } 
         else if (listingsToProcess.length > 0) {
           let totalDirectSpent = 0;
@@ -11186,7 +11127,7 @@ export default function App() {
                           <div className="space-y-2 relative z-10 px-2">
                             <h3 className="text-base font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 inline-block tracking-tight text-[11px] uppercase tracking-widest mb-1 font-sans">Submit Successful</h3>
                             <p className="text-slate-800 text-sm font-black leading-relaxed">
-                              আপনার ডিপোজিট সম্পূর্ণ হয়েছে
+                              ডিপোজিট রিকুয়েস্ট সফলভাবে পাঠানো হয়েছে। অ্যাডমিন চেক করে অ্যাপ্রুভ করবে।
                             </p>
                             
                             {/* min balance / Deposit amount view shown on this next step */}
@@ -12101,22 +12042,22 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-md bg-white rounded-3xl shadow-2xl p-6 z-[70] overflow-hidden"
+                className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-[400px] bg-white rounded-3xl shadow-2xl p-6 z-[70] overflow-hidden flex flex-col max-h-[85vh]"
               >
                 <button 
                   onClick={handleCloseWelcome}
-                  className="absolute top-4 right-4 p-2 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors z-10"
+                  className="absolute top-4 right-4 p-2 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors z-20 animate-in fade-in"
                 >
                   <X size={18} className="text-slate-400" />
                 </button>
-                <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-red-500 via-purple-500 to-pink-500" />
+                <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-red-500 via-purple-500 to-pink-500 z-10" />
                 
-                <div className="text-center space-y-2 mb-6">
-                  <h2 className="text-xl font-black text-slate-900 tracking-tight">Welcome to Gmail Buy & Sell BD</h2>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">সম্পূর্ণ ভেরিফাইড মার্কেটপ্লেস এ আপনাকে স্বাগতম। অনুগ্রহ করে প্রোফাইলটি সম্পূর্ণ করুন।</p>
-                </div>
+                <div className="flex-1 overflow-y-auto pr-1 -mr-2 scrollbar-none space-y-4 pt-2">
+                  <div className="text-center space-y-2 mb-4">
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight">Welcome to Gmail Buy & Sell BD</h2>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">সম্পূর্ণ ভেরিফাইড মার্কেটপ্লেস এ আপনাকে স্বাগতম। অনুগ্রহ করে প্রোফাইলটি সম্পূর্ণ করুন।</p>
+                  </div>
 
-                <div className="space-y-4">
                   {/* Photo Upload */}
                   <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                     <div 
@@ -12154,7 +12095,7 @@ export default function App() {
                         value={welcomeForm.firstName}
                         onChange={(e) => setWelcomeForm(prev => ({ ...prev, firstName: e.target.value }))}
                         placeholder="Enter first name"
-                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-red-500 transition-all text-xs font-bold"
+                        className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-red-500 transition-all text-xs font-bold"
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -12164,7 +12105,7 @@ export default function App() {
                         value={welcomeForm.lastName}
                         onChange={(e) => setWelcomeForm(prev => ({ ...prev, lastName: e.target.value }))}
                         placeholder="Enter last name"
-                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-red-500 transition-all text-xs font-bold"
+                        className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-red-500 transition-all text-xs font-bold"
                       />
                     </div>
                   </div>
@@ -12176,7 +12117,7 @@ export default function App() {
                       value={welcomeForm.age}
                       onChange={(e) => setWelcomeForm(prev => ({ ...prev, age: e.target.value }))}
                       placeholder="Enter age"
-                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-red-500 transition-all text-xs font-bold"
+                      className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-red-500 transition-all text-xs font-bold"
                     />
                   </div>
 
@@ -12187,14 +12128,14 @@ export default function App() {
                       onChange={(e) => setWelcomeForm(prev => ({ ...prev, address: e.target.value }))}
                       placeholder="Enter address"
                       rows={2}
-                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-red-500 transition-all text-xs font-bold resize-none"
+                      className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-red-500 transition-all text-xs font-bold resize-none"
                     />
                   </div>
 
                   <button 
                     onClick={handleWelcomeSubmit}
                     disabled={isSubmitting}
-                    className="w-full py-4 mt-2 bg-slate-900 text-white rounded-2xl font-black text-[12px] uppercase tracking-[0.2em] shadow-lg shadow-slate-200 hover:bg-red-600 transition-all active:scale-95 flex items-center justify-center gap-2 group"
+                    className="w-full py-3.5 mt-1 bg-slate-900 text-white rounded-2xl font-black text-[12px] uppercase tracking-[0.2em] shadow-lg shadow-slate-200 hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center gap-2 group"
                   >
                     {isSubmitting ? (
                       <RefreshCw className="animate-spin" size={16} />
