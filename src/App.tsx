@@ -309,14 +309,63 @@ export default function App() {
     }
   };
 
+  const resolveLocalItemUpdate = (existingItem: any, updatePatch: any) => {
+    const existing = existingItem || {};
+    const result = { ...existing };
+    const nowSecs = Math.floor(Date.now() / 1000);
+
+    Object.keys(updatePatch).forEach(key => {
+      const val = updatePatch[key];
+
+      if (val && typeof val === 'object') {
+        const isIncrement = 
+          val._methodName === 'FieldValue.increment' ||
+          val._type === 'FieldValue' ||
+          (val.constructor && (val.constructor.name === 'FieldValue' || val.constructor.name === 'FieldValueImpl')) ||
+          ('operand' in val) ||
+          ('_operand' in val);
+
+        const isTimestamp = 
+          val._methodName === 'FieldValue.serverTimestamp' ||
+          (val.constructor && (val.constructor.name === 'Timestamp' || val.constructor.name === 'FieldValueImpl' && val._methodName === 'FieldValue.serverTimestamp'));
+
+        if (isIncrement) {
+          let operand = 0;
+          if (typeof val._operand === 'number') {
+            operand = val._operand;
+          } else if (typeof val.operand === 'number') {
+            operand = val.operand;
+          } else if (val.internalValue && typeof val.internalValue.operand === 'number') {
+            operand = val.internalValue.operand;
+          }
+          
+          const prevValue = Number(existing[key]) || 0;
+          result[key] = Number((prevValue + operand).toFixed(4));
+        } else if (isTimestamp) {
+          result[key] = { seconds: nowSecs, nanoseconds: 0 };
+        } else {
+          result[key] = val;
+        }
+      } else {
+        result[key] = val;
+      }
+    });
+
+    return result;
+  };
+
   const saveLocalItem = (collectionName: string, item: any) => {
     try {
       const items = getLocalItems(collectionName);
       const existingIndex = items.findIndex((i: any) => i.id === item.id);
+      
+      const existing = existingIndex > -1 ? items[existingIndex] : {};
+      const merged = resolveLocalItemUpdate(existing, item);
+
       if (existingIndex > -1) {
-        items[existingIndex] = { ...items[existingIndex], ...item };
+        items[existingIndex] = merged;
       } else {
-        items.push(item);
+        items.push(merged);
       }
       const userSuffix = user ? `_${user.uid}` : '_guest';
       localStorage.setItem(`local_virtual_${collectionName}${userSuffix}`, JSON.stringify(items));
@@ -5952,25 +6001,6 @@ export default function App() {
                 <span className="font-black whitespace-nowrap">৳ {userProfile?.balance !== undefined ? userProfile.balance.toFixed(0) : '0'}</span>
               </button>
 
-              {/* Chat Button with unread count badge */}
-              <button 
-                onClick={() => {
-                  if (!user) {
-                    setView('login');
-                  } else {
-                    setIsChatInboxOpen(true);
-                  }
-                }}
-                className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-650 hover:text-red-600 relative transition-all active:scale-90 cursor-pointer shrink-0"
-              >
-                <MessageSquare size={15} className="sm:w-[17px] sm:h-[17px]" strokeWidth={2.2} />
-                {totalUnreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-[#00B56C] text-white font-black text-[7px] sm:text-[8px] w-4 h-4 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                    {totalUnreadCount}
-                  </span>
-                )}
-              </button>
-
               {/* Bell Button with blue badge */}
               <button 
                 onClick={() => { setIsNotificationsOpen(true); }}
@@ -8487,12 +8517,6 @@ export default function App() {
                               <Zap size={11} className="text-amber-500 shrink-0" strokeWidth={2.5} />
                               <span>{liveItem.clicks || 0} clicks</span>
                             </div>
-
-                            {/* Messages pill in green outline */}
-                            <div className="px-3 py-1.5 bg-emerald-50/50 text-emerald-600 text-[11px] rounded-full border border-emerald-200/60 flex items-center gap-1 font-semibold leading-none">
-                              <MessageSquare size={11} className="text-emerald-500 shrink-0" strokeWidth={2.5} />
-                              <span>0 messages</span>
-                            </div>
                           </div>
                         </div>
                       </div>
@@ -8534,16 +8558,6 @@ export default function App() {
                         </div>
                       )}
 
-                      {/* Dynamic Seller Link button matching screenshot: "Seller-এর সাথে কথা বলুন" */}
-                      <button 
-                        onClick={() => {
-                          startListingChat(liveItem);
-                        }}
-                        className="w-full py-4.5 bg-[#2D8A4E] hover:bg-emerald-800 text-white font-black text-[14px] rounded-[1.5rem] flex items-center justify-center gap-2.5 active:scale-[0.98] transition-all cursor-pointer shadow-md shadow-emerald-250"
-                      >
-                        <MessageCircle size={18} strokeWidth={2.5} />
-                        <span>Seller-এর সাথে কথা বলুন</span>
-                      </button>
                     </div>
                   </div>
                  )}
@@ -9432,7 +9446,7 @@ export default function App() {
                     {allListings.filter(l => l.status === 'SellRequest').length === 0 && (
                       <div className="p-20 text-center">
                         <div className="w-20 h-20 bg-slate-50 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6">
-                          <BadgeCheck size={40} className="text-slate-200" />
+                          <CheckCircle size={40} className="text-slate-200" />
                         </div>
                         <h4 className="font-black text-slate-800 text-base mb-1">সব পরিষ্কার!</h4>
                         <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">সব রিকুয়েস্ট চেক করা হয়ে গেছে</p>
@@ -9510,6 +9524,7 @@ export default function App() {
                         >
                           Edit Selected
                         </button>
+
                         <button 
                           onClick={() => handleAdminBulkAction('Available')}
                           className="px-4 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95"
@@ -9680,6 +9695,25 @@ export default function App() {
                               REJECTED
                             </div>
                           )}
+                          
+                          {/* Permanent Payment Delete Button */}
+                          <button
+                            onClick={async () => {
+                              if (confirm('আপনি কি নিশ্চিত যে এই পেমেন্ট রেকর্ডটি সম্পূর্ণভাবে সার্ভার থেকে ডিলিট করতে চান?')) {
+                                try {
+                                  await deleteDoc(doc(db, 'payments', payment.id));
+                                  alert('পেমেন্ট রেকর্ডটি সফলভাবে সার্ভার থেকে সম্পূর্ণভাবে মুছে ফেলা হয়েছে!');
+                                } catch (err: any) {
+                                  alert('ভুল হয়েছে: ' + err.message);
+                                }
+                              }
+                            }}
+                            className="p-2 bg-slate-150 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-xl transition-all border border-slate-200/50 flex items-center justify-center cursor-pointer active:scale-95 shrink-0"
+                            title="Delete Payment Record Permanently"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+
                           <div className="text-right">
                              <p className="text-[9px] text-slate-400 font-bold uppercase">
                                {formatDate(payment.createdAt)}
@@ -9689,49 +9723,105 @@ export default function App() {
                       </motion.div>
                     ))
                   ) : listingFilter === 'Orders' ? (
-                    allPurchases.map((order, i) => (
-                      <motion.div
-                        key={order.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-white rounded-3xl border border-slate-100 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-sm"
-                      >
-                        <div className="flex items-center gap-4 flex-1">
-                          <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 shrink-0">
-                            <ShoppingCart size={24} />
-                          </div>
-                          <div className="space-y-1 flex-1 min-w-0">
-                            <h4 className="font-bold text-slate-800 break-all select-all">Order by {order.userEmail}</h4>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex flex-wrap gap-x-2 gap-y-1 items-center">
-                              <span>Item: <span className="text-slate-900 font-black break-all select-all">{order.gmailAccount}</span></span>
-                              <span className="text-slate-300 hidden min-[380px]:inline">•</span>
-                              <span>Price: <span className="text-[#2E7D32] font-black">৳{order.price}</span></span>
-                            </p>
-                            {order.sellerBkash && (
-                              <p className="text-[10px] text-orange-600 font-black uppercase tracking-widest mt-1 flex flex-wrap gap-x-1 items-center">
-                                <span>Seller bKash:</span> <span className="underline decoration-orange-200 break-all select-all">{order.sellerBkash}</span>
-                              </p>
-                            )}
-                            {/* Admin view for credentials in orders */}
-                            <div className="mt-3 p-3 bg-slate-900 rounded-xl text-white font-mono text-[10px] space-y-1">
-                               <p><span className="text-white/40">GMAIL:</span> {order.credentials?.email}</p>
-                               <p><span className="text-[#FFEB3B]">PASS:</span> {order.credentials?.password}</p>
-                               {order.credentials?.twoFactor && <p><span className="text-green-400">2FA:</span> {order.credentials?.twoFactor}</p>}
-                               {order.credentials?.recoveryEmail && <p><span className="text-blue-300">RECOVERY:</span> {order.credentials?.recoveryEmail}</p>}
-                            </div>
-                          </div>
+                    allPurchases.length === 0 ? (
+                      <div className="p-20 text-center bg-white rounded-3xl border border-slate-100 shadow-sm">
+                        <div className="w-20 h-20 bg-slate-50 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6">
+                          <ShoppingCart size={40} className="text-slate-300" />
                         </div>
-                        <div className="text-right">
-                          <p className="text-[10px] text-slate-400 font-bold uppercase">{formatDate(order.purchasedAt)}</p>
-                          <div className="mt-2 flex items-center gap-2 justify-end">
-                            <div className="flex items-center gap-1 px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-black border border-green-100 shadow-sm">
-                              <CheckCircle size={14} />
-                              APPROVED
-                            </div>
-                          </div>
+                        <h4 className="font-black text-slate-800 text-base mb-1">কোনো অর্ডার নেই</h4>
+                        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">বর্তমানে কোনো অর্ডারের রেকর্ড পাওয়া যায়নি</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex flex-col sm:flex-row justify-between items-center bg-white p-4 px-6 rounded-3xl border border-slate-100 shadow-sm gap-4">
+                          <span className="text-xs font-black text-slate-500 uppercase tracking-widest">
+                            মোট অর্ডারের সংখ্যা: <span className="text-slate-800 font-extrabold text-sm ml-1 bg-slate-100 px-3 py-1 rounded-full">{allPurchases.length} টি</span>
+                          </span>
+                          <button
+                            onClick={async () => {
+                              if (confirm(`আপনি কি নিশ্চিত যে আপনি সমস্ত (${allPurchases.length} টি) অর্ডার রেকর্ড সম্পূর্ণভাবে সার্ভার থেকে মুছে ফেলতে চান? এটি আর কোনোভাবেই ফিরিয়ে আনা যাবে না!`)) {
+                                try {
+                                  let deleteCount = 0;
+                                  for (const order of allPurchases) {
+                                    await deleteDoc(doc(db, 'purchases', order.id));
+                                    deleteCount++;
+                                  }
+                                  alert(`সফলভাবে ${deleteCount} টি অর্ডার রেকর্ড সার্ভার থেকে ডিলিট করা হয়েছে!`);
+                                } catch (err: any) {
+                                  alert('ভুল হয়েছে: ' + err.message);
+                                }
+                              }
+                            }}
+                            className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-black text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-2"
+                          >
+                            <Trash2 size={13} strokeWidth={2.5} />
+                            Delete All Orders
+                          </button>
                         </div>
-                      </motion.div>
-                    ))
+
+                        {allPurchases.map((order, i) => (
+                          <motion.div
+                            key={order.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-white rounded-3xl border border-slate-100 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-sm"
+                          >
+                            <div className="flex items-center gap-4 flex-1">
+                              <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 shrink-0">
+                                <ShoppingCart size={24} />
+                              </div>
+                              <div className="space-y-1 flex-1 min-w-0">
+                                <h4 className="font-bold text-slate-800 break-all select-all">Order by {order.userEmail}</h4>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex flex-wrap gap-x-2 gap-y-1 items-center">
+                                  <span>Item: <span className="text-slate-900 font-black break-all select-all">{order.gmailAccount}</span></span>
+                                  <span className="text-slate-300 hidden min-[380px]:inline">•</span>
+                                  <span>Price: <span className="text-[#2E7D32] font-black">৳{order.price}</span></span>
+                                </p>
+                                {order.sellerBkash && (
+                                  <p className="text-[10px] text-orange-600 font-black uppercase tracking-widest mt-1 flex flex-wrap gap-x-1 items-center">
+                                    <span>Seller bKash:</span> <span className="underline decoration-orange-200 break-all select-all">{order.sellerBkash}</span>
+                                  </p>
+                                )}
+                                {/* Admin view for credentials in orders */}
+                                <div className="mt-3 p-3 bg-slate-900 rounded-xl text-white font-mono text-[10px] space-y-1">
+                                   <p><span className="text-white/40">GMAIL:</span> {order.credentials?.email}</p>
+                                   <p><span className="text-[#FFEB3B]">PASS:</span> {order.credentials?.password}</p>
+                                   {order.credentials?.twoFactor && <p><span className="text-green-400">2FA:</span> {order.credentials?.twoFactor}</p>}
+                                   {order.credentials?.recoveryEmail && <p><span className="text-blue-300">RECOVERY:</span> {order.credentials?.recoveryEmail}</p>}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[10px] text-slate-400 font-bold uppercase">{formatDate(order.purchasedAt)}</p>
+                              <div className="mt-2 flex items-center gap-2 justify-end">
+                                <div className="flex items-center gap-1 px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-black border border-green-100 shadow-sm">
+                                  <CheckCircle size={14} />
+                                  APPROVED
+                                </div>
+                                
+                                {/* Permanent Order Delete Button */}
+                                <button
+                                  onClick={async () => {
+                                    if (confirm('আপনি কি নিশ্চিত যে এই অর্ডার রেকর্ডটি সম্পূর্ণভাবে সার্ভার থেকে ডিলিট করতে চান?')) {
+                                      try {
+                                        await deleteDoc(doc(db, 'purchases', order.id));
+                                        alert('অर्डर রেকর্ডটি সফলভাবে সার্ভার থেকে সম্পূর্ণভাবে মুছে ফেলা হয়েছে!');
+                                      } catch (err: any) {
+                                        alert('ভুল হয়েছে: ' + err.message);
+                                      }
+                                    }
+                                  }}
+                                  className="p-2 bg-slate-150 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-xl transition-all border border-slate-200/50 flex items-center justify-center cursor-pointer active:scale-95 shrink-0"
+                                  title="Delete Order Record Permanently"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    )
                   ) : listingFilter === 'Reports' ? (
                     adminReports.length === 0 ? (
                       <div className="p-20 text-center">
@@ -12501,276 +12591,7 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        <AnimatePresence>
-          {activeChatRoom && (
-            <>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setActiveChatRoom(null)}
-                className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[180]"
-              />
-              <motion.div
-                initial={{ y: "100%", opacity: 0.8 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: "100%", opacity: 0.8 }}
-                transition={{ type: "spring", damping: 30, stiffness: 300 }}
-                className="fixed inset-x-0 bottom-0 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:bottom-4 md:w-[480px] h-[85vh] md:h-[680px] bg-slate-50 md:rounded-3xl rounded-t-[2.5rem] shadow-2xl z-[190] flex flex-col overflow-hidden border border-white"
-              >
-                {/* Header */}
-                <div className="bg-white px-5 py-4 border-b border-slate-100 flex items-center justify-between shadow-xs shrink-0">
-                  <div className="flex items-center gap-3">
-                    {/* Avatar with circle logo */}
-                    <div className="w-10 h-10 bg-red-50 text-red-650 rounded-full flex items-center justify-center font-black text-xs border border-red-100 relative shadow-sm">
-                      {activeChatRoom.sellerId === user?.uid 
-                        ? activeChatRoom.buyerName.substring(0, 2).toUpperCase()
-                        : activeChatRoom.sellerName.substring(0, 2).toUpperCase()}
-                      <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white shadow-xs"></div>
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-black text-slate-800 leading-none">
-                        {activeChatRoom.sellerId === user?.uid ? activeChatRoom.buyerName : activeChatRoom.sellerName}
-                      </h4>
-                      <span className="text-[9.5px] font-black text-[#2D8A4E] uppercase tracking-wider block mt-1 leading-none">
-                        {activeChatRoom.listingTitle || 'Facebook Listing Customer'}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => setActiveChatRoom(null)} 
-                      className="p-2 text-slate-400 hover:text-slate-800 bg-slate-100/50 hover:bg-slate-100 rounded-full transition-all active:scale-95"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                </div>
 
-                {/* Message List area */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50 relative flex flex-col">
-                  {/* Notice of safety escrow */}
-                  <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-2xl text-center self-center max-w-[95%] mb-1 shadow-2xs">
-                    <span className="text-[11px] font-black text-emerald-800 tracking-tight block">🔐 Escrow Secure Chat</span>
-                    <span className="text-[9.5px] font-bold text-emerald-600 block mt-0.5 leading-snug">সবচেয়ে বিশ্বস্ত ডিল নিশ্চয়তা। কোনো প্রকার ডিরেক্ট লেনদেন করার আগে অবশ্যই আমাদের রুলস মেনে চলুন।</span>
-                  </div>
-
-                  {chatMessages.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400 my-auto">
-                      <div className="w-12 h-12 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mb-2.5 border border-red-100/50 shadow-inner">
-                        <MessageSquare size={22} />
-                      </div>
-                      <p className="font-black text-[11px] uppercase tracking-wider text-slate-500">মেসেজিং শুরু করুন</p>
-                      <p className="text-[9px] text-slate-400 font-bold mt-1.5 leading-normal max-w-[80%] mx-auto">বিক্রেতার সাথে সরাসরি চ্যাটের মাধ্যমে দামাদামি বা ডেলিভারি কনফার্ম করুন।</p>
-                    </div>
-                  ) : (
-                    chatMessages.map((msg, idx) => {
-                      const isMe = msg.senderId === user?.uid;
-                      return (
-                        <div 
-                          key={msg.id || idx} 
-                          className={`flex flex-col max-w-[80%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}
-                        >
-                          {!isMe && (
-                            <span className="text-[8.5px] font-black text-slate-400 pl-1.5 mb-0.5 uppercase tracking-wider">{msg.senderName}</span>
-                          )}
-                          
-                          <div 
-                            className={`px-4 py-2.5 rounded-2xl text-[11.5px] leading-snug font-bold shadow-2xs break-words ${
-                              isMe 
-                                ? 'bg-[#2D8A4E] text-white rounded-br-xs' 
-                                : 'bg-white text-slate-800 rounded-bl-xs border border-slate-100'
-                            }`}
-                          >
-                            {msg.imageUrl && (
-                              <div className="mb-1.5 max-w-full rounded-lg overflow-hidden border border-black/5 bg-slate-100">
-                                <img src={msg.imageUrl} referrerPolicy="no-referrer" alt="Attached asset" className="max-h-[160px] w-auto object-cover" />
-                              </div>
-                            )}
-                            <p className="whitespace-pre-wrap">{msg.text}</p>
-                          </div>
-
-                          <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-1 px-1">
-                            {formatTimeOnly(msg.createdAt, 'Sending...')}
-                          </span>
-                        </div>
-                      );
-                    })
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
-
-                {/* Input controls on bottom */}
-                <div className="bg-white p-2.5 border-t border-slate-100 shadow-lg shrink-0 flex items-center gap-2 pb-safe">
-                  <label className="p-2 text-slate-400 hover:text-[#2D8A4E] bg-slate-50 hover:bg-emerald-50 rounded-full transition-all active:scale-95 cursor-pointer border border-slate-100">
-                    <Camera size={16} />
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={handleChatImageAttach} 
-                      className="hidden" 
-                    />
-                  </label>
-
-                  <input 
-                    type="text" 
-                    placeholder="মেসেজ লিখুন..." 
-                    value={chatInputValue}
-                    onChange={(e) => setChatInputValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleSendChatMessage();
-                      }
-                    }}
-                    className="flex-1 px-4 py-3 bg-slate-100/50 hover:bg-slate-100/80 border border-transparent hover:border-slate-200 rounded-xl font-bold text-[10.5px] focus:outline-none focus:border-[#2D8A4E] focus:bg-white transition-all text-slate-800"
-                  />
-
-                  <button 
-                    onClick={handleSendChatMessage}
-                    className="w-10 h-10 bg-[#2D8A4E] hover:bg-emerald-800 text-white rounded-full flex items-center justify-center shadow-md active:scale-95 transition-all cursor-pointer shrink-0"
-                  >
-                    <Send size={14} />
-                  </button>
-                </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {isChatInboxOpen && (
-            <>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setIsChatInboxOpen(false)}
-                className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[180]"
-              />
-              <motion.div
-                initial={{ x: "100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "100%" }}
-                transition={{ type: "spring", damping: 30, stiffness: 300 }}
-                className="fixed inset-y-0 right-0 w-full sm:w-[420px] bg-slate-50 shadow-2xl z-[190] flex flex-col overflow-hidden border-l border-white"
-              >
-                {/* Header */}
-                <div className="bg-white px-5 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2 bg-emerald-50 text-[#2D8A4E] rounded-xl">
-                      <MessageSquare size={16} />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-black text-slate-800 tracking-tight leading-none">বার্তা ও ইনবক্স (Inbox)</h4>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1 leading-none">আপনার চলমান চ্যাট সমুহ</p>
-                    </div>
-                  </div>
-                  
-                  <button 
-                    onClick={() => setIsChatInboxOpen(false)} 
-                    className="p-2 text-slate-400 hover:text-slate-800 bg-slate-100/50 hover:bg-slate-100 rounded-full transition-all active:scale-95"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-
-                {/* Inbox Threads list */}
-                <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
-                  {!user ? (
-                    <div className="h-full flex flex-col items-center justify-center p-8 text-center my-auto">
-                      <div className="w-12 h-12 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mb-2.5 border">
-                        <UserIcon size={22} />
-                      </div>
-                      <p className="font-black text-[11px] uppercase tracking-wider text-slate-500">লগইন প্রয়োজন</p>
-                      <p className="text-[9px] text-slate-400 font-bold mt-1 max-w-[80%] mx-auto leading-normal">চলমান আলোচনাগুলো দেখতে বা উত্তর দিতে অনুগ্রহ করে প্রথমে সাইন ইন করুন।</p>
-                    </div>
-                  ) : userInboxThreads.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center p-8 text-center text-slate-400 my-auto">
-                      <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mb-2.5">
-                        <MessageSquare size={22} className="opacity-55" />
-                      </div>
-                      <p className="font-black text-[11px] uppercase tracking-wider text-slate-500">কোনো চ্যাট থ্রেড নেই</p>
-                      <p className="text-[9px] text-slate-400 font-bold mt-1 max-w-[85%] mx-auto leading-normal">চলতি কোনো চ্যাট পাওয়া যায়নি। মার্কেটপ্লেস থেকে যেকোনো ফেসবুক পেজের চ্যাট শুরু করতে পারেন।</p>
-                    </div>
-                  ) : (
-                    userInboxThreads.map((thread, idx) => {
-                      const isMeSender = thread.senderId === user.uid;
-                      
-                      // Extract roles safely using Split fallback
-                      const parts = thread.roomId ? thread.roomId.split('_') : [];
-                      const buyerId = thread.buyerId || parts[0] || 'buyer_id';
-                      const sellerId = thread.sellerId || parts[1] || 'seller_id';
-                      const isMeBuyer = buyerId === user.uid;
-                      
-                      const buyerName = thread.buyerName || (isMeBuyer ? (userProfile?.displayName || user.displayName || user.email?.split('@')[0] || 'গ্রাহক') : (isMeSender ? 'গ্রাহক' : (thread.senderName || 'গ্রাহক')));
-                      const sellerName = thread.sellerName || (!isMeBuyer ? (userProfile?.displayName || user.displayName || user.email?.split('@')[0] || 'বিক্রেতা') : (isMeSender ? (thread.receiverName || 'বিক্রেতা') : 'বিক্রেতা'));
-                      
-                      const companionName = isMeBuyer ? sellerName : buyerName;
-                      const isUnread = isThreadUnread(thread);
-                      
-                      return (
-                        <div 
-                          key={thread.id || idx}
-                          onClick={() => {
-                            setActiveChatRoom({
-                              id: thread.roomId || `${buyerId}_${sellerId}_general`,
-                              buyerId: buyerId,
-                              buyerName: buyerName,
-                              sellerId: sellerId,
-                              sellerName: sellerName,
-                              listingId: thread.listingId || '',
-                              listingTitle: thread.listingTitle || 'Facebook Account',
-                              listingCategory: thread.listingCategory || 'Facebook Account',
-                              listingPrice: thread.listingPrice || 0,
-                              listingDescription: thread.listingDescription || ''
-                            });
-                            setIsChatInboxOpen(false); // Close inbox drawer when opening room
-                          }}
-                          className={`p-3.5 rounded-2xl border transition-all cursor-pointer shadow-3xs flex items-center gap-3 group relative ${
-                            isUnread 
-                              ? 'bg-emerald-50/30 border-emerald-200 hover:bg-emerald-50/60 shadow-sm' 
-                              : 'bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-100/50'
-                          }`}
-                        >
-                          <div className={`w-10 h-10 font-black rounded-xl border flex items-center justify-center text-xs shadow-3xs ${
-                            isUnread 
-                              ? 'bg-emerald-600 border-emerald-700 text-white' 
-                              : 'bg-emerald-50 border-emerald-100/50 text-emerald-800'
-                          }`}>
-                            {companionName.substring(0, 2).toUpperCase()}
-                          </div>
-                          
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-0.5">
-                              <span className="text-[11.5px] font-black text-slate-800 truncate group-hover:text-[#2D8A4E] transition-colors leading-none flex items-center gap-1.5">
-                                {companionName}
-                                {isUnread && (
-                                  <span className="w-2 h-2 bg-[#2D8A4E] rounded-full animate-pulse" />
-                                )}
-                              </span>
-                              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">
-                                {formatTimeOnly(thread.createdAt, 'Now')}
-                              </span>
-                            </div>
-                            
-                            <p className={`text-[9.5px] truncate leading-snug ${isUnread ? 'font-black text-slate-900' : 'font-semibold text-slate-500'}`}>
-                              {isMeSender ? 'You: ' : ''}{thread.text}
-                            </p>
-
-                            <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-widest block mt-1 leading-none">
-                               {thread.listingTitle || 'N/A'}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
 
         {/* Sticky bottom Google AdSense banner */}
         {adsterraEnabled && view !== 'admin' && view !== 'login' && view !== 'register' && view !== 'forgot' && view !== 'reset' && (
