@@ -200,6 +200,8 @@ export default function App() {
   const [newRewardAdUrl, setNewRewardAdUrl] = useState("");
   const [newRewardAdImage, setNewRewardAdImage] = useState("");
   const [activeRewardAd, setActiveRewardAd] = useState<any | null>(null);
+  const [adPopupBlocked, setAdPopupBlocked] = useState(false);
+  const [currOpenedAdUrl, setCurrOpenedAdUrl] = useState<string>("");
   const [rewardAdDuration, setRewardAdDuration] = useState<number>(() => {
     const cached = localStorage.getItem('cache_reward_ad_duration');
     return cached ? Number(cached) : 30; // standard 30s default
@@ -1464,12 +1466,45 @@ export default function App() {
     // Record the click timestamp immediately to enforce 15-second wait rule
     setAdClickedTime(Date.now());
 
-    // Open Adsterra Direct Link in a new tab if enabled and available
+    let targetAdUrl = "";
     if (adsterraEnabled && adsterraDirectLinkUrl && adsterraDirectLinkUrl.trim() !== "") {
+      const linkOptions = adsterraDirectLinkUrl
+        .split(/[\n,;|]+/)
+        .map(link => link.trim())
+        .filter(link => link.length > 0)
+        .map(link => {
+          if (!/^https?:\/\//i.test(link)) {
+            return "https://" + link;
+          }
+          return link;
+        });
+
+      if (linkOptions.length > 0) {
+        const randIdx = Math.floor(Math.random() * linkOptions.length);
+        targetAdUrl = linkOptions[randIdx];
+        console.log("Selected random Adsterra link from pool:", targetAdUrl, "Total direct links:", linkOptions.length);
+      } else {
+        targetAdUrl = adsterraDirectLinkUrl.trim();
+      }
+    } else if (chosenAd && chosenAd.url) {
+      targetAdUrl = chosenAd.url;
+    } else {
+      targetAdUrl = "https://www.bkash.com/app-download";
+    }
+
+    setCurrOpenedAdUrl(targetAdUrl);
+    setAdPopupBlocked(false);
+
+    if (targetAdUrl) {
       try {
-        window.open(adsterraDirectLinkUrl.trim(), '_blank');
+        const adWindow = window.open(targetAdUrl, '_blank');
+        if (!adWindow || adWindow.closed || typeof adWindow.closed === 'undefined') {
+          console.warn("Popup blocked by browser settings");
+          setAdPopupBlocked(true);
+        }
       } catch (e) {
-        console.warn("Failed to open Adsterra direct link in a new tab", e);
+        console.warn("Failed to open ad link in a new tab", e);
+        setAdPopupBlocked(true);
       }
     }
 
@@ -9129,19 +9164,26 @@ export default function App() {
                       {/* DIRECT LINK URL - CHAT AND BONUS BLOCK ACTION */}
                       <div className="space-y-1.5 p-3.5 bg-amber-50/40 border border-amber-500/20 rounded-2xl">
                         <label className="text-[10px] font-black text-amber-800 uppercase tracking-wider flex justify-between">
-                          <span className="flex items-center gap-1">🔗 Direct Link Key/URL (Massive BDT/CPM)</span>
+                          <span className="flex items-center gap-1">🔗 Direct Link Pools / URL's (Massive BDT/CPM)</span>
                           <span className="text-amber-700 lowercase font-mono">adsterraDirectLinkUrl</span>
                         </label>
                         <div className="relative">
-                          <input 
+                          <textarea 
                             value={pendingAdsterraDirectLinkUrl}
                             onChange={(e) => setPendingAdsterraDirectLinkUrl(e.target.value)}
-                            placeholder="e.g. https://www.highperformanceformat.com/..."
-                            className="w-full pl-4 pr-20 py-3 bg-white border border-amber-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all placeholder:text-slate-400 shadow-2xs"
+                            placeholder="e.g. 
+https://www.highperformanceformat.com/link1
+https://www.highperformanceformat.com/link2"
+                            rows={3}
+                            className="w-full pl-4 pr-20 py-3 bg-white border border-amber-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all placeholder:text-slate-400 shadow-2xs resize-y"
                           />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black bg-amber-600 text-white px-2 py-0.5 rounded-md uppercase">Direct Link</span>
+                          <span className="absolute right-3 top-3 text-[8px] font-black bg-amber-600 text-white px-2 py-0.5 rounded-md uppercase">Direct Link Pool</span>
                         </div>
-                        <span className="block text-[9.5px] text-slate-400 font-bold leading-tight">Adsterra ড্যাশবোর্ড থেকে প্রাপ্ত "Direct Link" এর ফুল URL টি এখানে বসান। নম্বর আনলক বা ফ্রি বোনাস বাটনে এই বিজ্ঞাপনটি লোড হবে।</span>
+                        <span className="block text-[9.5px] text-slate-500 font-bold leading-tight mt-1">
+                          Adsterra ড্যাশবোর্ড থেকে প্রাপ্ত এক বা একাধিক <strong className="text-amber-800 font-black">"Direct Link"</strong> এর ফুল URL টি এখানে বসান। একাধিক লিংক থাকলে প্রতিটি লিংক <strong className="text-emerald-700">কমা (,)</strong> অথবা <strong className="text-emerald-700">নতুন লাইনে (Enter দিয়ে)</strong> লিখুন।
+                          <br />
+                          💡 প্রতিটি বিজ্ঞাপন ক্লিকে সিস্টেম স্বয়ংক্রিয়ভাবে একটি <strong className="text-blue-700">র্যান্ডম লিংক</strong> সিলেক্ট করে ওপেন করবে। এর ফলে আপনার Adsterra একাউন্টে ট্রাফিক ব্যালেন্স থাকবে এবং দ্বিগুণ আয়ের সুবিধা পাওয়া যাবে!
+                        </span>
                       </div>
 
                       {/* Enable Switch */}
@@ -11877,14 +11919,30 @@ export default function App() {
                                   </p>
                                 </div>
                               ) : (
-                                <div className="bg-emerald-50/45 border border-emerald-100 p-2.5 rounded-xl text-center space-y-1.5 font-sans animate-pulse">
-                                  <div className="w-5 h-5 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600">
+                                <div className="bg-emerald-50/45 border border-emerald-100 p-2.5 rounded-xl text-center space-y-1.5 font-sans">
+                                  <div className="w-5 h-5 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600 animate-pulse">
                                     <CheckCircle size={13} />
                                   </div>
-                                  <h4 className="text-[9.5px] font-black text-emerald-700 uppercase tracking-wider">বিজ্ঞাপন লিংক সাকসেসফুলি ওপেনড!</h4>
+                                  <h4 className="text-[9.5px] font-black text-emerald-700 uppercase tracking-wider">বিজ্ঞাপন লিংক সফলভাবে ওপেন করা হয়েছে!</h4>
                                   <p className="text-[8.5px] text-slate-600 leading-normal font-semibold">
                                     ⚠️ অবশ্যই ওপেন হওয়া উইন্ডোতে <strong className="text-rose-600 font-extrabold">১৫ সেকেন্ড অপেক্ষা</strong> করুন। তারপর এখানে ফিরে এসে ক্লেম করুন!
                                   </p>
+                                  {adPopupBlocked && currOpenedAdUrl && (
+                                    <div className="mt-2 p-2 bg-rose-50 border border-rose-200/60 rounded-xl space-y-1 text-center animate-bounce">
+                                      <p className="text-[8px] text-rose-700 font-bold leading-normal">
+                                        ⚠️ উফস! ব্রাউজার পপআপ ব্লকারের কারণে বিজ্ঞাপন পৃষ্ঠাটি সয়ংক্রিয়ভাবে খুলতে পারেনি।
+                                      </p>
+                                      <a
+                                        href={currOpenedAdUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={() => setAdClickedTime(Date.now())}
+                                        className="inline-block px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-[8.5px] rounded-md transition-all shadow-xs cursor-pointer"
+                                      >
+                                        👉 এখানে ক্লিক করে বিজ্ঞাপনটি ওপেন করুন
+                                      </a>
+                                    </div>
+                                  )}
                                 </div>
                               )}
 
