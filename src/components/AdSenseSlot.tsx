@@ -12,6 +12,9 @@ interface AdSenseSlotProps {
   adsterraInFeedKey?: string;
   adsterraStickyKey?: string;
   bgColor?: string;
+
+  clickdillaEnabled?: boolean;
+  clickdillaBannerCode?: string;
 }
 
 // Beautiful high-CPM direct offers for Adsterra simulation
@@ -68,7 +71,10 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
   adsterraMobileBannerKey = "",
   adsterraInFeedKey = "",
   adsterraStickyKey = "",
-  bgColor = ""
+  bgColor = "",
+
+  clickdillaEnabled = false,
+  clickdillaBannerCode = ""
 }) => {
   const [adIndex, setAdIndex] = useState(0);
   const [dismissed, setDismissed] = useState(false);
@@ -90,91 +96,143 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
     setAdIndex(Math.floor(Math.random() * SIMULATED_ADS_ADSTERRA.length));
   }, []);
 
-  // Handle live Adsterra script execution
+  // Handle live Adsterra & Clickdilla script execution
   useEffect(() => {
-    if (adsterraEnabled && containerRef.current) {
+    if (containerRef.current) {
       // Clear containers
       containerRef.current.innerHTML = '';
       
-      // Determine active key based on slot type and screen size
-      let activeKey = "";
-      let height = 90;
-      let width = 728;
+      const canShowAdsterra = adsterraEnabled && (
+        (type === 'banner' && (isMobile ? (adsterraMobileBannerKey || adsterraBannerKey) : adsterraBannerKey)) ||
+        (type === 'in-feed' && adsterraInFeedKey) ||
+        (type === 'sticky-bottom' && adsterraStickyKey)
+      );
+      const canShowClickdilla = clickdillaEnabled && clickdillaBannerCode && clickdillaBannerCode.trim() !== "";
 
-      if (type === 'banner') {
-        if (isMobile) {
-          activeKey = (adsterraMobileBannerKey || adsterraBannerKey || "").trim();
-          width = 320;
-          height = 50;
-        } else {
-          activeKey = (adsterraBannerKey || "").trim();
-          width = 728;
-          height = 90;
-        }
-      } else if (type === 'in-feed') {
-        activeKey = (adsterraInFeedKey || "").trim();
-        width = 300;
-        height = 250;
-      } else if (type === 'sticky-bottom') {
-        activeKey = (adsterraStickyKey || "").trim();
-        width = 320;
-        height = 50;
+      let activeNetwork: 'adsterra' | 'clickdilla' | 'none' = 'none';
+      if (canShowAdsterra && canShowClickdilla) {
+        activeNetwork = Math.random() > 0.5 ? 'adsterra' : 'clickdilla';
+      } else if (canShowAdsterra) {
+        activeNetwork = 'adsterra';
+      } else if (canShowClickdilla) {
+        activeNetwork = 'clickdilla';
       }
 
-      // If a real active key is provided for Adsterra, inject script
-      if (activeKey) {
-        try {
-          const atOptionsScript = document.createElement('script');
-          atOptionsScript.type = 'text/javascript';
-          atOptionsScript.innerHTML = `
-            window.atOptions = {
-              'key' : '${activeKey}',
-              'format' : 'iframe',
-              'height' : ${height},
-              'width' : ${width},
-              'params' : {}
+      if (activeNetwork === 'adsterra') {
+        // Determine active key based on slot type and screen size
+        let activeKey = "";
+        let height = 90;
+        let width = 728;
+
+        if (type === 'banner') {
+          if (isMobile) {
+            activeKey = (adsterraMobileBannerKey || adsterraBannerKey || "").trim();
+            width = 320;
+            height = 50;
+          } else {
+            activeKey = (adsterraBannerKey || "").trim();
+            width = 728;
+            height = 90;
+          }
+        } else if (type === 'in-feed') {
+          activeKey = (adsterraInFeedKey || "").trim();
+          width = 300;
+          height = 250;
+        } else if (type === 'sticky-bottom') {
+          activeKey = (adsterraStickyKey || "").trim();
+          width = 320;
+          height = 50;
+        }
+
+        // If a real active key is provided for Adsterra, inject script
+        if (activeKey) {
+          try {
+            const atOptionsScript = document.createElement('script');
+            atOptionsScript.type = 'text/javascript';
+            atOptionsScript.innerHTML = `
+              window.atOptions = {
+                'key' : '${activeKey}',
+                'format' : 'iframe',
+                'height' : ${height},
+                'width' : ${width},
+                'params' : {}
+              };
+            `;
+            containerRef.current.appendChild(atOptionsScript);
+
+            const invokeScript = document.createElement('script');
+            invokeScript.type = 'text/javascript';
+            invokeScript.src = `//www.highperformanceformat.com/${activeKey}/invoke.js`;
+            
+            // Fallback script source handling error protection
+            invokeScript.onerror = () => {
+              console.warn("Retrying with fallback topcreativeformat server for Adsterra...");
+              const fallbackScript = document.createElement('script');
+              fallbackScript.type = 'text/javascript';
+              fallbackScript.src = `//www.topcreativeformat.com/${activeKey}/invoke.js`;
+              if (containerRef.current) {
+                containerRef.current.appendChild(fallbackScript);
+              }
             };
-          `;
-          containerRef.current.appendChild(atOptionsScript);
 
-          const invokeScript = document.createElement('script');
-          invokeScript.type = 'text/javascript';
-          invokeScript.src = `//www.highperformanceformat.com/${activeKey}/invoke.js`;
+            containerRef.current.appendChild(invokeScript);
+          } catch (scriptErr) {
+            console.error("Adsterra script loading exception:", scriptErr);
+          }
+        }
+      } else if (activeNetwork === 'clickdilla') {
+        try {
+          const rawCode = clickdillaBannerCode.trim();
+          const tempDiv = document.createElement('div');
+          tempDiv.className = "flex justify-center items-center w-full min-w-0";
+          tempDiv.innerHTML = rawCode;
           
-          // Fallback script source handling error protection
-          invokeScript.onerror = () => {
-            console.warn("Retrying with fallback topcreativeformat server for Adsterra...");
-            const fallbackScript = document.createElement('script');
-            fallbackScript.type = 'text/javascript';
-            fallbackScript.src = `//www.topcreativeformat.com/${activeKey}/invoke.js`;
-            if (containerRef.current) {
-              containerRef.current.appendChild(fallbackScript);
+          const scripts = tempDiv.getElementsByTagName('script');
+          const scriptList = Array.from(scripts);
+          
+          scriptList.forEach(s => s.parentNode?.removeChild(s));
+          containerRef.current.appendChild(tempDiv);
+          
+          scriptList.forEach(origScript => {
+            const newScript = document.createElement('script');
+            newScript.type = 'text/javascript';
+            if (origScript.src) {
+              newScript.src = origScript.src;
+            } else {
+              newScript.innerHTML = origScript.innerHTML;
             }
-          };
-
-          containerRef.current.appendChild(invokeScript);
-        } catch (scriptErr) {
-          console.error("Adsterra script loading exception:", scriptErr);
+            Array.from(origScript.attributes).forEach(attr => {
+              if (attr.name !== 'src') {
+                newScript.setAttribute(attr.name, attr.value);
+              }
+            });
+            containerRef.current?.appendChild(newScript);
+          });
+        } catch (err) {
+          console.error("Clickdilla Banner script execution exception:", err);
         }
       }
     }
-  }, [adsterraEnabled, adsterraBannerKey, adsterraMobileBannerKey, adsterraInFeedKey, adsterraStickyKey, type, isMobile]);
+  }, [adsterraEnabled, adsterraBannerKey, adsterraMobileBannerKey, adsterraInFeedKey, adsterraStickyKey, clickdillaEnabled, clickdillaBannerCode, type, isMobile]);
 
-  if (dismissed || !adsterraEnabled) return null;
+  if (dismissed || (!adsterraEnabled && !clickdillaEnabled)) return null;
 
   // Set active simulated ad information
   const currentAd = SIMULATED_ADS_ADSTERRA[adIndex] || SIMULATED_ADS_ADSTERRA[0];
 
   // ============================================
-  // CASE 1: REAL LIVE ADSTERRA SCRIPT RENDERING
+  // CASE 1: REAL LIVE ADSTERRA / CLICKDILLA SCRIPT RENDERING
   // ============================================
-  const hasLiveAdsterraKey = adsterraEnabled && (
+  const canShowAdsterra = adsterraEnabled && (
     (type === 'banner' && (isMobile ? (adsterraMobileBannerKey || adsterraBannerKey) : adsterraBannerKey)) ||
     (type === 'in-feed' && adsterraInFeedKey) ||
     (type === 'sticky-bottom' && adsterraStickyKey)
   );
+  const canShowClickdilla = clickdillaEnabled && clickdillaBannerCode && clickdillaBannerCode.trim() !== "";
 
-  if (hasLiveAdsterraKey) {
+  const hasLiveAdKey = canShowAdsterra || canShowClickdilla;
+
+  if (hasLiveAdKey) {
     let containerWidth = "w-full max-w-[728px]";
     let containerHeight = "min-h-[90px]";
     if (type === 'in-feed') {
@@ -185,12 +243,14 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
       containerHeight = "min-h-[50px]";
     }
 
+    const showClickdillaHeader = clickdillaEnabled && (!adsterraEnabled || Math.random() > 0.5);
+
     return (
       <div className={`adsterra-wrapper my-6 overflow-hidden mx-auto text-center ${className}`}>
         <div className={`mx-auto ${containerWidth} flex items-center justify-between px-3 py-1 bg-slate-900 border border-slate-800 rounded-t-xl text-[9px] text-indigo-400 font-bold`}>
           <div className="flex items-center gap-1.5 font-sans">
             <Flame size={10} className="text-indigo-400 animate-bounce" />
-            <span>ADSTERRA NETWORK PREMIUM SPONSOR</span>
+            <span>{showClickdillaHeader ? "CLICKDILLA PREMIUM SPONSOR AD" : "ADSTERRA NETWORK PREMIUM SPONSOR"}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="hover:underline">Secure Ad</span>
@@ -199,7 +259,7 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
         <div 
           className={`bg-slate-950 border-x border-b border-slate-800 p-3 rounded-b-xl flex justify-center items-center ${containerHeight} mx-auto`}
           ref={containerRef}
-          id={`adsterra-container-${type}`}
+          id={`ad-container-${type}`}
         />
       </div>
     );

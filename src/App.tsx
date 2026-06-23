@@ -185,6 +185,19 @@ export default function App() {
   const [pendingAdsterraSocialBarKey, setPendingAdsterraSocialBarKey] = useState(() => localStorage.getItem('cache_adsterra_socialbar_key') || "");
   const [pendingAdsterraDirectLinkUrl, setPendingAdsterraDirectLinkUrl] = useState(() => localStorage.getItem('cache_adsterra_direct_link_url') || "");
 
+  // Clickdilla Configurations
+  const [clickdillaEnabled, setClickdillaEnabled] = useState(() => localStorage.getItem('cache_clickdilla_enabled') === 'true');
+  const [clickdillaPopunderCode, setClickdillaPopunderCode] = useState(() => localStorage.getItem('cache_clickdilla_popunder_code') || "");
+  const [clickdillaBannerCode, setClickdillaBannerCode] = useState(() => localStorage.getItem('cache_clickdilla_banner_code') || "");
+  const [clickdillaDirectLinkUrl, setClickdillaDirectLinkUrl] = useState(() => localStorage.getItem('cache_clickdilla_direct_link_url') || "");
+  const [clickdillaVideoEnabled, setClickdillaVideoEnabled] = useState(() => localStorage.getItem('cache_clickdilla_video_enabled') === 'true');
+  const [clickdillaVideoUrl, setClickdillaVideoUrl] = useState(() => localStorage.getItem('cache_clickdilla_video_url') || "");
+
+  const [pendingClickdillaPopunderCode, setPendingClickdillaPopunderCode] = useState(() => localStorage.getItem('cache_clickdilla_popunder_code') || "");
+  const [pendingClickdillaBannerCode, setPendingClickdillaBannerCode] = useState(() => localStorage.getItem('cache_clickdilla_banner_code') || "");
+  const [pendingClickdillaDirectLinkUrl, setPendingClickdillaDirectLinkUrl] = useState(() => localStorage.getItem('cache_clickdilla_direct_link_url') || "");
+  const [pendingClickdillaVideoUrl, setPendingClickdillaVideoUrl] = useState(() => localStorage.getItem('cache_clickdilla_video_url') || "");
+
   // Reward ads custom controls states
   const [rewardAds, setRewardAds] = useState<any[]>(() => {
     try {
@@ -298,6 +311,47 @@ export default function App() {
       }
     };
   }, [adsterraEnabled, adsterraPopunderKey, adsterraSocialBarKey]);
+
+
+  // Sitewide Clickdilla Popunder / Clickunder injection
+  useEffect(() => {
+    if (!clickdillaEnabled || !clickdillaPopunderCode || !clickdillaPopunderCode.trim()) return;
+
+    let injectedScript: HTMLScriptElement | null = null;
+    try {
+      const code = clickdillaPopunderCode.trim();
+      injectedScript = document.createElement('script');
+      injectedScript.type = 'text/javascript';
+
+      if (code.includes('<script')) {
+        const srcMatch = code.match(/src=["']([^"']+)["']/i);
+        if (srcMatch && srcMatch[1]) {
+          injectedScript.src = srcMatch[1];
+          const dataOptions = [...code.matchAll(/data-([^=\s]+)=["']([^"']+)["']/gi)];
+          dataOptions.forEach(opt => {
+            injectedScript?.setAttribute(`data-${opt[1]}`, opt[2]);
+          });
+        } else {
+          const innerCode = code.replace(/<script[^>]*>/gi, '').replace(/<\/script>/gi, '');
+          injectedScript.innerHTML = innerCode;
+        }
+      } else if (code.startsWith('http') || code.startsWith('//')) {
+        injectedScript.src = code;
+      } else {
+        injectedScript.innerHTML = code;
+      }
+
+      document.head.appendChild(injectedScript);
+    } catch (err) {
+      console.error("Clickdilla Popunder script injection failure:", err);
+    }
+
+    return () => {
+      if (injectedScript && document.head.contains(injectedScript)) {
+        try { document.head.removeChild(injectedScript); } catch (e) {}
+      }
+    };
+  }, [clickdillaEnabled, clickdillaPopunderCode]);
 
 
   // --- Local Virtual DB & Quota Resilience Engine (Absolute Zero Data Loss & Seamless Execution) ---
@@ -1434,7 +1488,59 @@ export default function App() {
   useEffect(() => {
     setAdsEarnError(null);
     setAdsEarnSuccess(null);
-  }, [showAdsEarnModal]);
+    if (showAdsEarnModal) {
+      // Pre-calculate target ad URL so the button itself can be a direct target link that doesn't get blocked by popup blockers!
+      const pool = rewardAds && rewardAds.length > 0 ? rewardAds : fallbackRewards;
+      const randomIndex = Math.floor(Math.random() * pool.length);
+      const chosenAd = pool[randomIndex];
+      let targetAdUrl = "";
+
+      if (clickdillaVideoEnabled && clickdillaVideoUrl && clickdillaVideoUrl.trim() !== "") {
+        const clickdillaVideoLinks = clickdillaVideoUrl
+          .split(/[\n,;|]+/)
+          .map(link => link.trim())
+          .filter(link => link.length > 0)
+          .map(link => /^https?:\/\//i.test(link) ? link : "https://" + link);
+        if (clickdillaVideoLinks.length > 0) {
+          const randIdx = Math.floor(Math.random() * clickdillaVideoLinks.length);
+          targetAdUrl = clickdillaVideoLinks[randIdx];
+        }
+      }
+
+      if (!targetAdUrl) {
+        const activeDirectLinks: string[] = [];
+
+        if (adsterraEnabled && adsterraDirectLinkUrl && adsterraDirectLinkUrl.trim() !== "") {
+          const adsterraLinks = adsterraDirectLinkUrl
+            .split(/[\n,;|]+/)
+            .map(link => link.trim())
+            .filter(link => link.length > 0)
+            .map(link => /^https?:\/\//i.test(link) ? link : "https://" + link);
+          activeDirectLinks.push(...adsterraLinks);
+        }
+
+        if (clickdillaEnabled && clickdillaDirectLinkUrl && clickdillaDirectLinkUrl.trim() !== "") {
+          const clickdillaLinks = clickdillaDirectLinkUrl
+            .split(/[\n,;|]+/)
+            .map(link => link.trim())
+            .filter(link => link.length > 0)
+            .map(link => /^https?:\/\//i.test(link) ? link : "https://" + link);
+          activeDirectLinks.push(...clickdillaLinks);
+        }
+
+        if (activeDirectLinks.length > 0) {
+          const randIdx = Math.floor(Math.random() * activeDirectLinks.length);
+          targetAdUrl = activeDirectLinks[randIdx];
+        } else if (chosenAd && chosenAd.url) {
+          targetAdUrl = chosenAd.url;
+        } else {
+          targetAdUrl = "https://www.bkash.com/app-download";
+        }
+      }
+
+      setCurrOpenedAdUrl(targetAdUrl);
+    }
+  }, [showAdsEarnModal, adsterraEnabled, adsterraDirectLinkUrl, clickdillaEnabled, clickdillaDirectLinkUrl, clickdillaVideoEnabled, clickdillaVideoUrl, rewardAds]);
 
   const getTodayDateString = () => {
     const d = new Date();
@@ -1466,49 +1572,56 @@ export default function App() {
     // Record the click timestamp immediately to enforce 15-second wait rule
     setAdClickedTime(Date.now());
 
-    let targetAdUrl = "";
-    if (adsterraEnabled && adsterraDirectLinkUrl && adsterraDirectLinkUrl.trim() !== "") {
-      const linkOptions = adsterraDirectLinkUrl
-        .split(/[\n,;|]+/)
-        .map(link => link.trim())
-        .filter(link => link.length > 0)
-        .map(link => {
-          if (!/^https?:\/\//i.test(link)) {
-            return "https://" + link;
-          }
-          return link;
-        });
+    // Fallback if no pre-generated link is set
+    if (!currOpenedAdUrl) {
+      let targetAdUrl = "";
 
-      if (linkOptions.length > 0) {
-        const randIdx = Math.floor(Math.random() * linkOptions.length);
-        targetAdUrl = linkOptions[randIdx];
-        console.log("Selected random Adsterra link from pool:", targetAdUrl, "Total direct links:", linkOptions.length);
-      } else {
-        targetAdUrl = adsterraDirectLinkUrl.trim();
-      }
-    } else if (chosenAd && chosenAd.url) {
-      targetAdUrl = chosenAd.url;
-    } else {
-      targetAdUrl = "https://www.bkash.com/app-download";
-    }
-
-    setCurrOpenedAdUrl(targetAdUrl);
-    setAdPopupBlocked(false);
-
-    if (targetAdUrl) {
-      try {
-        const adWindow = window.open(targetAdUrl, '_blank');
-        if (!adWindow || adWindow.closed || typeof adWindow.closed === 'undefined') {
-          console.warn("Popup blocked by browser settings");
-          setAdPopupBlocked(true);
+      if (clickdillaVideoEnabled && clickdillaVideoUrl && clickdillaVideoUrl.trim() !== "") {
+        const clickdillaVideoLinks = clickdillaVideoUrl
+          .split(/[\n,;|]+/)
+          .map(link => link.trim())
+          .filter(link => link.length > 0)
+          .map(link => /^https?:\/\//i.test(link) ? link : "https://" + link);
+        if (clickdillaVideoLinks.length > 0) {
+          const randIdx = Math.floor(Math.random() * clickdillaVideoLinks.length);
+          targetAdUrl = clickdillaVideoLinks[randIdx];
         }
-      } catch (e) {
-        console.warn("Failed to open ad link in a new tab", e);
-        setAdPopupBlocked(true);
       }
+
+      if (!targetAdUrl) {
+        const activeDirectLinks: string[] = [];
+
+        if (adsterraEnabled && adsterraDirectLinkUrl && adsterraDirectLinkUrl.trim() !== "") {
+          const adsterraLinks = adsterraDirectLinkUrl
+            .split(/[\n,;|]+/)
+            .map(link => link.trim())
+            .filter(link => link.length > 0)
+            .map(link => /^https?:\/\//i.test(link) ? link : "https://" + link);
+          activeDirectLinks.push(...adsterraLinks);
+        }
+
+        if (clickdillaEnabled && clickdillaDirectLinkUrl && clickdillaDirectLinkUrl.trim() !== "") {
+          const clickdillaLinks = clickdillaDirectLinkUrl
+            .split(/[\n,;|]+/)
+            .map(link => link.trim())
+            .filter(link => link.length > 0)
+            .map(link => /^https?:\/\//i.test(link) ? link : "https://" + link);
+          activeDirectLinks.push(...clickdillaLinks);
+        }
+
+        if (activeDirectLinks.length > 0) {
+          const randIdx = Math.floor(Math.random() * activeDirectLinks.length);
+          targetAdUrl = activeDirectLinks[randIdx];
+        } else if (chosenAd && chosenAd.url) {
+          targetAdUrl = chosenAd.url;
+        } else {
+          targetAdUrl = "https://www.bkash.com/app-download";
+        }
+      }
+
+      setCurrOpenedAdUrl(targetAdUrl);
     }
 
-    // Set ad watch status to 'completed' immediately, bypassing timing/delay countdown
     setAdWatchStatus('completed');
     setAdWatchProgress(100);
   };
@@ -5587,6 +5700,36 @@ export default function App() {
           console.warn("Skipping dynamic adsterra config fetch from firestore (using cache):", adsterraErr);
         }
 
+        // Fetch Clickdilla Configurations
+        const clickdillaDocRef = doc(db, 'settings', 'clickdilla');
+        try {
+          const clickdillaSnap = await getDoc(clickdillaDocRef);
+          if (clickdillaSnap.exists()) {
+            const data = clickdillaSnap.data();
+            if (data) {
+              setClickdillaEnabled(data.enabled === true);
+              setClickdillaPopunderCode(data.popunderCode || "");
+              setPendingClickdillaPopunderCode(data.popunderCode || "");
+              setClickdillaBannerCode(data.bannerCode || "");
+              setPendingClickdillaBannerCode(data.bannerCode || "");
+              setClickdillaDirectLinkUrl(data.directLinkUrl || "");
+              setPendingClickdillaDirectLinkUrl(data.directLinkUrl || "");
+              setClickdillaVideoEnabled(data.videoEnabled === true);
+              setClickdillaVideoUrl(data.videoUrl || "");
+              setPendingClickdillaVideoUrl(data.videoUrl || "");
+
+              localStorage.setItem('cache_clickdilla_enabled', String(data.enabled === true));
+              localStorage.setItem('cache_clickdilla_popunder_code', data.popunderCode || "");
+              localStorage.setItem('cache_clickdilla_banner_code', data.bannerCode || "");
+              localStorage.setItem('cache_clickdilla_direct_link_url', data.directLinkUrl || "");
+              localStorage.setItem('cache_clickdilla_video_enabled', String(data.videoEnabled === true));
+              localStorage.setItem('cache_clickdilla_video_url', data.videoUrl || "");
+            }
+          }
+        } catch (clickdillaErr) {
+          console.warn("Skipping dynamic clickdilla config fetch from firestore (using cache):", clickdillaErr);
+        }
+
         // Fetch Custom Reward Ads Configurations
         const rewardAdsDocRef = doc(db, 'settings', 'reward_ads');
         try {
@@ -5734,6 +5877,44 @@ export default function App() {
       alert('Adsterra configurations successfully updated!');
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'settings/adsterra');
+    }
+  };
+
+  const updateClickdillaSettings = async (
+    enabled: boolean,
+    popunderCode: string,
+    bannerCode: string,
+    directLinkUrl: string,
+    videoEnabled: boolean,
+    videoUrl: string
+  ) => {
+    if (!isAdmin) return;
+    try {
+      await setDoc(doc(db, 'settings', 'clickdilla'), {
+        enabled,
+        popunderCode: popunderCode.trim(),
+        bannerCode: bannerCode.trim(),
+        directLinkUrl: directLinkUrl.trim(),
+        videoEnabled,
+        videoUrl: videoUrl.trim(),
+        updatedAt: serverTimestamp()
+      });
+      setClickdillaEnabled(enabled);
+      setClickdillaPopunderCode(popunderCode.trim());
+      setClickdillaBannerCode(bannerCode.trim());
+      setClickdillaDirectLinkUrl(directLinkUrl.trim());
+      setClickdillaVideoEnabled(videoEnabled);
+      setClickdillaVideoUrl(videoUrl.trim());
+
+      localStorage.setItem('cache_clickdilla_enabled', String(enabled));
+      localStorage.setItem('cache_clickdilla_popunder_code', popunderCode.trim());
+      localStorage.setItem('cache_clickdilla_banner_code', bannerCode.trim());
+      localStorage.setItem('cache_clickdilla_direct_link_url', directLinkUrl.trim());
+      localStorage.setItem('cache_clickdilla_video_enabled', String(videoEnabled));
+      localStorage.setItem('cache_clickdilla_video_url', videoUrl.trim());
+      alert('Clickdilla configurations successfully updated!');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, 'settings/clickdilla');
     }
   };
 
@@ -6343,8 +6524,8 @@ export default function App() {
 
 
 
-                {/* Adsterra Sponsor banner block */}
-                {adsterraEnabled ? (
+                {/* Adsterra/Clickdilla Sponsor banner block */}
+                {adsterraEnabled || clickdillaEnabled ? (
                   <AdSenseSlot 
                     type="banner" 
                     className="my-4"
@@ -6353,6 +6534,8 @@ export default function App() {
                     adsterraMobileBannerKey={adsterraMobileBannerKey}
                     adsterraInFeedKey={adsterraInFeedKey}
                     adsterraStickyKey={adsterraStickyKey}
+                    clickdillaEnabled={clickdillaEnabled}
+                    clickdillaBannerCode={clickdillaBannerCode}
                   />
                 ) : (
                   <div className="bg-[#0D1321] text-white rounded-2xl border border-slate-900 p-3.5 relative overflow-hidden my-4 text-left select-none shadow-sm block">
@@ -6811,7 +6994,7 @@ export default function App() {
                     ) : (
                       filteredMarketListings.map((item, i) => (
                         <React.Fragment key={item.id}>
-                          {adsterraEnabled && (i === 1 || i === 4) && (
+                          {(adsterraEnabled || clickdillaEnabled) && (i === 1 || i === 4) && (
                             <AdSenseSlot 
                               type="in-feed" 
                               className="my-1"
@@ -6820,6 +7003,8 @@ export default function App() {
                               adsterraMobileBannerKey={adsterraMobileBannerKey}
                               adsterraInFeedKey={adsterraInFeedKey}
                               adsterraStickyKey={adsterraStickyKey}
+                              clickdillaEnabled={clickdillaEnabled}
+                              clickdillaBannerCode={clickdillaBannerCode}
                             />
                           )}
                           <motion.div
@@ -9333,6 +9518,204 @@ https://www.highperformanceformat.com/link2"
                   </div>
                 </div>
 
+                {/* Clickdilla Revenue Hub & Monetization Console */}
+                <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6 mt-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 border border-blue-100 shadow-sm animate-pulse">
+                        <Flame size={24} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-black text-slate-800 text-lg tracking-tight font-display">Clickdilla Ad Networks Console</h3>
+                          <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${clickdillaEnabled ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
+                            {clickdillaEnabled ? '● ACTIVE' : '○ DISABLED'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Dynamic Clickdilla Popunders, Banner codes & monetizer</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="px-3.5 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-black uppercase tracking-wider border border-blue-100/50 flex items-center gap-1.5">
+                        <Coins size={11} className="animate-spin" />
+                        CLICKDILLA STATUS SUCCESS
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Controls & Keys */}
+                    <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
+                      <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Configure Clickdilla Placements</h4>
+                      
+                      {/* Banner JS Code Script Embed */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
+                          <span>Standard Banner Script Code (Embed full script)</span>
+                          <span className="text-blue-600 lowercase font-mono">clickdillaBannerCode</span>
+                        </label>
+                        <div className="relative">
+                          <textarea 
+                            value={pendingClickdillaBannerCode}
+                            onChange={(e) => setPendingClickdillaBannerCode(e.target.value)}
+                            placeholder="e.g. <script src='https://js.clickdilla.com/...'></script> or inline container div..."
+                            rows={3}
+                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-300 shadow-2xs resize-y"
+                          />
+                          <span className="absolute right-3 top-3 text-[9px] font-black bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded uppercase">Banner Code</span>
+                        </div>
+                      </div>
+
+                      {/* POPUNDER ID SCRIPT Embed */}
+                      <div className="space-y-1.5 p-3.5 bg-blue-50/30 border border-blue-500/10 rounded-2xl">
+                        <label className="text-[10px] font-black text-blue-700 uppercase tracking-wider flex justify-between">
+                          <span className="flex items-center gap-1">💥 Popunder Script Code (Embed/API url)</span>
+                          <span className="text-blue-600 lowercase font-mono">clickdillaPopunderCode</span>
+                        </label>
+                        <div className="relative">
+                          <textarea 
+                            value={pendingClickdillaPopunderCode}
+                            onChange={(e) => setPendingClickdillaPopunderCode(e.target.value)}
+                            placeholder="Copy script tag or API direct Popunder execution script text..."
+                            rows={3}
+                            className="w-full pl-4 pr-16 py-3 bg-white border border-blue-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-300 shadow-2xs resize-y"
+                          />
+                          <span className="absolute right-3 top-3 text-[8px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-md uppercase animate-pulse">Popunder</span>
+                        </div>
+                        <span className="block text-[9.5px] text-slate-400 font-bold leading-tight">এর মাধ্যমে ওয়েবসাইটের যেকোনো স্থানে ক্লিক করলে পপআন্ডার বিজ্ঞাপনটি রান হবে যা সর্বোচ্চ রেভিনিউ প্রদান করবে।</span>
+                      </div>
+
+                      {/* DIRECT LINK URL - CHAT AND BONUS BLOCK ACTION */}
+                      <div className="space-y-1.5 p-3.5 bg-amber-50/40 border border-amber-500/20 rounded-2xl">
+                        <label className="text-[10px] font-black text-amber-800 uppercase tracking-wider flex justify-between">
+                          <span className="flex items-center gap-1">🔗 Direct Link Pools / URL's (Massive BDT/CPM)</span>
+                          <span className="text-amber-700 lowercase font-mono">clickdillaDirectLinkUrl</span>
+                        </label>
+                        <div className="relative">
+                          <textarea 
+                            value={pendingClickdillaDirectLinkUrl}
+                            onChange={(e) => setPendingClickdillaDirectLinkUrl(e.target.value)}
+                            placeholder="e.g. 
+https://www.clickdilla.com/link1
+https://www.clickdilla.com/link2"
+                            rows={3}
+                            className="w-full pl-4 pr-20 py-3 bg-white border border-amber-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all placeholder:text-slate-400 shadow-2xs resize-y"
+                          />
+                          <span className="absolute right-3 top-3 text-[8px] font-black bg-amber-600 text-white px-2 py-0.5 rounded-md uppercase">Direct Link Pool</span>
+                        </div>
+                        <span className="block text-[9.5px] text-slate-500 font-bold leading-tight mt-1">
+                          Clickdilla ড্যাশবোর্ড থেকে প্রাপ্ত এক বা একাধিক <strong className="text-amber-800 font-black">"Direct Link"</strong> বা <strong className="text-amber-800 font-black">"Smartlink"</strong> এর ফুল URL টি এখানে বসান। প্রতিটি বিজ্ঞাপন ক্লিকে সিস্টেম স্বয়ংক্রিয়ভাবে একটি র্যান্ডম লিংক সিলেক্ট করে ওপেন করবে।
+                        </span>
+                      </div>
+
+                      {/* CLICKDILLA VIDEO ADS URL POOL */}
+                      <div className="space-y-1.5 p-3.5 bg-indigo-50/40 border border-indigo-500/25 rounded-2xl">
+                        <label className="text-[10px] font-black text-indigo-800 uppercase tracking-wider flex justify-between">
+                          <span className="flex items-center gap-1">🎥 Clickdilla Video Ads / Smartlink Pool (VIEW ৳০.১০)</span>
+                          <span className="text-indigo-700 lowercase font-mono">clickdillaVideoUrl</span>
+                        </label>
+                        <div className="relative">
+                          <textarea 
+                            value={pendingClickdillaVideoUrl}
+                            onChange={(e) => setPendingClickdillaVideoUrl(e.target.value)}
+                            placeholder="e.g. 
+https://www.clickdilla.com/video-link-1
+https://www.clickdilla.com/video-link-2"
+                            rows={3}
+                            className="w-full pl-4 pr-20 py-3 bg-white border border-indigo-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-450 shadow-2xs resize-y"
+                          />
+                          <span className="absolute right-3 top-3 text-[8px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded-md uppercase">Video Pool</span>
+                        </div>
+                        <span className="block text-[9.5px] text-slate-500 font-bold leading-tight mt-1">
+                          ব্যবহারকারী যখন ইউজার প্যানেল থেকে <strong className="text-indigo-800 font-black">"👉 VIEW (৳০.১০ আয় করুন)"</strong> বাটনে ক্লিক করবে, তখন সয়ংক্রিয়ভাবে এই লিস্টের একটি ভিডিও বিজ্ঞাপন লিংক ওপেন হবে।
+                        </span>
+                      </div>
+
+                      {/* Enable Switch for General Ads */}
+                      <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200/60 shadow-2xs">
+                        <div>
+                          <span className="block font-bold text-slate-800 text-sm">Enable Clickdilla Ads</span>
+                          <span className="text-[10px] text-slate-450 font-bold uppercase">Activate Clickdilla placements</span>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            const nextState = !clickdillaEnabled;
+                            setClickdillaEnabled(nextState);
+                            localStorage.setItem('cache_clickdilla_enabled', String(nextState));
+                          }}
+                          className={`w-12 h-6 rounded-full p-1 flex transition-colors duration-300 ${clickdillaEnabled ? 'bg-blue-600 justify-end' : 'bg-slate-200 justify-start'}`}
+                        >
+                          <div className="w-4 h-4 bg-white rounded-full shadow-sm" />
+                        </button>
+                      </div>
+
+                      {/* Enable Switch for Video Reward Ads */}
+                      <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200/60 shadow-2xs">
+                        <div>
+                          <span className="block font-bold text-slate-800 text-sm">Enable Clickdilla Video Ads</span>
+                          <span className="text-[10px] text-slate-450 font-bold uppercase">Activate Video Ads for ৳০.১০ Task</span>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            const nextState = !clickdillaVideoEnabled;
+                            setClickdillaVideoEnabled(nextState);
+                            localStorage.setItem('cache_clickdilla_video_enabled', String(nextState));
+                          }}
+                          className={`w-12 h-6 rounded-full p-1 flex transition-colors duration-300 ${clickdillaVideoEnabled ? 'bg-indigo-600 justify-end' : 'bg-slate-200 justify-start'}`}
+                        >
+                          <div className="w-4 h-4 bg-white rounded-full shadow-sm" />
+                        </button>
+                      </div>
+
+                      <button 
+                        onClick={() => updateClickdillaSettings(
+                          clickdillaEnabled,
+                          pendingClickdillaPopunderCode,
+                          pendingClickdillaBannerCode,
+                          pendingClickdillaDirectLinkUrl,
+                          clickdillaVideoEnabled,
+                          pendingClickdillaVideoUrl
+                        )}
+                        className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-blue-200/50 hover:opacity-95 transition-all text-center flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <Coins size={12} />
+                        Save Clickdilla Keys & Activate
+                      </button>
+                    </div>
+
+                    {/* Guidelines specifically customized for Clickdilla */}
+                    <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex flex-col justify-between">
+                      <div>
+                        <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                          <Sparkles size={11} className="text-blue-600" />
+                          Clickdilla Publisher Setup Roadmap
+                        </h4>
+                        <p className="text-[10.5px] text-slate-500 font-semibold leading-relaxed mb-4">
+                          কোড বসানোর নিয়মাবলি নিচের সহজ পদ্ধতিতে বুঝানো হলো:
+                        </p>
+
+                        <div className="space-y-4 text-[10px] sm:text-xs font-medium font-sans">
+                          <div className="space-y-2 text-slate-600 font-bold leading-normal">
+                            <p>
+                              ১. প্রথমে <a href="https://clickdilla.com" target="_blank" rel="noreferrer" className="text-blue-600 font-black hover:underline">Clickdilla Publisher</a> অ্যাকাউন্ট ক্রিয়েট করুন।
+                            </p>
+                            <p>
+                              ২. সেখানে ওয়েবসাইট যোগ করুন এবং অ্যাড ফরম্যাট ক্রিয়েট করুন (Popunder, Banners, Smartlink ইত্যাদি)।
+                            </p>
+                            <p>
+                              ৩. প্রাপ্ত সম্পূর্ণ স্ক্রিপ্ট কোডটি সরাসরি কপি করে এখানে সংশ্লিষ্ট বক্সে পেস্ট করুন। কোড অ্যাসেম্বলি এবং ইনজেক্টিং প্রসেস রিয়েলটাইমে রান হবে।
+                            </p>
+                          </div>
+                          
+                          <div className="bg-blue-600 rounded-2xl p-4 text-white text-xs font-bold leading-normal">
+                            💼 সফল বিজ্ঞাপন ক্লিকে ডাইরেক্ট লিংক পুল এবং পপআন্ডার ট্রাফিকের ব্যালেন্স অনুযায়ী আপনার Clickdilla একাউন্টে লাইভ রেভিনিউ যুক্ত হবে।
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Pending Payments to Verify */}
                 <div id="admin-payments" className="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-sm mb-12">
                   <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-pink-50/30">
@@ -10448,161 +10831,96 @@ https://www.highperformanceformat.com/link2"
                 exit={{ opacity: 0, y: -20 }}
                 className="space-y-6 pb-24"
               >
-                {/* Summary Stats */}
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { label: "Approved", status: 'Approved', count: sellerListings.filter(l => l.status === 'Approved').length, color: "text-green-600", bg: "bg-green-50" },
-                    { label: "Dispute", status: 'Dispute', count: sellerListings.filter(l => l.status === 'Dispute').length, color: "text-red-500", bg: "bg-red-50" },
-                    { label: "Sold", status: 'Sold', count: sellerListings.filter(l => l.status === 'Sold').length, color: "text-red-600", bg: "bg-red-50" },
-                  ].map((stat, i) => (
-                    <button 
-                      key={i} 
-                      onClick={() => setListingFilter(listingFilter === stat.status ? 'All' : stat.status)}
-                      className={`${stat.bg} py-2 px-1.5 rounded-lg border transition-all active:scale-95 flex flex-col items-center justify-center text-center ${listingFilter === stat.status ? 'border-red-400 shadow-sm ring-1 ring-red-50' : 'border-white shadow-sm hover:border-slate-200'}`}
-                    >
-                      <span className={`text-base font-black ${stat.color}`}>{stat.count}</span>
-                      <span className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.1em]">{stat.label}</span>
-                    </button>
+                    { label: "Available", status: 'Available', count: sellerListings.filter(l => l.status === 'Available').length, color: "text-green-600", bg: "bg-green-50 animate-pulse-slow" },
+                    { label: "Pending", status: 'SellRequest', count: sellerListings.filter(l => l.status === 'SellRequest').length, color: "text-amber-600", bg: "bg-amber-50" },
+                    { label: "Dispute", status: 'Dispute', count: sellerListings.filter(l => l.status === 'Dispute').length, color: "text-red-500", bg: "bg-red-50" }
+                  ].map((stat) => (
+                    <div key={stat.label} className={`${stat.bg} p-4 rounded-2xl border border-slate-100 flex flex-col items-center justify-center text-center shadow-sm`}>
+                      <span className={`text-[10px] font-black uppercase tracking-wider ${stat.color}`}>{stat.label}</span>
+                      <p className="text-xl sm:text-2xl font-black text-slate-800 leading-tight mt-1">{stat.count}</p>
+                    </div>
                   ))}
                 </div>
 
-                {/* Seller Center Header */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-1 p-2 bg-white rounded-lg border border-slate-50 shadow-sm relative">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1 bg-red-50 rounded-md">
-                      <Mail className="text-red-500" size={12} />
+                {/* Filter and Sell Action Buttons */}
+                <div className="bg-white rounded-[2rem] border border-slate-100 p-4 sm:p-6 space-y-4 shadow-sm">
+                  <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+                    <div className="flex flex-wrap gap-1.5 w-full sm:w-auto">
+                      {['All', 'Available', 'SellRequest', 'Approved', 'Dispute', 'Sold'].map((tab) => (
+                        <button
+                          key={tab}
+                          onClick={() => setListingFilter(tab)}
+                          className={`px-3 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                            listingFilter === tab ? 'bg-[#2E7D32] text-white shadow-sm' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                          }`}
+                        >
+                          {tab === 'SellRequest' ? 'Pending' : tab}
+                        </button>
+                      ))}
                     </div>
-                    <div>
-                      <h2 className="font-display text-[12px] font-black text-slate-800 tracking-tight">Seller Center</h2>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <div className="flex items-center gap-1 bg-slate-50 px-1 py-0.5 rounded border border-slate-50/50">
-                          <span className="w-1 h-1 bg-blue-500 rounded-full" />
-                          <span className="text-[7px] font-bold text-slate-500 uppercase tracking-wider">Live:</span>
-                          <span className="text-[9px] font-black text-blue-600">{sellerListings.filter(l => l.status === 'Available').length}</span>
-                        </div>
-                        <div className="flex items-center gap-1 bg-slate-50 px-1 py-0.5 rounded border border-slate-50/50">
-                          <span className="w-1 h-1 bg-orange-400 rounded-full" />
-                          <span className="text-[7px] font-bold text-slate-500 uppercase tracking-wider">Pending:</span>
-                          <span className="text-[9px] font-black text-orange-600">{sellerListings.filter(l => l.status === 'Pending').length}</span>
-                        </div>
-                      </div>
-                    </div>
+
+                    <button
+                      onClick={() => {
+                        setSellForm({
+                          email: '',
+                          password: '',
+                          recoveryEmail: '',
+                          twoFactor: '',
+                          bkashNumber: '',
+                          nagadNumber: '',
+                          type: 'Full Fresh New',
+                          price: '16',
+                          description: ''
+                        });
+                        setSellListingToEdit(null);
+                        setShowSellModal(true);
+                      }}
+                      className="w-full sm:w-auto py-3 px-6 bg-gradient-to-r from-[#2e7d32] to-[#1b5e20] text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                    >
+                      <Plus size={14} strokeWidth={3} />
+                      Sell Gmail Account
+                    </button>
+                  </div>
+
+                  {/* Search bar */}
+                  <div className="relative">
+                    <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="সার্চ করুন জিমেইল অ্যাকাউন্ট..."
+                      value={sellerSearchQuery}
+                      onChange={(e) => setSellerSearchQuery(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs font-bold focus:outline-none focus:ring-4 focus:ring-[#2e7d32]/10 focus:border-[#2e7d32] transition-all"
+                    />
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-1.5">
-                  <button 
-                    onClick={() => {}}
-                    className="flex-1 py-2 bg-white border border-slate-200 text-slate-700 font-black rounded-lg shadow-sm flex items-center justify-center gap-1.5 text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all active:scale-[0.98]"
-                  >
-                    <History size={12} />
-                    History
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setSellForm({
-                        email: '',
-                        password: '',
-                        recoveryEmail: '',
-                        twoFactor: '',
-                        bkashNumber: '',
-                        nagadNumber: '',
-                        type: 'Full Fresh New',
-                        price: gmailPrices['Full Fresh New']?.seller || '16',
-                        description: ''
-                      });
-                      setSellListingToEdit(null);
-                      setShowSellModal(true);
-                    }}
-                    className="flex-1 bg-[#2E7D32] text-white font-black py-2 rounded-lg shadow-md shadow-green-900/5 flex items-center justify-center gap-1.5 text-[10px] uppercase tracking-widest hover:bg-[#1B5E20] transition-all active:scale-[0.98]"
-                  >
-                    <Plus size={12} />
-                    Sell Gmail
-                  </button>
+                {/* Seller Listings Title */}
+                <div className="flex items-center justify-between px-2">
+                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                    <ShoppingBag size={14} /> My Gmail Listings
+                  </h3>
+                  <span className="text-[10px] font-black text-[#2e7d32] bg-green-50 border border-green-100 px-3 py-1 rounded-full uppercase tracking-wider">
+                    Total: {sellerListings.length}
+                  </span>
                 </div>
 
-                {/* Search Bar */}
-                <div className="relative group shadow-sm bg-white rounded-lg">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={12} />
-                  <input 
-                    type="text" 
-                    placeholder="Gmail দিয়ে খুঁজুন..."
-                    onChange={(e) => setSellerSearchQuery(e.target.value)}
-                    value={sellerSearchQuery}
-                    className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-white border border-slate-100 focus:outline-none focus:border-[#2E7D32] transition-all text-[10px] font-bold"
-                  />
-                </div>
-
-                {/* Seller Center Option Filters - Structured Grid to Prevent Off-screen Overflow on Mobile */}
-                <div className="grid grid-cols-4 gap-1 w-full pb-1 min-w-0">
-                  <button 
-                    onClick={() => setListingFilter('All')}
-                    className={`px-0.5 py-2 rounded-xl text-[8px] sm:text-[9px] font-black uppercase tracking-tight sm:tracking-wider text-center transition-all border cursor-pointer truncate ${listingFilter === 'All' ? 'bg-[#1B5E20] text-white border-[#1B5E20] shadow-md shadow-green-500/10' : 'bg-white text-slate-500 border-slate-100 hover:bg-slate-50'}`}
-                  >
-                    All
-                  </button>
-                  <button 
-                    onClick={() => setListingFilter('Approved')}
-                    className={`px-0.5 py-2 rounded-xl text-[8px] sm:text-[9px] font-black uppercase tracking-tight sm:tracking-wider text-center transition-all border cursor-pointer truncate ${listingFilter === 'Approved' ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/10' : 'bg-white text-slate-500 border-slate-100 hover:bg-slate-50'}`}
-                  >
-                    Approved
-                  </button>
-                  <button 
-                    onClick={() => setListingFilter('Sold')}
-                    className={`px-0.5 py-2 rounded-xl text-[8px] sm:text-[9px] font-black uppercase tracking-tight sm:tracking-wider text-center transition-all border cursor-pointer truncate ${listingFilter === 'Sold' ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/10' : 'bg-white text-slate-500 border-slate-100 hover:bg-slate-50'}`}
-                  >
-                    Sold
-                  </button>
-                  <button 
-                    onClick={() => setListingFilter('Reports')}
-                    className={`px-0.5 py-2 rounded-xl text-[8px] sm:text-[9px] font-black uppercase tracking-tight sm:tracking-wider text-center transition-all border cursor-pointer truncate ${listingFilter === 'Reports' ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/10' : 'bg-white text-slate-500 border-slate-100 hover:bg-slate-50'}`}
-                    title={`Reports (${sellerReports.length})`}
-                  >
-                    Reports ({sellerReports.length})
-                  </button>
-                </div>
-
-                {/* List Cards */}
+                {/* Listings Main Container */}
                 <div className="space-y-4">
-                  {listingFilter === 'Reports' ? (
-                    sellerReports.length === 0 ? (
-                      <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-slate-200">
-                        <MessageSquare className="mx-auto mb-4 text-slate-300" size={32} />
-                        <p className="text-slate-400 font-bold">No reports yet.</p>
-                      </div>
-                    ) : (
-                      sellerReports.map((report) => (
-                        <motion.div
-                          key={report.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="bg-red-50 border border-red-100 rounded-3xl p-6 space-y-3"
-                        >
-                          <div className="flex justify-between items-start text-[10px] font-black uppercase tracking-widest text-red-400">
-                             <span>Report from {report.buyerEmail}</span>
-                             <span>{formatDate(report.createdAt)}</span>
-                          </div>
-                          <p className="text-sm font-bold text-slate-800 bg-white/50 p-4 rounded-xl border border-white">
-                             "{report.message}"
-                          </p>
-                          <div className="text-[9px] font-black text-slate-400 uppercase">
-                             Listing ID: {report.listingId}
-                          </div>
-                        </motion.div>
-                      ))
-                    )
-                  ) : sellerListings.filter(l => {
+                  {sellerListings.filter(l => {
                     const matchesSearch = l.gmailAccount.toLowerCase().includes(sellerSearchQuery.toLowerCase());
                     const matchesFilter = listingFilter === 'All' || l.status === listingFilter;
                     return matchesSearch && matchesFilter;
                   }).length === 0 ? (
-                    <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-slate-200">
-                      <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
-                        <Mail size={32} />
+                    <div className="py-20 text-center select-none bg-slate-50/20 rounded-[2rem] border-2 border-dashed border-slate-100 my-4">
+                      <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner border border-slate-50">
+                        <ShoppingBag className="text-slate-300" size={20} />
                       </div>
-                      <p className="text-slate-400 font-bold">
-                        {sellerSearchQuery ? 'এই ইমেইল দিয়ে কোনো লিস্টিং পাওয়া যায়নি।' : (listingFilter !== 'All' ? `${listingFilter} ক্যাটাগরিতে কোনো জিমেইল পাওয়া যায়নি।` : 'আপনি এখনো কোনো Gmail লিস্টিং করেননি।')}
+                      <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.25em]">কোনো অ্যাকাউন্ট পাওয়া যায়নি</p>
+                      <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mt-0.5">
+                        {sellerSearchQuery ? 'সার্চের সাথে মিলে এমন কোনো জিমেইল পাওয়া যায়নি।' : 'আপনি এখনো কোনো Gmail লিস্টিং করেননি।'}
                       </p>
                     </div>
                   ) : (
@@ -10763,7 +11081,7 @@ https://www.highperformanceformat.com/link2"
           </AnimatePresence>
         </main>
 
-          {/* Ranking Modal */}
+                    {/* Ranking Modal */}
           <AnimatePresence>
             {showRankModal.show && (
               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -10813,7 +11131,7 @@ https://www.highperformanceformat.com/link2"
                           <div className="flex items-center gap-3">
                             <div className="relative">
                               {item.photoURL ? (
-                                <img src={item.photoURL} alt="" className="w-11 h-11 rounded-xl object-cover shadow-sm border-2 border-white bg-white" />
+                                <img src={item.photoURL} alt="" className="w-11 h-11 rounded-xl object-cover shadow-sm border-2 border-white bg-white" referrerPolicy="no-referrer" />
                               ) : (
                                 <div className="w-11 h-11 rounded-xl flex items-center justify-center border-2 border-white shadow-sm bg-white text-slate-300">
                                   <UserIcon size={20} />
@@ -10857,27 +11175,19 @@ https://www.highperformanceformat.com/link2"
                       ))}
 
                       {(showRankModal.type === 'seller' ? topSellers : topBuyers).length === 0 && (
-                        <div className="py-12 text-center bg-slate-50/50 rounded-[2.5rem] border-2 border-dashed border-slate-100">
-                          <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">No data found yet</p>
+                        <div className="py-12 text-center bg-slate-50/50 rounded-2xl flex flex-col items-center justify-center p-4">
+                           <Trophy className="text-slate-300 mb-2" size={32} />
+                           <p className="text-sm font-semibold text-slate-400">র‍্যাংকিং খালি রয়েছে।</p>
                         </div>
                       )}
                     </div>
-                  </div>
-
-                  <div className="p-8 pt-2 flex-shrink-0">
-                    <button
-                      onClick={() => setShowRankModal({ ...showRankModal, show: false })}
-                      className="w-full py-5 bg-[#0f172a] text-white rounded-[1.8rem] font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-slate-200 active:scale-95 transition-all hover:bg-slate-900"
-                    >
-                      CLOSE
-                    </button>
                   </div>
                 </motion.div>
               </div>
             )}
           </AnimatePresence>
 
-          {/* User Notifications Modal */}
+          {/* Notifications Modal */}
           <AnimatePresence>
             {isNotificationsOpen && (
               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -10889,85 +11199,41 @@ https://www.highperformanceformat.com/link2"
                   className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
                 />
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                  className="relative w-full max-w-sm sm:max-w-md bg-white rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)] border border-slate-100/50 flex flex-col max-h-[85vh] z-10 font-sans"
+                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                  className="relative w-full max-w-sm bg-white rounded-[3rem] overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)] border border-slate-50 flex flex-col max-h-[85vh] select-none"
                 >
-                  <div className="flex items-center justify-between px-6 py-5 border-b border-rose-50/10 flex-shrink-0 bg-white select-none">
-                    <h3 className="text-lg sm:text-xl font-extrabold text-slate-800 tracking-tight leading-none">
-                      Notifications
-                    </h3>
-                    
-                    <div className="flex items-center gap-4">
-                      {unreadCount > 0 ? (
-                        <button
-                          onClick={markAllNotificationsRead}
-                          className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-red-600 hover:text-red-700 transition-all cursor-pointer"
-                        >
-                          CLEAR
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => setIsNotificationsOpen(false)}
-                          className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
-                        >
-                          CLOSE
-                        </button>
-                      )}
+                  <div className="flex flex-col items-center text-center pt-8 pb-5 px-8 flex-shrink-0">
+                    <div className="w-16 h-16 rounded-[2.2rem] flex items-center justify-center mb-4 shadow-inner bg-slate-50">
+                      <Bell size={32} className="text-slate-500 drop-shadow-sm" />
                     </div>
+
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-1.5">
+                      Notifications
+                    </h2>
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.25em]">
+                      YOUR RECENT UPDATES & ALERTS
+                    </p>
                   </div>
 
-                  <div className="flex-grow overflow-y-auto px-6 py-1 bg-white custom-scrollbar scroll-smooth">
-                    <div className="divide-y divide-slate-100">
-                      {notifications.map((notif) => {
-                        // Dynamically resolve notification template styles to match screenshot perfectly
-                        const msg = notif.message || '';
-                        const type = notif.type;
+                  <div className="flex-grow overflow-y-auto px-5 custom-scrollbar scroll-smooth">
+                    <div className="space-y-4 pb-6">
+                      {notifications.map((notif, idx) => {
+                        const isSuccess = notif.type === 'success' || notif.title?.toLowerCase().includes('success') || notif.message?.toLowerCase().includes('success');
+                        const isSystem = notif.type === 'system';
+                        const title = notif.title || (isSuccess ? 'Success' : isSystem ? 'System Notice' : 'Alert');
                         
-                        let title = 'STATION UPDATE';
-                        let isSuccess = false;
-                        
-                        if (type === 'success' || msg.toLowerCase().includes('deposit') || msg.toLowerCase().includes('পেমেন্ট') || msg.toLowerCase().includes('উইথড্র') || msg.toLowerCase().includes('এপ্রুভ')) {
-                          title = 'INSTANT DEPOSIT';
-                          isSuccess = true;
-                        } else if (type === 'warning' || type === 'error' || msg.toLowerCase().includes('sell') || msg.toLowerCase().includes('লিস্টিং') || msg.toLowerCase().includes('অনুরোধ')) {
-                          title = 'NEW SELL REQUEST';
-                        } else {
-                          title = 'SYSTEM UPDATE';
-                        }
-
-                        // Short date string formatter matching screenshot: 04:20 PM or 01:06 AM
-                        const formatNotifTime = (timestamp: any) => {
-                          if (!timestamp) return '11:30 AM';
-                          let dateObj = new Date();
-                          if (timestamp.toDate) dateObj = timestamp.toDate();
-                          else if (timestamp.seconds) dateObj = new Date(timestamp.seconds * 1000);
-                          else dateObj = new Date(timestamp);
-                          
-                          let hours = dateObj.getHours();
-                          let minutes = dateObj.getMinutes();
-                          const ampm = hours >= 12 ? 'PM' : 'AM';
-                          hours = hours % 12;
-                          hours = hours ? hours : 12;
-                          const minutesStr = minutes < 10 ? '0' + minutes : minutes;
-                          const hoursStr = hours < 10 ? '0' + hours : hours;
-                          return `${hoursStr}:${minutesStr} ${ampm}`;
-                        };
-
                         return (
                           <motion.div
                             key={notif.id}
-                            initial={{ opacity: 0, y: 10 }}
+                            initial={{ opacity: 0, y: 15 }}
                             animate={{ opacity: 1, y: 0 }}
-                            onClick={() => {
-                              if (!notif.read) {
-                                markNotificationRead(notif.id);
-                              }
-                            }}
-                            className="py-4.5 flex flex-col relative transition-all cursor-pointer hover:bg-slate-50/20"
+                            transition={{ delay: idx * 0.03 }}
+                            className={`p-4 rounded-[1.8rem] border relative overflow-hidden select-text transition-all ${
+                              notif.read ? 'bg-slate-50/50 border-slate-100' : 'bg-slate-50/30 border-blue-100/50 shadow-sm'
+                            }`}
                           >
-                            {/* Blue active marker indicator */}
                             {!notif.read && (
                               <span className="absolute left-0 top-5 w-2 h-2 rounded-full bg-blue-500 ring-4 ring-blue-100/50" />
                             )}
@@ -10996,7 +11262,7 @@ https://www.highperformanceformat.com/link2"
                                     e.stopPropagation();
                                     markNotificationRead(notif.id);
                                   }}
-                                  className="w-4 h-4 rounded border border-slate-200 hover:border-red-400 bg-white flex items-center justify-center text-slate-300 hover:text-red-600 transition-all cursor-pointer active:scale-90"
+                                  className="w-4 h-4 rounded border border-slate-200 hover:border-red-400 bg-white flex items-center justify-center text-slate-300 hover:text-red-650 transition-all cursor-pointer active:scale-90"
                                 >
                                   <Check size={10} strokeWidth={3} />
                                 </button>
@@ -11017,43 +11283,43 @@ https://www.highperformanceformat.com/link2"
                             {/* Subtitle/Footer metadata block matching layout detail */}
                             <div className="pl-3.5 pr-1 mt-2 flex items-center justify-between text-[9px] sm:text-[9.5px] font-bold text-slate-400 select-none">
                               <span className="uppercase tracking-wider">
-                                {notif.fromName || 'MD SAYFULLAH'} • {formatNotifTime(notif.createdAt)}
+                                {notif.fromName || 'MD SAYFULLAH'} • {formatTimeOnly(notif.createdAt)}
                               </span>
                               <span className="font-mono text-[8.5px] sm:text-[9px] text-slate-350 font-medium">
                                 ID: {(notif.id || 'rV3JE').substring(0, 5).toUpperCase()}
                               </span>
                             </div>
-                          </motion.div>
-                        );
-                      })}
+                           </motion.div>
+                         );
+                       })}
 
-                      {notifications.length === 0 && (
-                        <div className="py-20 text-center select-none bg-slate-50/20 rounded-[2rem] border-2 border-dashed border-slate-100 my-4">
-                          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner border border-slate-50">
-                            <Bell className="text-slate-300" size={20} />
-                          </div>
-                          <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.25em]">কোনো নোটিফিকেশন নেই</p>
-                          <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mt-0.5">No notifications found</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                       {notifications.length === 0 && (
+                         <div className="py-20 text-center select-none bg-slate-50/20 rounded-[2rem] border-2 border-dashed border-slate-100 my-4">
+                           <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner border border-slate-50">
+                             <Bell className="text-slate-300" size={20} />
+                           </div>
+                           <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.25em]">কোনো নোটিফিকেশন নেই</p>
+                           <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mt-0.5">No notifications found</p>
+                         </div>
+                       )}
+                     </div>
+                   </div>
 
-                  {/* See all activity matching footer */}
-                  <div className="py-4.5 text-center border-t border-slate-100 flex-shrink-0 bg-white select-none">
-                    <button
-                      onClick={() => setIsNotificationsOpen(false)}
-                      className="text-[10px] min-[360px]:text-[11px] font-black tracking-widest text-slate-400 hover:text-slate-600 uppercase transition-all cursor-pointer active:scale-95"
-                    >
-                      SEE ALL ACTIVITY
-                    </button>
-                  </div>
-                </motion.div>
-              </div>
-            )}
-          </AnimatePresence>
-
-        {/* bKash Payment Modal */}
+                   {/* See all activity matching footer */}
+                   <div className="py-4.5 text-center border-t border-slate-100 flex-shrink-0 bg-white select-none">
+                     <button
+                       onClick={() => setIsNotificationsOpen(false)}
+                       className="text-[10px] min-[360px]:text-[11px] font-black tracking-widest text-[#2E7D32] hover:text-[#1B5E20] uppercase transition-all cursor-pointer active:scale-95"
+                     >
+                       SEE ALL ACTIVITY
+                     </button>
+                   </div>
+                 </motion.div>
+               </div>
+             )}
+           </AnimatePresence>
+          
+{/* bKash Payment Modal */}
         <AnimatePresence>
           {isBulkConfirmModalOpen && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
@@ -11234,267 +11500,187 @@ https://www.highperformanceformat.com/link2"
                 </div>
 
                 <div className="bg-white rounded-t-[1.5rem] px-4 py-4 space-y-3 max-h-[75vh] overflow-y-auto custom-scrollbar shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
-                  <div className="space-y-4 font-sans">
-                    <AnimatePresence mode="wait">
-                      {isDepositCompleted ? (
-                        <motion.div 
-                          key="deposit-completion-success"
-                          initial={{ opacity: 0, scale: 0.9, y: 15 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.9, y: -15 }}
-                          className="space-y-6 py-6 px-3 text-center flex flex-col items-center justify-center min-h-[260px]"
-                        >
-                          <div className="relative">
-                            <motion.div 
-                              className="absolute inset-0 bg-emerald-100 rounded-full"
-                              initial={{ scale: 0.8, opacity: 0.6 }}
-                              animate={{ scale: 1.5, opacity: 0 }}
-                              transition={{ duration: 1.4, repeat: Infinity, ease: "easeOut" }}
-                            />
-                            <div className="w-16 h-16 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-lg border-4 border-white relative z-10">
-                              <CheckCircle size={32} className="animate-bounce text-white" />
-                            </div>
-                          </div>
-                          
-                          <div className="space-y-2 relative z-10 px-2">
-                            <h3 className="text-base font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 inline-block tracking-tight text-[11px] uppercase tracking-widest mb-1 font-sans">Submit Successful</h3>
-                            <p className="text-slate-800 text-sm font-black leading-relaxed">
-                              ডিপোজিট রিকুয়েস্ট সফলভাবে পাঠানো হয়েছে। অ্যাডমিন চেক করে অ্যাপ্রুভ করবে।
-                            </p>
-                            
-                            {/* min balance / Deposit amount view shown on this next step */}
-                            <div className="my-3 flex items-center justify-between p-3 bg-red-50/70 border border-red-100/40 rounded-2xl text-left shadow-xs w-full max-w-[220px] mx-auto animate-in fade-in slide-in-from-bottom duration-500 delay-150 font-sans">
-                              <div className="flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
-                                <span className="text-[10px] font-black text-red-700 uppercase tracking-widest leading-none">min balance</span>
+                  <AnimatePresence mode="wait">
+                    {purchasedCreds ? (
+                      <motion.div 
+                        key="success"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="space-y-6 pt-2"
+                      >
+                        <div className="text-center py-4 bg-[#E8F5E9] rounded-2xl border-2 border-[#C8E6C9] mb-4 shadow-sm">
+                           <p className="text-[#2E7D32] font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 font-sans">
+                             <CheckCircle size={20} />
+                             PAYMENT VERIFIED
+                           </p>
+                        </div>
+                        
+                        <div className="p-6 bg-[#0F172A] rounded-[2rem] space-y-6 shadow-2xl relative overflow-hidden border border-slate-800">
+                           <div className="absolute top-0 right-0 p-6 opacity-5">
+                              <ShieldCheck size={80} className="text-white" />
+                           </div>
+                           
+                           <div className="space-y-3 relative z-10">
+                            <div className="space-y-1 text-left">
+                              <span className="text-[8px] text-white/30 uppercase font-black tracking-widest block font-sans">Purchased Gmail</span>
+                              <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10">
+                                <p className="font-mono font-bold text-white text-xs truncate mr-2 select-all">{purchasedCreds.gmail}</p>
+                                <button type="button" onClick={() => { navigator.clipboard.writeText(purchasedCreds.gmail); alert('Gmail Copied!'); }} className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-[#FFEB3B] hover:scale-110 transition-all cursor-pointer"><Copy size={12}/></button>
                               </div>
-                              <span className="text-xs font-black text-slate-800">৳{userProfile?.balance?.toFixed(2) || '0.00'}</span>
                             </div>
 
-                            <p className="text-slate-400 text-[10px] font-bold">
-                              উইন্ডোটি অটোমেটিক চলে যাবে, অনুগ্রহ করে অপেক্ষা করুন...
-                            </p>
-                          </div>
-                        </motion.div>
-                      ) : isPaymentSent ? (
-                        <motion.div 
-                          key="pending"
-                          initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          className="space-y-6 py-4 px-2"
-                        >
-                          <div className="flex flex-col items-center text-center space-y-4">
-                            <div className="w-20 h-20 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center animate-pulse border-4 border-white shadow-lg">
-                              <History size={40} />
+                            <div className="space-y-1 text-left">
+                              <span className="text-[8px] text-white/30 uppercase font-black tracking-widest block font-sans">Account Password</span>
+                              <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10">
+                                <p className="font-mono font-bold text-[#FFEB3B] text-xs truncate mr-2 select-all">{purchasedCreds.pass}</p>
+                                <button type="button" onClick={() => { navigator.clipboard.writeText(purchasedCreds.pass); alert('Password Copied!'); }} className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-white hover:scale-110 transition-all cursor-pointer"><Copy size={12}/></button>
+                              </div>
                             </div>
-                            <div className="space-y-2">
-                              <h3 className="text-xl font-black text-slate-800 tracking-tight tracking-normal">পেমেন্ট পেন্ডিং (Pending Approval)</h3>
-                              <p className="text-slate-500 text-xs font-bold leading-relaxed px-4">
-                                আপনার পেমেন্ট রিকুয়েস্ট পাঠানো হয়েছে। অ্যাডমিন ভেরিফাই করলে আপনার ক্রয় সম্পন্ন হবে। (সাধারণত ১-৫ মিনিট সময় লাগে)
+
+                            {purchasedCreds.recovery && (
+                              <div className="space-y-1 text-left">
+                                <span className="text-[8px] text-white/30 uppercase font-black tracking-widest block font-sans">Recovery Email</span>
+                                <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10">
+                                  <p className="font-mono font-bold text-green-300 text-xs truncate mr-2 select-all">{purchasedCreds.recovery}</p>
+                                  <button type="button" onClick={() => { navigator.clipboard.writeText(purchasedCreds.recovery!); alert('Recovery Copied!'); }} className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-white hover:scale-110 transition-all cursor-pointer"><Copy size={12}/></button>
+                                </div>
+                              </div>
+                            )}
+
+                            {purchasedCreds.twoFactor && (
+                              <div className="space-y-1 text-left">
+                                <span className="text-[8px] text-white/30 uppercase font-black tracking-widest block font-sans">2FA / Authenticator</span>
+                                <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10">
+                                  <p className="font-mono font-bold text-blue-300 text-xs truncate mr-2 select-all">{purchasedCreds.twoFactor}</p>
+                                  <button type="button" onClick={() => { navigator.clipboard.writeText(purchasedCreds.twoFactor!); alert('2FA Copied!'); }} className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-white hover:scale-110 transition-all cursor-pointer"><Copy size={12}/></button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="bg-white/5 p-3 rounded-xl flex items-center gap-2.5 border border-white/5 text-left">
+                             <AlertCircle size={14} className="text-yellow-300/80 shrink-0" />
+                             <p className="text-[9px] text-white/50 font-medium leading-tight">
+                                You can find your credentials under "Bought" tab or logs at any time.
                               </p>
-                            </div>
                           </div>
+                        </div>
 
-                          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center gap-3">
-                             <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
-                                <History size={16} />
-                             </div>
-                             <div>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-sans">কিভাবে চেক করবেন?</p>
-                                <p className="text-[11px] text-slate-600 font-bold">"লেনদেন ইতিহাস" ট্যাব থেকে আপডেট দেখতে পাবেন।</p>
-                             </div>
-                          </div>
-
-                          <button 
-                            type="button"
-                            onClick={() => {
-                              setShowPaymentModal({ show: false, price: 0 });
-                              setView('gmail-market');
-                              setMarketTab('Bought');
-                            }}
-                            className="w-full py-4 rounded-xl bg-[#2E7D32] text-white font-black text-[10px] uppercase tracking-widest hover:bg-[#1B5E20] transition-all shadow-xl active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
-                          >
-                            <CheckCircle size={16} />
-                            ওকে (সরাসরি Purchased যান)
-                          </button>
-                        </motion.div>
-                      ) : purchasedCreds ? (
-                        <motion.div 
-                          key="success"
-                          initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          className="space-y-6 pt-2"
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            setShowPaymentModal({ show: false, price: 0 });
+                            setPurchasedCreds(null);
+                            setView('gmail-market');
+                            setMarketTab('Bought');
+                          }}
+                          className="w-full py-5 rounded-[1.5rem] bg-[#2E7D32] text-white font-black text-xs uppercase tracking-[0.15em] hover:bg-[#1B5E20] transition-all shadow-[0_10px_30px_rgba(46,125,50,0.3)] active:scale-95 flex items-center justify-center gap-3 cursor-pointer"
                         >
-                          <div className="text-center py-4 bg-[#E8F5E9] rounded-2xl border-2 border-[#C8E6C9] mb-4 shadow-sm">
-                             <p className="text-[#2E7D32] font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 font-sans">
-                               <CheckCircle size={20} />
-                               PAYMENT VERIFIED
-                             </p>
-                          </div>
-                          
-                          <div className="p-6 bg-[#0F172A] rounded-[2rem] space-y-6 shadow-2xl relative overflow-hidden border border-slate-800">
-                             <div className="absolute top-0 right-0 p-6 opacity-5">
-                                <ShieldCheck size={80} className="text-white" />
-                             </div>
-                             
-                             <div className="space-y-3 relative z-10">
-                              <div className="space-y-1 text-left">
-                                <span className="text-[8px] text-white/30 uppercase font-black tracking-widest block font-sans">Purchased Gmail</span>
-                                <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10">
-                                  <p className="font-mono font-bold text-white text-xs truncate mr-2 select-all">{purchasedCreds.gmail}</p>
-                                  <button type="button" onClick={() => { navigator.clipboard.writeText(purchasedCreds.gmail); alert('Gmail Copied!'); }} className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-[#FFEB3B] hover:scale-110 transition-all cursor-pointer"><Copy size={12}/></button>
+                          FINISH & VIEW ACCOUNT
+                        </button>
+                      </motion.div>
+                    ) : (
+                      <motion.div 
+                        key="form"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="space-y-3.5"
+                      >
+                        {showPaymentModal.listingId !== 'deposit' && (
+                          <div className="space-y-3 animate-in fade-in duration-300">
+                            <div className="p-3.5 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col gap-2">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2.5 h-2.5 rounded-full bg-slate-300" />
+                                  <div className="flex flex-col text-left">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none font-sans">Wallet Balance</span>
+                                    <span className="text-xs font-black text-slate-700">৳{userProfile?.balance?.toFixed(2) || '0.00'}</span>
+                                  </div>
                                 </div>
-                              </div>
-  
-                              <div className="space-y-1 text-left">
-                                <span className="text-[8px] text-white/30 uppercase font-black tracking-widest block font-sans">Account Password</span>
-                                <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10">
-                                  <p className="font-mono font-bold text-[#FFEB3B] text-xs truncate mr-2 select-all">{purchasedCreds.pass}</p>
-                                  <button type="button" onClick={() => { navigator.clipboard.writeText(purchasedCreds.pass); alert('Password Copied!'); }} className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-white hover:scale-110 transition-all cursor-pointer"><Copy size={12}/></button>
+                                <div className="text-right font-sans">
+                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block leading-none">Total Cost</span>
+                                  <span className="text-xs font-black text-[#2E7D32]">৳{showPaymentModal.price.toFixed(2)}</span>
                                 </div>
                               </div>
 
-                              {purchasedCreds.recovery && (
-                                <div className="space-y-1 text-left">
-                                  <span className="text-[8px] text-white/30 uppercase font-black tracking-widest block font-sans">Recovery Email</span>
-                                  <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10">
-                                    <p className="font-mono font-bold text-green-300 text-xs truncate mr-2 select-all">{purchasedCreds.recovery}</p>
-                                    <button type="button" onClick={() => { navigator.clipboard.writeText(purchasedCreds.recovery!); alert('Recovery Copied!'); }} className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-white hover:scale-110 transition-all cursor-pointer"><Copy size={12}/></button>
-                                  </div>
-                                </div>
-                              )}
-
-                              {purchasedCreds.twoFactor && (
-                                <div className="space-y-1 text-left">
-                                  <span className="text-[8px] text-white/30 uppercase font-black tracking-widest block font-sans">2FA / Authenticator</span>
-                                  <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10">
-                                    <p className="font-mono font-bold text-blue-300 text-xs truncate mr-2 select-all">{purchasedCreds.twoFactor}</p>
-                                    <button type="button" onClick={() => { navigator.clipboard.writeText(purchasedCreds.twoFactor!); alert('2FA Copied!'); }} className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-white hover:scale-110 transition-all cursor-pointer"><Copy size={12}/></button>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="bg-white/5 p-3 rounded-xl flex items-center gap-2.5 border border-white/5 text-left">
-                               <AlertCircle size={14} className="text-yellow-300/80 shrink-0" />
-                               <p className="text-[9px] text-white/50 font-medium leading-tight">
-                                  You can find your credentials under "Bought" tab or logs at any time.
-                                </p>
-                            </div>
-                          </div>
-
-                          <button 
-                            type="button"
-                            onClick={() => {
-                              setShowPaymentModal({ show: false, price: 0 });
-                              setPurchasedCreds(null);
-                              setView('gmail-market');
-                              setMarketTab('Bought');
-                            }}
-                            className="w-full py-5 rounded-[1.5rem] bg-[#2E7D32] text-white font-black text-xs uppercase tracking-[0.15em] hover:bg-[#1B5E20] transition-all shadow-[0_10px_30px_rgba(46,125,50,0.3)] active:scale-95 flex items-center justify-center gap-3 cursor-pointer"
-                          >
-                            FINISH & VIEW ACCOUNT
-                          </button>
-                        </motion.div>
-                      ) : (
-                        <motion.div 
-                          key="form"
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.95 }}
-                          className="space-y-3.5"
-                        >
-                          {showPaymentModal.listingId !== 'deposit' && (
-                            <div className="space-y-3 animate-in fade-in duration-300">
-                              <div className="p-3.5 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col gap-2">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-2.5 h-2.5 rounded-full bg-slate-300" />
-                                    <div className="flex flex-col text-left">
-                                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none font-sans">Wallet Balance</span>
-                                      <span className="text-xs font-black text-slate-700">৳{userProfile?.balance?.toFixed(2) || '0.00'}</span>
-                                    </div>
-                                  </div>
-                                  <div className="text-right font-sans">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block leading-none">Total Cost</span>
-                                    <span className="text-xs font-black text-[#2E7D32]">৳{showPaymentModal.price.toFixed(2)}</span>
-                                  </div>
-                                </div>
-
-                                {userProfile && userProfile.balance >= showPaymentModal.price ? (
+                              {userProfile && userProfile.balance >= showPaymentModal.price ? (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (showPaymentModal.listingId === 'bulk') {
+                                      await executeBulkBuy();
+                                    } else {
+                                      const listing = marketListings.find(l => l.id === showPaymentModal.listingId);
+                                      if (listing) {
+                                        await buyListing(listing);
+                                      } else {
+                                        alert("আইটেমটি পাওয়া যায়নি!");
+                                      }
+                                    }
+                                  }}
+                                  disabled={isSubmitting}
+                                  className="w-full bg-[#2E7D32] hover:bg-[#1B5E20] text-white py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-md shadow-green-100"
+                                >
+                                  {isSubmitting ? (
+                                    <RefreshCw size={14} className="animate-spin" />
+                                  ) : (
+                                    <>
+                                      <CheckCircle size={14} />
+                                      Wallet Balance দিয়ে কিনুন
+                                    </>
+                                  )}
+                                </button>
+                              ) : (
+                                <div className="bg-amber-50 border border-amber-100 p-3.5 rounded-xl text-left space-y-2.5">
+                                  <p className="text-[9.5px] font-bold text-amber-850 leading-normal flex items-start gap-1.5 font-sans">
+                                    <AlertCircle size={12} className="shrink-0 mt-0.5 text-amber-600 animate-pulse" />
+                                    <span>
+                                      আপনার ওয়ালেট ব্যালেন্স পর্যাপ্ত নয়! জিমেইল কিনতে চাইলে দয়া করে আগে ব্যালেন্স ডেপোজিট করুন।
+                                    </span>
+                                  </p>
                                   <button
                                     type="button"
-                                    onClick={async () => {
-                                      if (showPaymentModal.listingId === 'bulk') {
-                                        await executeBulkBuy();
-                                      } else {
-                                        const listing = marketListings.find(l => l.id === showPaymentModal.listingId);
-                                        if (listing) {
-                                          await buyListing(listing);
-                                        } else {
-                                          alert("আইটেমটি পাওয়া যায়নি!");
-                                        }
-                                      }
+                                    onClick={() => {
+                                      setView('profile');
+                                      setShowDepositArea(true);
+                                      setShowPaymentModal({ show: true, price: 100, listingId: 'deposit' });
                                     }}
-                                    disabled={isSubmitting}
-                                    className="w-full bg-[#2E7D32] hover:bg-[#1B5E20] text-white py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-md shadow-green-100"
+                                    className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-xl text-[9.5px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md font-sans"
                                   >
-                                    {isSubmitting ? (
-                                      <RefreshCw size={14} className="animate-spin" />
-                                    ) : (
-                                      <>
-                                        <CheckCircle size={14} />
-                                        Wallet Balance দিয়ে কিনুন
-                                      </>
-                                    )}
+                                    <Wallet size={11} />
+                                    টাকা ডেপোজিট করুন (Deposit Balance)
                                   </button>
-                                ) : (
-                                  <div className="bg-amber-50 border border-amber-100 p-3.5 rounded-xl text-left space-y-2.5">
-                                    <p className="text-[9.5px] font-bold text-amber-850 leading-normal flex items-start gap-1.5 font-sans">
-                                      <AlertCircle size={12} className="shrink-0 mt-0.5 text-amber-600 animate-pulse" />
-                                      <span>
-                                        আপনার ওয়ালেট ব্যালেন্স পর্যাপ্ত নয়! জিমেইল কিনতে চাইলে দয়া করে আগে ব্যালেন্স ডেপোজিট করুন।
-                                      </span>
-                                    </p>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setView('profile');
-                                        setShowDepositArea(true);
-                                        setShowPaymentModal({ show: true, price: 100, listingId: 'deposit' });
-                                      }}
-                                      className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-xl text-[9.5px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md font-sans"
-                                    >
-                                      <Wallet size={11} />
-                                      টাকা ডেপোজিট করুন (Deposit Balance)
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
+                                </div>
+                              )}
                             </div>
-                          )}
-                         {showPaymentModal.listingId === 'deposit' && (
-                           <div className="space-y-1 text-left bg-slate-50 p-2 rounded-2xl border border-slate-100 animate-in fade-in duration-300">
-                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1 pl-1">Quick Select Amount</span>
-                             <div className="flex flex-wrap gap-1">
-                               {[50, 100, 200, 500, 1000].map((amt) => (
-                                 <button
-                                   key={amt}
-                                   type="button"
-                                   onClick={() => {
-                                     setShowPaymentModal(prev => ({ ...prev, price: amt }));
-                                     setPaymentForm(prev => ({ ...prev, senderNumber: String(amt) }));
-                                   }}
-                                   className={`px-2.5 py-1.5 rounded-xl text-[10px] font-extrabold transition-all active:scale-95 border cursor-pointer ${showPaymentModal.price === amt 
-                                     ? (paymentForm.method === 'bkash' ? 'bg-[#e2136e] border-[#e2136e] text-white shadow-sm' : 'bg-[#ed1c24] border-[#ed1c24] text-white shadow-sm')
-                                     : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'}`}
-                                 >
-                                   ৳{amt}
-                                 </button>
-                               ))}
-                             </div>
-                           </div>
-                         )}
+                          </div>
+                        )}
+
+                        {showPaymentModal.listingId === 'deposit' && (
+                          <div className="space-y-1 text-left bg-slate-50 p-2 rounded-2xl border border-slate-100 animate-in fade-in duration-300">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1 pl-1">Quick Select Amount</span>
+                            <div className="flex flex-wrap gap-1">
+                              {[50, 100, 200, 500, 1000].map((amt) => (
+                                <button
+                                  key={amt}
+                                  type="button"
+                                  onClick={() => {
+                                    setShowPaymentModal(prev => ({ ...prev, price: amt }));
+                                    setPaymentForm(prev => ({ ...prev, senderNumber: String(amt) }));
+                                  }}
+                                  className={`px-2.5 py-1.5 rounded-xl text-[10px] font-extrabold transition-all active:scale-95 border cursor-pointer ${showPaymentModal.price === amt 
+                                    ? (paymentForm.method === 'bkash' ? 'bg-[#e2136e] border-[#e2136e] text-white shadow-sm' : 'bg-[#ed1c24] border-[#ed1c24] text-white shadow-sm')
+                                    : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'}`}
+                                >
+                                  ৳{amt}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         {showPaymentModal.listingId === 'deposit' && (
                           <>
                             <div className={`p-2.5 rounded-2xl border relative overflow-hidden group transition-colors ${paymentForm.method === 'bkash' ? 'bg-pink-50 border-pink-100' : 'bg-red-50 border-red-100'}`}>
@@ -11522,7 +11708,7 @@ https://www.highperformanceformat.com/link2"
                                     navigator.clipboard.writeText(num);
                                     alert("Number copied!");
                                   }}
-                                  className={`w-8 h-8 rounded-xl bg-white flex items-center justify-center ${paymentForm.method === 'bkash' ? 'text-pink-600 border-pink-100' : 'text-red-600 border-red-100'} shadow-sm border hover:scale-110 transition-all active:scale-95`}
+                                  className={`w-8 h-8 rounded-xl bg-white flex items-center justify-center ${paymentForm.method === 'bkash' ? 'text-pink-600' : 'text-red-650'} shadow-sm border hover:scale-110 transition-all active:scale-95`}
                                 >
                                   <Copy size={13} />
                                 </button>
@@ -11565,7 +11751,7 @@ https://www.highperformanceformat.com/link2"
                                       </div>
                                       <div className="space-y-1.5 pl-1">
                                         <p className="text-[8.5px] text-slate-650 font-bold leading-relaxed">
-                                          ১. নাম্বারটি কপি করে আপনার ${paymentForm.method === 'bkash' ? 'বিকাশ' : 'নগদ'} অ্যাপ থেকে <span className="font-extrabold text-slate-900">Send Money</span> করুন।
+                                          ১. নাম্বারটি কপি করে আপনার {paymentForm.method === 'bkash' ? 'বিকাশ' : 'নগদ'} অ্যাপ থেকে <span className="font-extrabold text-slate-900">Send Money</span> করুন।
                                         </p>
                                         <p className="text-[8.5px] text-slate-655 font-bold leading-relaxed">
                                           ২. পেমেন্ট শেষে প্রাপ্ত <span className="font-extrabold text-slate-900">TrxID</span> টি কপি করে নিচের বক্সে দিন।
@@ -11581,8 +11767,11 @@ https://www.highperformanceformat.com/link2"
                             </div>
 
                             <div className="grid grid-cols-2 gap-2">
+                              {/* Amount input */}
                               <div className="space-y-1 group">
-                                <label className={`text-[9.5px] font-black text-slate-400 uppercase tracking-widest ml-1 transition-colors ${paymentForm.method === 'bkash' ? 'group-focus-within:text-[#e2136e]' : 'group-focus-within:text-[#ed1c24]'}`}>Amount</label>
+                                <label className={`text-[9.5px] font-black text-slate-400 uppercase tracking-widest ml-1 transition-colors ${paymentForm.method === 'bkash' ? 'group-focus-within:text-[#e2136e]' : 'group-focus-within:text-[#ed1c24]'}`}>
+                                  Amount
+                                </label>
                                 <div className="relative">
                                   <div className={`absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400 transition-colors ${paymentForm.method === 'bkash' ? 'group-focus-within:text-[#e2136e]' : 'group-focus-within:text-[#ed1c24]'}`}>
                                     <Wallet size={12} />
@@ -11603,7 +11792,7 @@ https://www.highperformanceformat.com/link2"
                                   />
                                 </div>
                               </div>
-                              
+
                               <div className="space-y-1 group">
                                 <label className={`text-[9.5px] font-black text-slate-400 uppercase tracking-widest ml-1 transition-colors ${paymentForm.method === 'bkash' ? 'group-focus-within:text-[#e2136e]' : 'group-focus-within:text-[#ed1c24]'}`}>
                                   Transaction ID (TrxID)
@@ -11672,15 +11861,13 @@ https://www.highperformanceformat.com/link2"
                     )}
                   </AnimatePresence>
                 </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showReportModal?.show && (
-          <>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {showReportModal?.show && (
+            <>
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -11963,13 +12150,31 @@ https://www.highperformanceformat.com/link2"
                         {user && (
                           <div className="pt-2 border-t border-slate-100 mt-1 space-y-1.5">
                             {adWatchStatus === 'idle' ? (
-                              <button
-                                onClick={startWatchingAd}
+                              <a
+                                id="view-ad-btn"
+                                href={currOpenedAdUrl || '#'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => {
+                                  if (!user) {
+                                    e.preventDefault();
+                                    setAdsEarnError("অনুগ্রহ করে ইনকাম করতে প্রথমে লগইন করুন!");
+                                    return;
+                                  }
+                                  const todayStr = getTodayDateString();
+                                  const currentCount = userProfile?.lastAdWatchedDate === todayStr ? (userProfile?.adsWatchedToday || 0) : 0;
+                                  if (currentCount >= 500) {
+                                    e.preventDefault();
+                                    setAdsEarnError("আপনার আজকের ৫০০ বিজ্ঞাপনের ডেইলি লিমিট (Daily Limit 500 Ads) শেষ হয়ে গেছে! আগামীকাল আবার চেষ্টা করুন।");
+                                    return;
+                                  }
+                                  startWatchingAd();
+                                }}
                                 className="w-full py-2.5 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-500 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-md shadow-amber-100/50 hover:opacity-95 transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer font-sans"
                               >
                                 <Megaphone size={11} className="animate-pulse font-sans" />
                                 👉 VIEW (৳০.১০ আয় করুন)
-                              </button>
+                              </a>
                             ) : adWatchStatus === 'watching' ? (
                               <button
                                 disabled
@@ -12652,7 +12857,7 @@ https://www.highperformanceformat.com/link2"
 
 
         {/* Sticky bottom Google AdSense banner */}
-        {adsterraEnabled && view !== 'admin' && view !== 'login' && view !== 'register' && view !== 'forgot' && view !== 'reset' && (
+        {(adsterraEnabled || clickdillaEnabled) && view !== 'admin' && view !== 'login' && view !== 'register' && view !== 'forgot' && view !== 'reset' && (
           <AdSenseSlot 
             type="sticky-bottom" 
             adsterraEnabled={adsterraEnabled}
@@ -12661,6 +12866,8 @@ https://www.highperformanceformat.com/link2"
             adsterraInFeedKey={adsterraInFeedKey}
             adsterraStickyKey={adsterraStickyKey}
             bgColor={navBgColor}
+            clickdillaEnabled={clickdillaEnabled}
+            clickdillaBannerCode={clickdillaBannerCode}
           />
         )}
 
