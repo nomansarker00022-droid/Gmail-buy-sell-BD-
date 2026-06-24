@@ -2,6 +2,12 @@ import React, { useEffect, useState, useRef } from 'react';
 import { motion } from 'motion/react';
 import { ExternalLink, HelpCircle, X, Flame } from 'lucide-react';
 
+declare global {
+  interface Window {
+    adsbygoogle: any[];
+  }
+}
+
 interface AdSenseSlotProps {
   type: 'banner' | 'square' | 'sidebar' | 'in-feed' | 'sticky-bottom';
   className?: string;
@@ -13,8 +19,11 @@ interface AdSenseSlotProps {
   adsterraStickyKey?: string;
   bgColor?: string;
 
-  clickdillaEnabled?: boolean;
-  clickdillaBannerCode?: string;
+  adsenseEnabled?: boolean;
+  adsensePublisherId?: string;
+  adsenseBannerSlotId?: string;
+  adsenseInFeedSlotId?: string;
+  adsenseStickySlotId?: string;
 }
 
 // Beautiful high-CPM direct offers for Adsterra simulation
@@ -73,15 +82,19 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
   adsterraStickyKey = "",
   bgColor = "",
 
-  clickdillaEnabled = false,
-  clickdillaBannerCode = ""
+  // Google AdSense settings
+  adsenseEnabled = true,
+  adsensePublisherId = "pub-2555802954977566",
+  adsenseBannerSlotId = "",
+  adsenseInFeedSlotId = "",
+  adsenseStickySlotId = ""
 }) => {
   const [adIndex, setAdIndex] = useState(0);
   const [dismissed, setDismissed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Monitor screen size for Adsterra responsive banner key switching
+  // Monitor screen size for responsive layouts
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
@@ -96,9 +109,27 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
     setAdIndex(Math.floor(Math.random() * SIMULATED_ADS_ADSTERRA.length));
   }, []);
 
-  // Handle live Adsterra & Clickdilla script execution
+  // Handle live AdSense push activation
   useEffect(() => {
-    if (containerRef.current) {
+    if (adsenseEnabled && adsensePublisherId) {
+      try {
+        const delayPush = setTimeout(() => {
+          try {
+            (window.adsbygoogle = window.adsbygoogle || []).push({});
+          } catch (pushErr) {
+            console.warn("Google AdSense non-fatal push error:", pushErr);
+          }
+        }, 150);
+        return () => clearTimeout(delayPush);
+      } catch (err) {
+        console.warn("AdSense push initialization skipped:", err);
+      }
+    }
+  }, [adsenseEnabled, type, adsensePublisherId, adsenseBannerSlotId, adsenseInFeedSlotId, adsenseStickySlotId]);
+
+  // Handle live Adsterra script execution
+  useEffect(() => {
+    if (!adsenseEnabled && adsterraEnabled && containerRef.current) {
       // Clear containers
       containerRef.current.innerHTML = '';
       
@@ -107,18 +138,8 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
         (type === 'in-feed' && adsterraInFeedKey) ||
         (type === 'sticky-bottom' && adsterraStickyKey)
       );
-      const canShowClickdilla = clickdillaEnabled && clickdillaBannerCode && clickdillaBannerCode.trim() !== "";
 
-      let activeNetwork: 'adsterra' | 'clickdilla' | 'none' = 'none';
-      if (canShowAdsterra && canShowClickdilla) {
-        activeNetwork = Math.random() > 0.5 ? 'adsterra' : 'clickdilla';
-      } else if (canShowAdsterra) {
-        activeNetwork = 'adsterra';
-      } else if (canShowClickdilla) {
-        activeNetwork = 'clickdilla';
-      }
-
-      if (activeNetwork === 'adsterra') {
+      if (canShowAdsterra) {
         // Determine active key based on slot type and screen size
         let activeKey = "";
         let height = 90;
@@ -164,7 +185,6 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
             invokeScript.type = 'text/javascript';
             invokeScript.src = `//www.highperformanceformat.com/${activeKey}/invoke.js`;
             
-            // Fallback script source handling error protection
             invokeScript.onerror = () => {
               console.warn("Retrying with fallback topcreativeformat server for Adsterra...");
               const fallbackScript = document.createElement('script');
@@ -180,59 +200,94 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
             console.error("Adsterra script loading exception:", scriptErr);
           }
         }
-      } else if (activeNetwork === 'clickdilla') {
-        try {
-          const rawCode = clickdillaBannerCode.trim();
-          const tempDiv = document.createElement('div');
-          tempDiv.className = "flex justify-center items-center w-full min-w-0";
-          tempDiv.innerHTML = rawCode;
-          
-          const scripts = tempDiv.getElementsByTagName('script');
-          const scriptList = Array.from(scripts);
-          
-          scriptList.forEach(s => s.parentNode?.removeChild(s));
-          containerRef.current.appendChild(tempDiv);
-          
-          scriptList.forEach(origScript => {
-            const newScript = document.createElement('script');
-            newScript.type = 'text/javascript';
-            if (origScript.src) {
-              newScript.src = origScript.src;
-            } else {
-              newScript.innerHTML = origScript.innerHTML;
-            }
-            Array.from(origScript.attributes).forEach(attr => {
-              if (attr.name !== 'src') {
-                newScript.setAttribute(attr.name, attr.value);
-              }
-            });
-            containerRef.current?.appendChild(newScript);
-          });
-        } catch (err) {
-          console.error("Clickdilla Banner script execution exception:", err);
-        }
       }
     }
-  }, [adsterraEnabled, adsterraBannerKey, adsterraMobileBannerKey, adsterraInFeedKey, adsterraStickyKey, clickdillaEnabled, clickdillaBannerCode, type, isMobile]);
+  }, [adsenseEnabled, adsterraEnabled, adsterraBannerKey, adsterraMobileBannerKey, adsterraInFeedKey, adsterraStickyKey, type, isMobile]);
 
-  if (dismissed || (!adsterraEnabled && !clickdillaEnabled)) return null;
-
-  // Set active simulated ad information
-  const currentAd = SIMULATED_ADS_ADSTERRA[adIndex] || SIMULATED_ADS_ADSTERRA[0];
+  if (dismissed) return null;
 
   // ============================================
-  // CASE 1: REAL LIVE ADSTERRA / CLICKDILLA SCRIPT RENDERING
+  // CASE 1: REAL GOOGLE ADSENSE CODE INTEGRATION
   // ============================================
-  const canShowAdsterra = adsterraEnabled && (
+  if (adsenseEnabled && adsensePublisherId) {
+    const formattedClient = adsensePublisherId.startsWith('ca-') 
+      ? adsensePublisherId 
+      : `ca-${adsensePublisherId}`;
+
+    if (type === 'sticky-bottom') {
+      return (
+        <div className="fixed bottom-16 sm:bottom-20 left-0 right-0 z-[40] px-4 pointer-events-none">
+          <div className="max-w-4xl mx-auto bg-white border border-amber-500/20 rounded-2xl p-2.5 shadow-2xl flex flex-col pointer-events-auto overflow-hidden">
+            <div className="flex items-center justify-between px-2 py-0.5 text-[8.5px] text-amber-600 font-bold border-b border-amber-500/10 mb-1.5 font-sans">
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping shrink-0" />
+                GOOGLE ADSENSE SPONSOR
+              </span>
+              <span className="font-mono">{adsensePublisherId}</span>
+            </div>
+            <div className="flex justify-center items-center min-h-[50px] overflow-hidden">
+              <ins
+                key={`sticky-${adsenseStickySlotId || 'default'}`}
+                className="adsbygoogle"
+                style={{ display: 'inline-block', width: '320px', height: '50px' }}
+                data-ad-client={formattedClient}
+                data-ad-slot={adsenseStickySlotId || undefined}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    let activeSlot = adsenseBannerSlotId;
+    let expectedHeight = "min-h-[90px]";
+    let maxWidthClass = "max-w-[728px]";
+
+    if (type === 'in-feed') {
+      activeSlot = adsenseInFeedSlotId;
+      expectedHeight = "min-h-[250px]";
+      maxWidthClass = "max-w-[300px]";
+    } else if (isMobile) {
+      expectedHeight = "min-h-[50px]";
+      maxWidthClass = "max-w-[320px]";
+    }
+
+    return (
+      <div className={`adsense-wrapper my-6 overflow-hidden mx-auto text-center ${className}`}>
+        <div className={`mx-auto ${maxWidthClass} flex items-center justify-between px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-t-xl text-[9px] text-amber-700 font-bold`}>
+          <div className="flex items-center gap-1.5 font-sans">
+            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+            <span>GOOGLE ADSENSE MONETIZED</span>
+          </div>
+          <span className="font-mono text-[8px]">{adsensePublisherId}</span>
+        </div>
+        <div 
+          className={`bg-white border-x border-b border-amber-500/10 p-3 rounded-b-xl flex justify-center items-center ${expectedHeight} mx-auto overflow-hidden`}
+        >
+          <ins
+            key={`${type}-${activeSlot || 'default'}`}
+            className="adsbygoogle"
+            style={{ display: 'block', width: '100%' }}
+            data-ad-client={formattedClient}
+            data-ad-slot={activeSlot || undefined}
+            data-ad-format="auto"
+            data-full-width-responsive="true"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================
+  // CASE 2: REAL LIVE ADSTERRA SCRIPT RENDERING
+  // ============================================
+  const canShowAdsterra = !adsenseEnabled && adsterraEnabled && (
     (type === 'banner' && (isMobile ? (adsterraMobileBannerKey || adsterraBannerKey) : adsterraBannerKey)) ||
     (type === 'in-feed' && adsterraInFeedKey) ||
     (type === 'sticky-bottom' && adsterraStickyKey)
   );
-  const canShowClickdilla = clickdillaEnabled && clickdillaBannerCode && clickdillaBannerCode.trim() !== "";
 
-  const hasLiveAdKey = canShowAdsterra || canShowClickdilla;
-
-  if (hasLiveAdKey) {
+  if (canShowAdsterra) {
     let containerWidth = "w-full max-w-[728px]";
     let containerHeight = "min-h-[90px]";
     if (type === 'in-feed') {
@@ -243,14 +298,12 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
       containerHeight = "min-h-[50px]";
     }
 
-    const showClickdillaHeader = clickdillaEnabled && (!adsterraEnabled || Math.random() > 0.5);
-
     return (
       <div className={`adsterra-wrapper my-6 overflow-hidden mx-auto text-center ${className}`}>
         <div className={`mx-auto ${containerWidth} flex items-center justify-between px-3 py-1 bg-slate-900 border border-slate-800 rounded-t-xl text-[9px] text-indigo-400 font-bold`}>
           <div className="flex items-center gap-1.5 font-sans">
             <Flame size={10} className="text-indigo-400 animate-bounce" />
-            <span>{showClickdillaHeader ? "CLICKDILLA PREMIUM SPONSOR AD" : "ADSTERRA NETWORK PREMIUM SPONSOR"}</span>
+            <span>ADSTERRA NETWORK PREMIUM SPONSOR</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="hover:underline">Secure Ad</span>
@@ -266,9 +319,8 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
   }
 
   // ============================================
-  // CASE 2: HIGH-FIDELITY SIMULATED AD DESIGN
+  // CASE 3: HIGH-FIDELITY SIMULATED AD DESIGN (Adsterra fallback)
   // ============================================
-  
   if (type === 'sticky-bottom') {
     const isColorDark = (hexColor: string) => {
       if (!hexColor) return true; // default dark safety
@@ -293,6 +345,7 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
 
     const isBgDark = isColorDark(bgColor);
     const resolvedBg = bgColor || 'rgba(15, 23, 42, 0.95)'; // fallback Slate-900
+    const currentAd = SIMULATED_ADS_ADSTERRA[adIndex] || SIMULATED_ADS_ADSTERRA[0];
 
     return (
       <motion.div 
@@ -342,6 +395,8 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
       </motion.div>
     );
   }
+
+  const currentAd = SIMULATED_ADS_ADSTERRA[adIndex] || SIMULATED_ADS_ADSTERRA[0];
 
   if (type === 'in-feed') {
     return (

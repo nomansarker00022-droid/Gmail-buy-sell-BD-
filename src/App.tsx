@@ -177,6 +177,20 @@ export default function App() {
   const [adsterraSocialBarKey, setAdsterraSocialBarKey] = useState(() => localStorage.getItem('cache_adsterra_socialbar_key') || "");
   const [adsterraDirectLinkUrl, setAdsterraDirectLinkUrl] = useState(() => localStorage.getItem('cache_adsterra_direct_link_url') || "");
 
+  // Google AdSense Configurations
+  const [adsenseEnabled, setAdsenseEnabled] = useState(() => localStorage.getItem('cache_adsense_enabled') !== 'false'); // enabled by default
+  const [adsensePublisherId, setAdsensePublisherId] = useState(() => localStorage.getItem('cache_adsense_pub_id') || "pub-2555802954977566");
+  const [adsenseBannerSlotId, setAdsenseBannerSlotId] = useState(() => localStorage.getItem('cache_adsense_banner_slot') || "");
+  const [adsenseInFeedSlotId, setAdsenseInFeedSlotId] = useState(() => localStorage.getItem('cache_adsense_infeed_slot') || "");
+  const [adsenseStickySlotId, setAdsenseStickySlotId] = useState(() => localStorage.getItem('cache_adsense_sticky_slot') || "");
+
+  const [pendingAdsenseEnabled, setPendingAdsenseEnabled] = useState(() => localStorage.getItem('cache_adsense_enabled') !== 'false');
+  const [pendingAdsensePublisherId, setPendingAdsensePublisherId] = useState(() => localStorage.getItem('cache_adsense_pub_id') || "pub-2555802954977566");
+  const [pendingAdsenseBannerSlotId, setPendingAdsenseBannerSlotId] = useState(() => localStorage.getItem('cache_adsense_banner_slot') || "");
+  const [pendingAdsenseInFeedSlotId, setPendingAdsenseInFeedSlotId] = useState(() => localStorage.getItem('cache_adsense_infeed_slot') || "");
+  const [pendingAdsenseStickySlotId, setPendingAdsenseStickySlotId] = useState(() => localStorage.getItem('cache_adsense_sticky_slot') || "");
+
+  const [pendingAdstarreBannerKey, setPendingAdstarreBannerKey] = useState(""); // Dummy placeholder to keep clean diffs
   const [pendingAdsterraBannerKey, setPendingAdsterraBannerKey] = useState(() => localStorage.getItem('cache_adsterra_banner_key') || "");
   const [pendingAdsterraMobileBannerKey, setPendingAdsterraMobileBannerKey] = useState(() => localStorage.getItem('cache_adsterra_mobile_banner_key') || "");
   const [pendingAdsterraInFeedKey, setPendingAdsterraInFeedKey] = useState(() => localStorage.getItem('cache_adsterra_infeed_key') || "");
@@ -184,19 +198,6 @@ export default function App() {
   const [pendingAdsterraPopunderKey, setPendingAdsterraPopunderKey] = useState(() => localStorage.getItem('cache_adsterra_popunder_key') || "");
   const [pendingAdsterraSocialBarKey, setPendingAdsterraSocialBarKey] = useState(() => localStorage.getItem('cache_adsterra_socialbar_key') || "");
   const [pendingAdsterraDirectLinkUrl, setPendingAdsterraDirectLinkUrl] = useState(() => localStorage.getItem('cache_adsterra_direct_link_url') || "");
-
-  // Clickdilla Configurations
-  const [clickdillaEnabled, setClickdillaEnabled] = useState(() => localStorage.getItem('cache_clickdilla_enabled') === 'true');
-  const [clickdillaPopunderCode, setClickdillaPopunderCode] = useState(() => localStorage.getItem('cache_clickdilla_popunder_code') || "");
-  const [clickdillaBannerCode, setClickdillaBannerCode] = useState(() => localStorage.getItem('cache_clickdilla_banner_code') || "");
-  const [clickdillaDirectLinkUrl, setClickdillaDirectLinkUrl] = useState(() => localStorage.getItem('cache_clickdilla_direct_link_url') || "");
-  const [clickdillaVideoEnabled, setClickdillaVideoEnabled] = useState(() => localStorage.getItem('cache_clickdilla_video_enabled') === 'true');
-  const [clickdillaVideoUrl, setClickdillaVideoUrl] = useState(() => localStorage.getItem('cache_clickdilla_video_url') || "");
-
-  const [pendingClickdillaPopunderCode, setPendingClickdillaPopunderCode] = useState(() => localStorage.getItem('cache_clickdilla_popunder_code') || "");
-  const [pendingClickdillaBannerCode, setPendingClickdillaBannerCode] = useState(() => localStorage.getItem('cache_clickdilla_banner_code') || "");
-  const [pendingClickdillaDirectLinkUrl, setPendingClickdillaDirectLinkUrl] = useState(() => localStorage.getItem('cache_clickdilla_direct_link_url') || "");
-  const [pendingClickdillaVideoUrl, setPendingClickdillaVideoUrl] = useState(() => localStorage.getItem('cache_clickdilla_video_url') || "");
 
   // Reward ads custom controls states
   const [rewardAds, setRewardAds] = useState<any[]>(() => {
@@ -312,46 +313,6 @@ export default function App() {
     };
   }, [adsterraEnabled, adsterraPopunderKey, adsterraSocialBarKey]);
 
-
-  // Sitewide Clickdilla Popunder / Clickunder injection
-  useEffect(() => {
-    if (!clickdillaEnabled || !clickdillaPopunderCode || !clickdillaPopunderCode.trim()) return;
-
-    let injectedScript: HTMLScriptElement | null = null;
-    try {
-      const code = clickdillaPopunderCode.trim();
-      injectedScript = document.createElement('script');
-      injectedScript.type = 'text/javascript';
-
-      if (code.includes('<script')) {
-        const srcMatch = code.match(/src=["']([^"']+)["']/i);
-        if (srcMatch && srcMatch[1]) {
-          injectedScript.src = srcMatch[1];
-          const dataOptions = [...code.matchAll(/data-([^=\s]+)=["']([^"']+)["']/gi)];
-          dataOptions.forEach(opt => {
-            injectedScript?.setAttribute(`data-${opt[1]}`, opt[2]);
-          });
-        } else {
-          const innerCode = code.replace(/<script[^>]*>/gi, '').replace(/<\/script>/gi, '');
-          injectedScript.innerHTML = innerCode;
-        }
-      } else if (code.startsWith('http') || code.startsWith('//')) {
-        injectedScript.src = code;
-      } else {
-        injectedScript.innerHTML = code;
-      }
-
-      document.head.appendChild(injectedScript);
-    } catch (err) {
-      console.error("Clickdilla Popunder script injection failure:", err);
-    }
-
-    return () => {
-      if (injectedScript && document.head.contains(injectedScript)) {
-        try { document.head.removeChild(injectedScript); } catch (e) {}
-      }
-    };
-  }, [clickdillaEnabled, clickdillaPopunderCode]);
 
 
   // --- Local Virtual DB & Quota Resilience Engine (Absolute Zero Data Loss & Seamless Execution) ---
@@ -1495,52 +1456,29 @@ export default function App() {
       const chosenAd = pool[randomIndex];
       let targetAdUrl = "";
 
-      if (clickdillaVideoEnabled && clickdillaVideoUrl && clickdillaVideoUrl.trim() !== "") {
-        const clickdillaVideoLinks = clickdillaVideoUrl
+      const activeDirectLinks: string[] = [];
+
+      if (adsterraEnabled && adsterraDirectLinkUrl && adsterraDirectLinkUrl.trim() !== "") {
+        const adsterraLinks = adsterraDirectLinkUrl
           .split(/[\n,;|]+/)
           .map(link => link.trim())
           .filter(link => link.length > 0)
           .map(link => /^https?:\/\//i.test(link) ? link : "https://" + link);
-        if (clickdillaVideoLinks.length > 0) {
-          const randIdx = Math.floor(Math.random() * clickdillaVideoLinks.length);
-          targetAdUrl = clickdillaVideoLinks[randIdx];
-        }
+        activeDirectLinks.push(...adsterraLinks);
       }
 
-      if (!targetAdUrl) {
-        const activeDirectLinks: string[] = [];
-
-        if (adsterraEnabled && adsterraDirectLinkUrl && adsterraDirectLinkUrl.trim() !== "") {
-          const adsterraLinks = adsterraDirectLinkUrl
-            .split(/[\n,;|]+/)
-            .map(link => link.trim())
-            .filter(link => link.length > 0)
-            .map(link => /^https?:\/\//i.test(link) ? link : "https://" + link);
-          activeDirectLinks.push(...adsterraLinks);
-        }
-
-        if (clickdillaEnabled && clickdillaDirectLinkUrl && clickdillaDirectLinkUrl.trim() !== "") {
-          const clickdillaLinks = clickdillaDirectLinkUrl
-            .split(/[\n,;|]+/)
-            .map(link => link.trim())
-            .filter(link => link.length > 0)
-            .map(link => /^https?:\/\//i.test(link) ? link : "https://" + link);
-          activeDirectLinks.push(...clickdillaLinks);
-        }
-
-        if (activeDirectLinks.length > 0) {
-          const randIdx = Math.floor(Math.random() * activeDirectLinks.length);
-          targetAdUrl = activeDirectLinks[randIdx];
-        } else if (chosenAd && chosenAd.url) {
-          targetAdUrl = chosenAd.url;
-        } else {
-          targetAdUrl = "https://www.bkash.com/app-download";
-        }
+      if (activeDirectLinks.length > 0) {
+        const randIdx = Math.floor(Math.random() * activeDirectLinks.length);
+        targetAdUrl = activeDirectLinks[randIdx];
+      } else if (chosenAd && chosenAd.url) {
+        targetAdUrl = chosenAd.url;
+      } else {
+        targetAdUrl = "https://www.bkash.com/app-download";
       }
 
       setCurrOpenedAdUrl(targetAdUrl);
     }
-  }, [showAdsEarnModal, adsterraEnabled, adsterraDirectLinkUrl, clickdillaEnabled, clickdillaDirectLinkUrl, clickdillaVideoEnabled, clickdillaVideoUrl, rewardAds]);
+  }, [showAdsEarnModal, adsterraEnabled, adsterraDirectLinkUrl, rewardAds]);
 
   const getTodayDateString = () => {
     const d = new Date();
@@ -1576,47 +1514,24 @@ export default function App() {
     if (!currOpenedAdUrl) {
       let targetAdUrl = "";
 
-      if (clickdillaVideoEnabled && clickdillaVideoUrl && clickdillaVideoUrl.trim() !== "") {
-        const clickdillaVideoLinks = clickdillaVideoUrl
+      const activeDirectLinks: string[] = [];
+
+      if (adsterraEnabled && adsterraDirectLinkUrl && adsterraDirectLinkUrl.trim() !== "") {
+        const adsterraLinks = adsterraDirectLinkUrl
           .split(/[\n,;|]+/)
           .map(link => link.trim())
           .filter(link => link.length > 0)
           .map(link => /^https?:\/\//i.test(link) ? link : "https://" + link);
-        if (clickdillaVideoLinks.length > 0) {
-          const randIdx = Math.floor(Math.random() * clickdillaVideoLinks.length);
-          targetAdUrl = clickdillaVideoLinks[randIdx];
-        }
+        activeDirectLinks.push(...adsterraLinks);
       }
 
-      if (!targetAdUrl) {
-        const activeDirectLinks: string[] = [];
-
-        if (adsterraEnabled && adsterraDirectLinkUrl && adsterraDirectLinkUrl.trim() !== "") {
-          const adsterraLinks = adsterraDirectLinkUrl
-            .split(/[\n,;|]+/)
-            .map(link => link.trim())
-            .filter(link => link.length > 0)
-            .map(link => /^https?:\/\//i.test(link) ? link : "https://" + link);
-          activeDirectLinks.push(...adsterraLinks);
-        }
-
-        if (clickdillaEnabled && clickdillaDirectLinkUrl && clickdillaDirectLinkUrl.trim() !== "") {
-          const clickdillaLinks = clickdillaDirectLinkUrl
-            .split(/[\n,;|]+/)
-            .map(link => link.trim())
-            .filter(link => link.length > 0)
-            .map(link => /^https?:\/\//i.test(link) ? link : "https://" + link);
-          activeDirectLinks.push(...clickdillaLinks);
-        }
-
-        if (activeDirectLinks.length > 0) {
-          const randIdx = Math.floor(Math.random() * activeDirectLinks.length);
-          targetAdUrl = activeDirectLinks[randIdx];
-        } else if (chosenAd && chosenAd.url) {
-          targetAdUrl = chosenAd.url;
-        } else {
-          targetAdUrl = "https://www.bkash.com/app-download";
-        }
+      if (activeDirectLinks.length > 0) {
+        const randIdx = Math.floor(Math.random() * activeDirectLinks.length);
+        targetAdUrl = activeDirectLinks[randIdx];
+      } else if (chosenAd && chosenAd.url) {
+        targetAdUrl = chosenAd.url;
+      } else {
+        targetAdUrl = "https://www.bkash.com/app-download";
       }
 
       setCurrOpenedAdUrl(targetAdUrl);
@@ -5700,34 +5615,33 @@ export default function App() {
           console.warn("Skipping dynamic adsterra config fetch from firestore (using cache):", adsterraErr);
         }
 
-        // Fetch Clickdilla Configurations
-        const clickdillaDocRef = doc(db, 'settings', 'clickdilla');
+        // Fetch Google AdSense Configurations
+        const adsenseDocRef = doc(db, 'settings', 'adsense');
         try {
-          const clickdillaSnap = await getDoc(clickdillaDocRef);
-          if (clickdillaSnap.exists()) {
-            const data = clickdillaSnap.data();
+          const adsenseSnap = await getDoc(adsenseDocRef);
+          if (adsenseSnap.exists()) {
+            const data = adsenseSnap.data();
             if (data) {
-              setClickdillaEnabled(data.enabled === true);
-              setClickdillaPopunderCode(data.popunderCode || "");
-              setPendingClickdillaPopunderCode(data.popunderCode || "");
-              setClickdillaBannerCode(data.bannerCode || "");
-              setPendingClickdillaBannerCode(data.bannerCode || "");
-              setClickdillaDirectLinkUrl(data.directLinkUrl || "");
-              setPendingClickdillaDirectLinkUrl(data.directLinkUrl || "");
-              setClickdillaVideoEnabled(data.videoEnabled === true);
-              setClickdillaVideoUrl(data.videoUrl || "");
-              setPendingClickdillaVideoUrl(data.videoUrl || "");
+              setAdsenseEnabled(data.enabled !== false); // default to true
+              setPendingAdsenseEnabled(data.enabled !== false);
+              setAdsensePublisherId(data.publisherId || "pub-2555802954977566");
+              setPendingAdsensePublisherId(data.publisherId || "pub-2555802954977566");
+              setAdsenseBannerSlotId(data.bannerSlotId || "");
+              setPendingAdsenseBannerSlotId(data.bannerSlotId || "");
+              setAdsenseInFeedSlotId(data.inFeedSlotId || "");
+              setPendingAdsenseInFeedSlotId(data.inFeedSlotId || "");
+              setAdsenseStickySlotId(data.stickySlotId || "");
+              setPendingAdsenseStickySlotId(data.stickySlotId || "");
 
-              localStorage.setItem('cache_clickdilla_enabled', String(data.enabled === true));
-              localStorage.setItem('cache_clickdilla_popunder_code', data.popunderCode || "");
-              localStorage.setItem('cache_clickdilla_banner_code', data.bannerCode || "");
-              localStorage.setItem('cache_clickdilla_direct_link_url', data.directLinkUrl || "");
-              localStorage.setItem('cache_clickdilla_video_enabled', String(data.videoEnabled === true));
-              localStorage.setItem('cache_clickdilla_video_url', data.videoUrl || "");
+              localStorage.setItem('cache_adsense_enabled', String(data.enabled !== false));
+              localStorage.setItem('cache_adsense_pub_id', data.publisherId || "pub-2555802954977566");
+              localStorage.setItem('cache_adsense_banner_slot', data.bannerSlotId || "");
+              localStorage.setItem('cache_adsense_infeed_slot', data.inFeedSlotId || "");
+              localStorage.setItem('cache_adsense_sticky_slot', data.stickySlotId || "");
             }
           }
-        } catch (clickdillaErr) {
-          console.warn("Skipping dynamic clickdilla config fetch from firestore (using cache):", clickdillaErr);
+        } catch (adsenseErr) {
+          console.warn("Skipping dynamic adsense config fetch from firestore (using cache):", adsenseErr);
         }
 
         // Fetch Custom Reward Ads Configurations
@@ -5880,41 +5794,37 @@ export default function App() {
     }
   };
 
-  const updateClickdillaSettings = async (
+  const updateAdsenseSettings = async (
     enabled: boolean,
-    popunderCode: string,
-    bannerCode: string,
-    directLinkUrl: string,
-    videoEnabled: boolean,
-    videoUrl: string
+    publisherId: string,
+    bannerSlotId: string,
+    inFeedSlotId: string,
+    stickySlotId: string
   ) => {
     if (!isAdmin) return;
     try {
-      await setDoc(doc(db, 'settings', 'clickdilla'), {
+      await setDoc(doc(db, 'settings', 'adsense'), {
         enabled,
-        popunderCode: popunderCode.trim(),
-        bannerCode: bannerCode.trim(),
-        directLinkUrl: directLinkUrl.trim(),
-        videoEnabled,
-        videoUrl: videoUrl.trim(),
+        publisherId: publisherId.trim(),
+        bannerSlotId: bannerSlotId.trim(),
+        inFeedSlotId: inFeedSlotId.trim(),
+        stickySlotId: stickySlotId.trim(),
         updatedAt: serverTimestamp()
       });
-      setClickdillaEnabled(enabled);
-      setClickdillaPopunderCode(popunderCode.trim());
-      setClickdillaBannerCode(bannerCode.trim());
-      setClickdillaDirectLinkUrl(directLinkUrl.trim());
-      setClickdillaVideoEnabled(videoEnabled);
-      setClickdillaVideoUrl(videoUrl.trim());
+      setAdsenseEnabled(enabled);
+      setAdsensePublisherId(publisherId.trim());
+      setAdsenseBannerSlotId(bannerSlotId.trim());
+      setAdsenseInFeedSlotId(inFeedSlotId.trim());
+      setAdsenseStickySlotId(stickySlotId.trim());
 
-      localStorage.setItem('cache_clickdilla_enabled', String(enabled));
-      localStorage.setItem('cache_clickdilla_popunder_code', popunderCode.trim());
-      localStorage.setItem('cache_clickdilla_banner_code', bannerCode.trim());
-      localStorage.setItem('cache_clickdilla_direct_link_url', directLinkUrl.trim());
-      localStorage.setItem('cache_clickdilla_video_enabled', String(videoEnabled));
-      localStorage.setItem('cache_clickdilla_video_url', videoUrl.trim());
-      alert('Clickdilla configurations successfully updated!');
+      localStorage.setItem('cache_adsense_enabled', String(enabled));
+      localStorage.setItem('cache_adsense_pub_id', publisherId.trim());
+      localStorage.setItem('cache_adsense_banner_slot', bannerSlotId.trim());
+      localStorage.setItem('cache_adsense_infeed_slot', inFeedSlotId.trim());
+      localStorage.setItem('cache_adsense_sticky_slot', stickySlotId.trim());
+      alert('Google AdSense configurations successfully updated!');
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, 'settings/clickdilla');
+      handleFirestoreError(err, OperationType.WRITE, 'settings/adsense');
     }
   };
 
@@ -6524,8 +6434,8 @@ export default function App() {
 
 
 
-                {/* Adsterra/Clickdilla Sponsor banner block */}
-                {adsterraEnabled || clickdillaEnabled ? (
+                {/* Adsterra/Google AdSense Sponsor banner block */}
+                {adsterraEnabled || adsenseEnabled ? (
                   <AdSenseSlot 
                     type="banner" 
                     className="my-4"
@@ -6534,8 +6444,11 @@ export default function App() {
                     adsterraMobileBannerKey={adsterraMobileBannerKey}
                     adsterraInFeedKey={adsterraInFeedKey}
                     adsterraStickyKey={adsterraStickyKey}
-                    clickdillaEnabled={clickdillaEnabled}
-                    clickdillaBannerCode={clickdillaBannerCode}
+                    adsenseEnabled={adsenseEnabled}
+                    adsensePublisherId={adsensePublisherId}
+                    adsenseBannerSlotId={adsenseBannerSlotId}
+                    adsenseInFeedSlotId={adsenseInFeedSlotId}
+                    adsenseStickySlotId={adsenseStickySlotId}
                   />
                 ) : (
                   <div className="bg-[#0D1321] text-white rounded-2xl border border-slate-900 p-3.5 relative overflow-hidden my-4 text-left select-none shadow-sm block">
@@ -6994,7 +6907,7 @@ export default function App() {
                     ) : (
                       filteredMarketListings.map((item, i) => (
                         <React.Fragment key={item.id}>
-                          {(adsterraEnabled || clickdillaEnabled) && (i === 1 || i === 4) && (
+                          {(adsterraEnabled || adsenseEnabled) && (i === 1 || i === 4) && (
                             <AdSenseSlot 
                               type="in-feed" 
                               className="my-1"
@@ -7003,8 +6916,11 @@ export default function App() {
                               adsterraMobileBannerKey={adsterraMobileBannerKey}
                               adsterraInFeedKey={adsterraInFeedKey}
                               adsterraStickyKey={adsterraStickyKey}
-                              clickdillaEnabled={clickdillaEnabled}
-                              clickdillaBannerCode={clickdillaBannerCode}
+                              adsenseEnabled={adsenseEnabled}
+                              adsensePublisherId={adsensePublisherId}
+                              adsenseBannerSlotId={adsenseBannerSlotId}
+                              adsenseInFeedSlotId={adsenseInFeedSlotId}
+                              adsenseStickySlotId={adsenseStickySlotId}
                             />
                           )}
                           <motion.div
@@ -9518,27 +9434,27 @@ https://www.highperformanceformat.com/link2"
                   </div>
                 </div>
 
-                {/* Clickdilla Revenue Hub & Monetization Console */}
+                {/* Google AdSense Revenue Hub & Monetization Console */}
                 <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6 mt-6">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 border border-blue-100 shadow-sm animate-pulse">
+                      <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 border border-amber-100 shadow-sm animate-pulse">
                         <Flame size={24} />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="font-black text-slate-800 text-lg tracking-tight font-display">Clickdilla Ad Networks Console</h3>
-                          <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${clickdillaEnabled ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
-                            {clickdillaEnabled ? '● ACTIVE' : '○ DISABLED'}
+                          <h3 className="font-black text-slate-800 text-lg tracking-tight font-display">Google AdSense Monetization Console</h3>
+                          <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${adsenseEnabled ? 'bg-amber-100 text-amber-800 font-extrabold font-sans' : 'bg-slate-100 text-slate-500'}`}>
+                            {adsenseEnabled ? '● ACTIVE' : '○ DISABLED'}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Dynamic Clickdilla Popunders, Banner codes & monetizer</p>
+                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Configure Google AdSense Publisher ID & responsive Ad units</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="px-3.5 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-black uppercase tracking-wider border border-blue-100/50 flex items-center gap-1.5">
-                        <Coins size={11} className="animate-spin" />
-                        CLICKDILLA STATUS SUCCESS
+                      <div className="px-3.5 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-[10px] font-black uppercase tracking-wider border border-amber-100/50 flex items-center gap-1.5 font-sans">
+                        <Coins size={11} className="animate-bounce" />
+                        ADSENSE OFFICIAL INTEGRATION
                       </div>
                     </div>
                   </div>
@@ -9546,171 +9462,130 @@ https://www.highperformanceformat.com/link2"
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Controls & Keys */}
                     <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
-                      <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Configure Clickdilla Placements</h4>
+                      <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Configure Google AdSense Placements</h4>
                       
-                      {/* Banner JS Code Script Embed */}
+                      {/* Publisher ID */}
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
-                          <span>Standard Banner Script Code (Embed full script)</span>
-                          <span className="text-blue-600 lowercase font-mono">clickdillaBannerCode</span>
+                          <span>Google AdSense Publisher ID</span>
+                          <span className="text-amber-700 lowercase font-mono">adsensePublisherId</span>
                         </label>
                         <div className="relative">
-                          <textarea 
-                            value={pendingClickdillaBannerCode}
-                            onChange={(e) => setPendingClickdillaBannerCode(e.target.value)}
-                            placeholder="e.g. <script src='https://js.clickdilla.com/...'></script> or inline container div..."
-                            rows={3}
-                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-300 shadow-2xs resize-y"
+                          <input 
+                            value={pendingAdsensePublisherId}
+                            onChange={(e) => setPendingAdsensePublisherId(e.target.value)}
+                            placeholder="e.g. pub-2555802954977566"
+                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all placeholder:text-slate-300 shadow-2xs"
                           />
-                          <span className="absolute right-3 top-3 text-[9px] font-black bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded uppercase">Banner Code</span>
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-amber-50 text-amber-650 px-1.5 py-0.5 rounded uppercase font-sans">PUB ID</span>
                         </div>
                       </div>
 
-                      {/* POPUNDER ID SCRIPT Embed */}
-                      <div className="space-y-1.5 p-3.5 bg-blue-50/30 border border-blue-500/10 rounded-2xl">
-                        <label className="text-[10px] font-black text-blue-700 uppercase tracking-wider flex justify-between">
-                          <span className="flex items-center gap-1">💥 Popunder Script Code (Embed/API url)</span>
-                          <span className="text-blue-600 lowercase font-mono">clickdillaPopunderCode</span>
+                      {/* Banner Slot ID */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
+                          <span>Header/Footer Banner Ad Slot ID (Responsive)</span>
+                          <span className="text-amber-700 lowercase font-mono">bannerSlotId</span>
                         </label>
                         <div className="relative">
-                          <textarea 
-                            value={pendingClickdillaPopunderCode}
-                            onChange={(e) => setPendingClickdillaPopunderCode(e.target.value)}
-                            placeholder="Copy script tag or API direct Popunder execution script text..."
-                            rows={3}
-                            className="w-full pl-4 pr-16 py-3 bg-white border border-blue-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-300 shadow-2xs resize-y"
+                          <input 
+                            value={pendingAdsenseBannerSlotId}
+                            onChange={(e) => setPendingAdsenseBannerSlotId(e.target.value)}
+                            placeholder="e.g. 1234567890 (বা খালি রাখুন)"
+                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all placeholder:text-slate-350 shadow-2xs"
                           />
-                          <span className="absolute right-3 top-3 text-[8px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-md uppercase animate-pulse">Popunder</span>
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-amber-50 text-amber-650 px-1.5 py-0.5 rounded uppercase font-sans">Banner</span>
                         </div>
-                        <span className="block text-[9.5px] text-slate-400 font-bold leading-tight">এর মাধ্যমে ওয়েবসাইটের যেকোনো স্থানে ক্লিক করলে পপআন্ডার বিজ্ঞাপনটি রান হবে যা সর্বোচ্চ রেভিনিউ প্রদান করবে।</span>
                       </div>
 
-                      {/* DIRECT LINK URL - CHAT AND BONUS BLOCK ACTION */}
-                      <div className="space-y-1.5 p-3.5 bg-amber-50/40 border border-amber-500/20 rounded-2xl">
-                        <label className="text-[10px] font-black text-amber-800 uppercase tracking-wider flex justify-between">
-                          <span className="flex items-center gap-1">🔗 Direct Link Pools / URL's (Massive BDT/CPM)</span>
-                          <span className="text-amber-700 lowercase font-mono">clickdillaDirectLinkUrl</span>
+                      {/* In-Feed Slot ID */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
+                          <span>Listing In-Feed Ad Slot ID (Responsive)</span>
+                          <span className="text-amber-700 lowercase font-mono">inFeedSlotId</span>
                         </label>
                         <div className="relative">
-                          <textarea 
-                            value={pendingClickdillaDirectLinkUrl}
-                            onChange={(e) => setPendingClickdillaDirectLinkUrl(e.target.value)}
-                            placeholder="e.g. 
-https://www.clickdilla.com/link1
-https://www.clickdilla.com/link2"
-                            rows={3}
-                            className="w-full pl-4 pr-20 py-3 bg-white border border-amber-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all placeholder:text-slate-400 shadow-2xs resize-y"
+                          <input 
+                            value={pendingAdsenseInFeedSlotId}
+                            onChange={(e) => setPendingAdsenseInFeedSlotId(e.target.value)}
+                            placeholder="e.g. 0987654321 (বা খালি রাখুন)"
+                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all placeholder:text-slate-350 shadow-2xs"
                           />
-                          <span className="absolute right-3 top-3 text-[8px] font-black bg-amber-600 text-white px-2 py-0.5 rounded-md uppercase">Direct Link Pool</span>
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-amber-50 text-amber-650 px-1.5 py-0.5 rounded uppercase font-sans">In-Feed</span>
                         </div>
-                        <span className="block text-[9.5px] text-slate-500 font-bold leading-tight mt-1">
-                          Clickdilla ড্যাশবোর্ড থেকে প্রাপ্ত এক বা একাধিক <strong className="text-amber-800 font-black">"Direct Link"</strong> বা <strong className="text-amber-800 font-black">"Smartlink"</strong> এর ফুল URL টি এখানে বসান। প্রতিটি বিজ্ঞাপন ক্লিকে সিস্টেম স্বয়ংক্রিয়ভাবে একটি র্যান্ডম লিংক সিলেক্ট করে ওপেন করবে।
-                        </span>
                       </div>
 
-                      {/* CLICKDILLA VIDEO ADS URL POOL */}
-                      <div className="space-y-1.5 p-3.5 bg-indigo-50/40 border border-indigo-500/25 rounded-2xl">
-                        <label className="text-[10px] font-black text-indigo-800 uppercase tracking-wider flex justify-between">
-                          <span className="flex items-center gap-1">🎥 Clickdilla Video Ads / Smartlink Pool (VIEW ৳০.১০)</span>
-                          <span className="text-indigo-700 lowercase font-mono">clickdillaVideoUrl</span>
+                      {/* Sticky Bottom Slot ID */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
+                          <span>Sticky Bottom Banner Ad Slot ID (Responsive)</span>
+                          <span className="text-amber-700 lowercase font-mono">stickySlotId</span>
                         </label>
                         <div className="relative">
-                          <textarea 
-                            value={pendingClickdillaVideoUrl}
-                            onChange={(e) => setPendingClickdillaVideoUrl(e.target.value)}
-                            placeholder="e.g. 
-https://www.clickdilla.com/video-link-1
-https://www.clickdilla.com/video-link-2"
-                            rows={3}
-                            className="w-full pl-4 pr-20 py-3 bg-white border border-indigo-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-450 shadow-2xs resize-y"
+                          <input 
+                            value={pendingAdsenseStickySlotId}
+                            onChange={(e) => setPendingAdsenseStickySlotId(e.target.value)}
+                            placeholder="e.g. 5432109876 (বা খালি রাখুন)"
+                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all placeholder:text-slate-350 shadow-2xs"
                           />
-                          <span className="absolute right-3 top-3 text-[8px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded-md uppercase">Video Pool</span>
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-amber-50 text-amber-650 px-1.5 py-0.5 rounded uppercase font-sans">Sticky</span>
                         </div>
-                        <span className="block text-[9.5px] text-slate-500 font-bold leading-tight mt-1">
-                          ব্যবহারকারী যখন ইউজার প্যানেল থেকে <strong className="text-indigo-800 font-black">"👉 VIEW (৳০.১০ আয় করুন)"</strong> বাটনে ক্লিক করবে, তখন সয়ংক্রিয়ভাবে এই লিস্টের একটি ভিডিও বিজ্ঞাপন লিংক ওপেন হবে।
-                        </span>
                       </div>
 
-                      {/* Enable Switch for General Ads */}
+                      {/* Enable Switch */}
                       <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200/60 shadow-2xs">
                         <div>
-                          <span className="block font-bold text-slate-800 text-sm">Enable Clickdilla Ads</span>
-                          <span className="text-[10px] text-slate-450 font-bold uppercase">Activate Clickdilla placements</span>
+                          <span className="block font-bold text-slate-800 text-sm">Enable Google AdSense</span>
+                          <span className="text-[10px] text-slate-450 font-bold uppercase">Activate Google AdSense placements</span>
                         </div>
                         <button 
                           onClick={() => {
-                            const nextState = !clickdillaEnabled;
-                            setClickdillaEnabled(nextState);
-                            localStorage.setItem('cache_clickdilla_enabled', String(nextState));
+                            const nextState = !pendingAdsenseEnabled;
+                            setPendingAdsenseEnabled(nextState);
                           }}
-                          className={`w-12 h-6 rounded-full p-1 flex transition-colors duration-300 ${clickdillaEnabled ? 'bg-blue-600 justify-end' : 'bg-slate-200 justify-start'}`}
-                        >
-                          <div className="w-4 h-4 bg-white rounded-full shadow-sm" />
-                        </button>
-                      </div>
-
-                      {/* Enable Switch for Video Reward Ads */}
-                      <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200/60 shadow-2xs">
-                        <div>
-                          <span className="block font-bold text-slate-800 text-sm">Enable Clickdilla Video Ads</span>
-                          <span className="text-[10px] text-slate-450 font-bold uppercase">Activate Video Ads for ৳০.১০ Task</span>
-                        </div>
-                        <button 
-                          onClick={() => {
-                            const nextState = !clickdillaVideoEnabled;
-                            setClickdillaVideoEnabled(nextState);
-                            localStorage.setItem('cache_clickdilla_video_enabled', String(nextState));
-                          }}
-                          className={`w-12 h-6 rounded-full p-1 flex transition-colors duration-300 ${clickdillaVideoEnabled ? 'bg-indigo-600 justify-end' : 'bg-slate-200 justify-start'}`}
+                          className={`w-12 h-6 rounded-full p-1 flex transition-colors duration-300 cursor-pointer ${pendingAdsenseEnabled ? 'bg-amber-500 justify-end' : 'bg-slate-200 justify-start'}`}
                         >
                           <div className="w-4 h-4 bg-white rounded-full shadow-sm" />
                         </button>
                       </div>
 
                       <button 
-                        onClick={() => updateClickdillaSettings(
-                          clickdillaEnabled,
-                          pendingClickdillaPopunderCode,
-                          pendingClickdillaBannerCode,
-                          pendingClickdillaDirectLinkUrl,
-                          clickdillaVideoEnabled,
-                          pendingClickdillaVideoUrl
+                        onClick={() => updateAdsenseSettings(
+                          pendingAdsenseEnabled,
+                          pendingAdsensePublisherId,
+                          pendingAdsenseBannerSlotId,
+                          pendingAdsenseInFeedSlotId,
+                          pendingAdsenseStickySlotId
                         )}
-                        className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-blue-200/50 hover:opacity-95 transition-all text-center flex items-center justify-center gap-2 cursor-pointer"
+                        className="w-full py-4 bg-gradient-to-r from-amber-500 to-yellow-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-amber-100 hover:opacity-95 transition-all text-center flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <Coins size={12} />
-                        Save Clickdilla Keys & Activate
+                        Save Google AdSense Settings & Activate
                       </button>
                     </div>
 
-                    {/* Guidelines specifically customized for Clickdilla */}
-                    <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex flex-col justify-between">
+                    {/* Guidelines specifically customized for Google AdSense */}
+                    <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100 flex flex-col justify-between">
                       <div>
-                        <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-widest mb-1.5 flex items-center gap-1">
-                          <Sparkles size={11} className="text-blue-600" />
-                          Clickdilla Publisher Setup Roadmap
-                        </h4>
+                        <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Google AdSense Integration Guide</h4>
                         <p className="text-[10.5px] text-slate-500 font-semibold leading-relaxed mb-4">
-                          কোড বসানোর নিয়মাবলি নিচের সহজ পদ্ধতিতে বুঝানো হলো:
+                          আপনার ওয়েবসাইটে গুগল এডসেন্স বিজ্ঞাপন চালু করতে নিচের সহজ গাইডলাইন অনুসরণ করুন:
                         </p>
-
-                        <div className="space-y-4 text-[10px] sm:text-xs font-medium font-sans">
-                          <div className="space-y-2 text-slate-600 font-bold leading-normal">
-                            <p>
-                              ১. প্রথমে <a href="https://clickdilla.com" target="_blank" rel="noreferrer" className="text-blue-600 font-black hover:underline">Clickdilla Publisher</a> অ্যাকাউন্ট ক্রিয়েট করুন।
-                            </p>
-                            <p>
-                              ২. সেখানে ওয়েবসাইট যোগ করুন এবং অ্যাড ফরম্যাট ক্রিয়েট করুন (Popunder, Banners, Smartlink ইত্যাদি)।
-                            </p>
-                            <p>
-                              ৩. প্রাপ্ত সম্পূর্ণ স্ক্রিপ্ট কোডটি সরাসরি কপি করে এখানে সংশ্লিষ্ট বক্সে পেস্ট করুন। কোড অ্যাসেম্বলি এবং ইনজেক্টিং প্রসেস রিয়েলটাইমে রান হবে।
-                            </p>
-                          </div>
-                          
-                          <div className="bg-blue-600 rounded-2xl p-4 text-white text-xs font-bold leading-normal">
-                            💼 সফল বিজ্ঞাপন ক্লিকে ডাইরেক্ট লিংক পুল এবং পপআন্ডার ট্রাফিকের ব্যালেন্স অনুযায়ী আপনার Clickdilla একাউন্টে লাইভ রেভিনিউ যুক্ত হবে।
-                          </div>
+                        <div className="space-y-3 font-bold text-slate-600 text-[11px] sm:text-xs">
+                          <p>
+                            ১. আপনার এডসেন্স একাউন্ট থেকে <strong className="text-slate-800">Publisher ID</strong> টি সংগ্রহ করে এখানে দিন। আপনার ডিফল্ট আইডিটি অলরেডি কনফিগারড আছে।
+                          </p>
+                          <p>
+                            ২. আপনি চাইলে এডসেন্স ড্যাশবোর্ড থেকে <strong className="text-slate-800">Banner, In-Feed, এবং Sticky</strong> ইউনিটের জন্য আলাদা <strong className="text-slate-800">Slot ID</strong> তৈরি করে এখানে পেস্ট করতে পারেন। খালি রাখলে এডসেন্স অটোমেটিক রেসপনসিভ অ্যাড হিসেবে লোড করবে।
+                          </p>
+                          <p>
+                            ৩. এডসেন্স কোডগুলো রিঅ্যাক্ট লাইফসাইকেলের সাথে সম্পুর্ন অপ্টিমাইজড উপায়ে লোড হবে। এর ফলে পেইজ স্পিড ঠিক থাকবে এবং এড ইমপ্রেশন ও রেভিনিউ সর্বোচ্চ হবে।
+                          </p>
                         </div>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-[10px] sm:text-xs font-bold text-amber-800 leading-normal">
+                        💡 <strong>বিশেষ দ্রষ্টব্য:</strong> এডসেন্স লাইভ বিজ্ঞাপন চালু হতে গুগল কর্তৃক আপনার সাইট অ্যাপ্রুভড থাকতে হবে। অ্যাপ্রুভড সাইটে ইনস্ট্যান্ট বিজ্ঞাপন প্রদর্শিত হবে।
                       </div>
                     </div>
                   </div>
@@ -12857,7 +12732,7 @@ https://www.clickdilla.com/video-link-2"
 
 
         {/* Sticky bottom Google AdSense banner */}
-        {(adsterraEnabled || clickdillaEnabled) && view !== 'admin' && view !== 'login' && view !== 'register' && view !== 'forgot' && view !== 'reset' && (
+        {(adsterraEnabled || adsenseEnabled) && view !== 'admin' && view !== 'login' && view !== 'register' && view !== 'forgot' && view !== 'reset' && (
           <AdSenseSlot 
             type="sticky-bottom" 
             adsterraEnabled={adsterraEnabled}
@@ -12866,8 +12741,11 @@ https://www.clickdilla.com/video-link-2"
             adsterraInFeedKey={adsterraInFeedKey}
             adsterraStickyKey={adsterraStickyKey}
             bgColor={navBgColor}
-            clickdillaEnabled={clickdillaEnabled}
-            clickdillaBannerCode={clickdillaBannerCode}
+            adsenseEnabled={adsenseEnabled}
+            adsensePublisherId={adsensePublisherId}
+            adsenseBannerSlotId={adsenseBannerSlotId}
+            adsenseInFeedSlotId={adsenseInFeedSlotId}
+            adsenseStickySlotId={adsenseStickySlotId}
           />
         )}
 

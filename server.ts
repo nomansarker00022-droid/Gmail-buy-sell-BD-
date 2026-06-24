@@ -103,6 +103,68 @@ async function startServer() {
     }
   });
 
+  // Universal S2S Postback & CPA Conversion Tracking Endpoint (Clickdilla, Adsterra, CPAGrip, etc.)
+  const handlePostback = async (req: any, res: any) => {
+    try {
+      const query = { ...req.query, ...req.body };
+      const uid = query.uid || query.subid || query.user_id || query.s1 || query.aff_sub || query.pub_sub;
+      const payoutRaw = query.payout || query.amount || query.reward || query.commission || query.price || "0.10";
+      const status = query.status || "1";
+      const txid = query.txid || query.click_id || query.conversion_id || query.id || `pb_${Date.now()}`;
+
+      console.log("Received Postback Conversion Notification:", query);
+
+      if (!uid || uid.includes("{") || uid === "undefined" || uid === "null") {
+        return res.status(400).send("INVALID_USER_ID");
+      }
+
+      // Check if status indicates rejection or chargeback
+      if (status.toString() === "0" || status.toString() === "2" || status.toLowerCase() === "rejected" || status.toLowerCase() === "declined") {
+        console.log(`Postback ignored due to non-approved status: ${status} for user: ${uid}`);
+        return res.status(200).send("IGNORED_STATUS");
+      }
+
+      const rewardAmount = parseFloat(payoutRaw) || 0.10;
+
+      try {
+        const firestore = getDb();
+        const userRef = firestore.collection("profiles").doc(uid);
+        const userSnap = await userRef.get();
+
+        if (userSnap.exists) {
+          await userRef.update({
+            earningsBalance: admin.firestore.FieldValue.increment(rewardAmount),
+            totalEarned: admin.firestore.FieldValue.increment(rewardAmount),
+          });
+          console.log(`Credited ${rewardAmount} BDT to uid ${uid} via Postback [txid: ${txid}]`);
+        } else {
+          console.warn(`User profile doc not found for uid ${uid}.`);
+        }
+
+        // Record in postback_logs collection
+        await firestore.collection("postback_logs").doc(txid.toString()).set({
+          uid,
+          amount: rewardAmount,
+          rawParams: query,
+          createdAt: new Date().toISOString(),
+          status: "credited"
+        }, { merge: true });
+
+      } catch (dbErr: any) {
+        console.warn("Database error during postback handling:", dbErr);
+      }
+
+      // Ad networks typically require a plain 'OK' or '1' response
+      return res.status(200).send("OK");
+    } catch (err: any) {
+      console.error("Postback handler fatal error:", err);
+      return res.status(500).send("ERROR");
+    }
+  };
+
+  app.get("/api/postback", handlePostback);
+  app.post("/api/postback", handlePostback);
+
   // Health check
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
