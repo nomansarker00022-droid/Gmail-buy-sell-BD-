@@ -190,6 +190,7 @@ export default function App() {
   const [monetagMobileBannerTagId, setMonetagMobileBannerTagId] = useState(() => localStorage.getItem('cache_monetag_mobile_banner_tag') || "");
   const [monetagInFeedTagId, setMonetagInFeedTagId] = useState(() => localStorage.getItem('cache_monetag_infeed_tag') || "");
   const [monetagStickyTagId, setMonetagStickyTagId] = useState(() => localStorage.getItem('cache_monetag_sticky_tag') || "");
+  const [monetagMultiTag, setMonetagMultiTag] = useState(() => localStorage.getItem('cache_monetag_multitag') || "");
 
   const [pendingAdsenseEnabled, setPendingAdsenseEnabled] = useState(() => localStorage.getItem('cache_adsense_enabled') !== 'false');
   const [pendingAdsensePublisherId, setPendingAdsensePublisherId] = useState(() => localStorage.getItem('cache_adsense_pub_id') || "pub-2555802954977566");
@@ -202,6 +203,7 @@ export default function App() {
   const [pendingMonetagMobileBannerTagId, setPendingMonetagMobileBannerTagId] = useState(() => localStorage.getItem('cache_monetag_mobile_banner_tag') || "");
   const [pendingMonetagInFeedTagId, setPendingMonetagInFeedTagId] = useState(() => localStorage.getItem('cache_monetag_infeed_tag') || "");
   const [pendingMonetagStickyTagId, setPendingMonetagStickyTagId] = useState(() => localStorage.getItem('cache_monetag_sticky_tag') || "");
+  const [pendingMonetagMultiTag, setPendingMonetagMultiTag] = useState(() => localStorage.getItem('cache_monetag_multitag') || "");
 
   const [pendingAdstarreBannerKey, setPendingAdstarreBannerKey] = useState(""); // Dummy placeholder to keep clean diffs
   const [pendingAdsterraBannerKey, setPendingAdsterraBannerKey] = useState(() => localStorage.getItem('cache_adsterra_banner_key') || "");
@@ -325,6 +327,55 @@ export default function App() {
       }
     };
   }, [adsterraEnabled, adsterraPopunderKey, adsterraSocialBarKey]);
+
+
+  // Sitewide Monetag MultiTag script injection
+  useEffect(() => {
+    if (!monetagEnabled || !monetagMultiTag || !monetagMultiTag.trim()) return;
+
+    let monetagScript: HTMLScriptElement | null = null;
+    try {
+      const tag = monetagMultiTag.trim();
+      monetagScript = document.createElement('script');
+      
+      // If user inputs a pure tag ID (e.g. 11207011)
+      if (/^\d+$/.test(tag)) {
+        monetagScript.src = `https://alwingulla.com/act/files/micro.tag.minify.js`;
+        monetagScript.setAttribute('data-zone', tag);
+        monetagScript.async = true;
+        monetagScript.setAttribute('data-cfasync', 'false');
+      } else {
+        // If it's a full URL or script snippet, we can parse or inject it
+        if (tag.startsWith('http') || tag.startsWith('//')) {
+          monetagScript.src = tag;
+          monetagScript.async = true;
+        } else {
+          // If they entered raw HTML <script src="..."> tags, try to extract src
+          const match = tag.match(/src=["']([^"']+)["']/);
+          if (match && match[1]) {
+            monetagScript.src = match[1];
+            monetagScript.async = true;
+            // Also grab data-zone if present
+            const zoneMatch = tag.match(/data-zone=["']([^"']+)["']/);
+            if (zoneMatch && zoneMatch[1]) {
+              monetagScript.setAttribute('data-zone', zoneMatch[1]);
+            }
+          } else {
+            monetagScript.text = tag.replace(/<\/?script[^>]*>/gi, '');
+          }
+        }
+      }
+      document.head.appendChild(monetagScript);
+    } catch (err) {
+      console.error("Monetag MultiTag script injection failure:", err);
+    }
+
+    return () => {
+      if (monetagScript && document.head.contains(monetagScript)) {
+        try { document.head.removeChild(monetagScript); } catch (e) {}
+      }
+    };
+  }, [monetagEnabled, monetagMultiTag]);
 
 
 
@@ -5674,12 +5725,15 @@ export default function App() {
               setPendingMonetagInFeedTagId(data.inFeedTagId || "");
               setMonetagStickyTagId(data.stickyTagId || "");
               setPendingMonetagStickyTagId(data.stickyTagId || "");
+              setMonetagMultiTag(data.multiTag || "");
+              setPendingMonetagMultiTag(data.multiTag || "");
 
               localStorage.setItem('cache_monetag_enabled', String(data.enabled === true));
               localStorage.setItem('cache_monetag_banner_tag', data.bannerTagId || "");
               localStorage.setItem('cache_monetag_mobile_banner_tag', data.mobileBannerTagId || "");
               localStorage.setItem('cache_monetag_infeed_tag', data.inFeedTagId || "");
               localStorage.setItem('cache_monetag_sticky_tag', data.stickyTagId || "");
+              localStorage.setItem('cache_monetag_multitag', data.multiTag || "");
             }
           }
         } catch (monetagErr) {
@@ -5875,7 +5929,8 @@ export default function App() {
     bannerTagId: string,
     mobileBannerTagId: string,
     inFeedTagId: string,
-    stickyTagId: string
+    stickyTagId: string,
+    multiTag: string
   ) => {
     if (!isAdmin) return;
     try {
@@ -5885,6 +5940,7 @@ export default function App() {
         mobileBannerTagId: mobileBannerTagId.trim(),
         inFeedTagId: inFeedTagId.trim(),
         stickyTagId: stickyTagId.trim(),
+        multiTag: multiTag.trim(),
         updatedAt: serverTimestamp()
       });
       setMonetagEnabled(enabled);
@@ -5892,12 +5948,14 @@ export default function App() {
       setMonetagMobileBannerTagId(mobileBannerTagId.trim());
       setMonetagInFeedTagId(inFeedTagId.trim());
       setMonetagStickyTagId(stickyTagId.trim());
+      setMonetagMultiTag(multiTag.trim());
 
       localStorage.setItem('cache_monetag_enabled', String(enabled));
       localStorage.setItem('cache_monetag_banner_tag', bannerTagId.trim());
       localStorage.setItem('cache_monetag_mobile_banner_tag', mobileBannerTagId.trim());
       localStorage.setItem('cache_monetag_infeed_tag', inFeedTagId.trim());
       localStorage.setItem('cache_monetag_sticky_tag', stickyTagId.trim());
+      localStorage.setItem('cache_monetag_multitag', multiTag.trim());
       alert('Monetag configurations successfully updated!');
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'settings/monetag');
@@ -9707,6 +9765,26 @@ https://www.highperformanceformat.com/link2"
                     <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
                       <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Configure Monetag Placements</h4>
                       
+                      {/* MultiTag ID / Script */}
+                      <div className="space-y-1.5 p-4 bg-blue-50/40 rounded-2xl border border-blue-100/50 shadow-2xs">
+                        <label className="text-[10px] font-black text-blue-700 uppercase tracking-wider flex justify-between">
+                          <span>🚀 Recommended: MultiTag ID / Script Code</span>
+                          <span className="text-blue-700 lowercase font-mono">multiTag</span>
+                        </label>
+                        <div className="relative">
+                          <input 
+                            value={pendingMonetagMultiTag}
+                            onChange={(e) => setPendingMonetagMultiTag(e.target.value)}
+                            placeholder="e.g. 11207011 or paste full script tag"
+                            className="w-full pl-4 pr-12 py-3 bg-white border border-blue-200/80 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-350"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-blue-600 text-white px-1.5 py-0.5 rounded uppercase font-sans">Multi</span>
+                        </div>
+                        <p className="text-[9.5px] text-blue-600 font-bold leading-normal">
+                          * Monetag MultiTag-এর Zone ID (যেমন: 11207011) বা সম্পূর্ণ কোডটি এখানে দিন। এটি একইসাথে Popunder, Push Notification, Vignette, In-Page Push সচল করবে!
+                        </p>
+                      </div>
+
                       {/* Banner Tag ID */}
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
@@ -9798,7 +9876,8 @@ https://www.highperformanceformat.com/link2"
                           pendingMonetagBannerTagId,
                           pendingMonetagMobileBannerTagId,
                           pendingMonetagInFeedTagId,
-                          pendingMonetagStickyTagId
+                          pendingMonetagStickyTagId,
+                          pendingMonetagMultiTag
                         )}
                         className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-blue-100 hover:opacity-95 transition-all text-center flex items-center justify-center gap-2 cursor-pointer"
                       >
