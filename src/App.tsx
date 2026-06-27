@@ -184,11 +184,24 @@ export default function App() {
   const [adsenseInFeedSlotId, setAdsenseInFeedSlotId] = useState(() => localStorage.getItem('cache_adsense_infeed_slot') || "");
   const [adsenseStickySlotId, setAdsenseStickySlotId] = useState(() => localStorage.getItem('cache_adsense_sticky_slot') || "");
 
+  // Monetag Configurations
+  const [monetagEnabled, setMonetagEnabled] = useState(() => localStorage.getItem('cache_monetag_enabled') === 'true');
+  const [monetagBannerTagId, setMonetagBannerTagId] = useState(() => localStorage.getItem('cache_monetag_banner_tag') || "");
+  const [monetagMobileBannerTagId, setMonetagMobileBannerTagId] = useState(() => localStorage.getItem('cache_monetag_mobile_banner_tag') || "");
+  const [monetagInFeedTagId, setMonetagInFeedTagId] = useState(() => localStorage.getItem('cache_monetag_infeed_tag') || "");
+  const [monetagStickyTagId, setMonetagStickyTagId] = useState(() => localStorage.getItem('cache_monetag_sticky_tag') || "");
+
   const [pendingAdsenseEnabled, setPendingAdsenseEnabled] = useState(() => localStorage.getItem('cache_adsense_enabled') !== 'false');
   const [pendingAdsensePublisherId, setPendingAdsensePublisherId] = useState(() => localStorage.getItem('cache_adsense_pub_id') || "pub-2555802954977566");
   const [pendingAdsenseBannerSlotId, setPendingAdsenseBannerSlotId] = useState(() => localStorage.getItem('cache_adsense_banner_slot') || "");
   const [pendingAdsenseInFeedSlotId, setPendingAdsenseInFeedSlotId] = useState(() => localStorage.getItem('cache_adsense_infeed_slot') || "");
   const [pendingAdsenseStickySlotId, setPendingAdsenseStickySlotId] = useState(() => localStorage.getItem('cache_adsense_sticky_slot') || "");
+
+  const [pendingMonetagEnabled, setPendingMonetagEnabled] = useState(() => localStorage.getItem('cache_monetag_enabled') === 'true');
+  const [pendingMonetagBannerTagId, setPendingMonetagBannerTagId] = useState(() => localStorage.getItem('cache_monetag_banner_tag') || "");
+  const [pendingMonetagMobileBannerTagId, setPendingMonetagMobileBannerTagId] = useState(() => localStorage.getItem('cache_monetag_mobile_banner_tag') || "");
+  const [pendingMonetagInFeedTagId, setPendingMonetagInFeedTagId] = useState(() => localStorage.getItem('cache_monetag_infeed_tag') || "");
+  const [pendingMonetagStickyTagId, setPendingMonetagStickyTagId] = useState(() => localStorage.getItem('cache_monetag_sticky_tag') || "");
 
   const [pendingAdstarreBannerKey, setPendingAdstarreBannerKey] = useState(""); // Dummy placeholder to keep clean diffs
   const [pendingAdsterraBannerKey, setPendingAdsterraBannerKey] = useState(() => localStorage.getItem('cache_adsterra_banner_key') || "");
@@ -5644,6 +5657,35 @@ export default function App() {
           console.warn("Skipping dynamic adsense config fetch from firestore (using cache):", adsenseErr);
         }
 
+        // Fetch Monetag Configurations
+        const monetagDocRef = doc(db, 'settings', 'monetag');
+        try {
+          const monetagSnap = await getDoc(monetagDocRef);
+          if (monetagSnap.exists()) {
+            const data = monetagSnap.data();
+            if (data) {
+              setMonetagEnabled(data.enabled === true);
+              setPendingMonetagEnabled(data.enabled === true);
+              setMonetagBannerTagId(data.bannerTagId || "");
+              setPendingMonetagBannerTagId(data.bannerTagId || "");
+              setMonetagMobileBannerTagId(data.mobileBannerTagId || "");
+              setPendingMonetagMobileBannerTagId(data.mobileBannerTagId || "");
+              setMonetagInFeedTagId(data.inFeedTagId || "");
+              setPendingMonetagInFeedTagId(data.inFeedTagId || "");
+              setMonetagStickyTagId(data.stickyTagId || "");
+              setPendingMonetagStickyTagId(data.stickyTagId || "");
+
+              localStorage.setItem('cache_monetag_enabled', String(data.enabled === true));
+              localStorage.setItem('cache_monetag_banner_tag', data.bannerTagId || "");
+              localStorage.setItem('cache_monetag_mobile_banner_tag', data.mobileBannerTagId || "");
+              localStorage.setItem('cache_monetag_infeed_tag', data.inFeedTagId || "");
+              localStorage.setItem('cache_monetag_sticky_tag', data.stickyTagId || "");
+            }
+          }
+        } catch (monetagErr) {
+          console.warn("Skipping dynamic monetag config fetch from firestore (using cache):", monetagErr);
+        }
+
         // Fetch Custom Reward Ads Configurations
         const rewardAdsDocRef = doc(db, 'settings', 'reward_ads');
         try {
@@ -5825,6 +5867,40 @@ export default function App() {
       alert('Google AdSense configurations successfully updated!');
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'settings/adsense');
+    }
+  };
+
+  const updateMonetagSettings = async (
+    enabled: boolean,
+    bannerTagId: string,
+    mobileBannerTagId: string,
+    inFeedTagId: string,
+    stickyTagId: string
+  ) => {
+    if (!isAdmin) return;
+    try {
+      await setDoc(doc(db, 'settings', 'monetag'), {
+        enabled,
+        bannerTagId: bannerTagId.trim(),
+        mobileBannerTagId: mobileBannerTagId.trim(),
+        inFeedTagId: inFeedTagId.trim(),
+        stickyTagId: stickyTagId.trim(),
+        updatedAt: serverTimestamp()
+      });
+      setMonetagEnabled(enabled);
+      setMonetagBannerTagId(bannerTagId.trim());
+      setMonetagMobileBannerTagId(mobileBannerTagId.trim());
+      setMonetagInFeedTagId(inFeedTagId.trim());
+      setMonetagStickyTagId(stickyTagId.trim());
+
+      localStorage.setItem('cache_monetag_enabled', String(enabled));
+      localStorage.setItem('cache_monetag_banner_tag', bannerTagId.trim());
+      localStorage.setItem('cache_monetag_mobile_banner_tag', mobileBannerTagId.trim());
+      localStorage.setItem('cache_monetag_infeed_tag', inFeedTagId.trim());
+      localStorage.setItem('cache_monetag_sticky_tag', stickyTagId.trim());
+      alert('Monetag configurations successfully updated!');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, 'settings/monetag');
     }
   };
 
@@ -6434,8 +6510,8 @@ export default function App() {
 
 
 
-                {/* Adsterra/Google AdSense Sponsor banner block */}
-                {adsterraEnabled || adsenseEnabled ? (
+                {/* Adsterra/Google AdSense/Monetag Sponsor banner block */}
+                {adsterraEnabled || adsenseEnabled || monetagEnabled ? (
                   <AdSenseSlot 
                     type="banner" 
                     className="my-4"
@@ -6449,6 +6525,11 @@ export default function App() {
                     adsenseBannerSlotId={adsenseBannerSlotId}
                     adsenseInFeedSlotId={adsenseInFeedSlotId}
                     adsenseStickySlotId={adsenseStickySlotId}
+                    monetagEnabled={monetagEnabled}
+                    monetagBannerTagId={monetagBannerTagId}
+                    monetagMobileBannerTagId={monetagMobileBannerTagId}
+                    monetagInFeedTagId={monetagInFeedTagId}
+                    monetagStickyTagId={monetagStickyTagId}
                   />
                 ) : (
                   <div className="bg-[#0D1321] text-white rounded-2xl border border-slate-900 p-3.5 relative overflow-hidden my-4 text-left select-none shadow-sm block">
@@ -6907,7 +6988,7 @@ export default function App() {
                     ) : (
                       filteredMarketListings.map((item, i) => (
                         <React.Fragment key={item.id}>
-                          {(adsterraEnabled || adsenseEnabled) && (i === 1 || i === 4) && (
+                          {(adsterraEnabled || adsenseEnabled || monetagEnabled) && (i === 1 || i === 4) && (
                             <AdSenseSlot 
                               type="in-feed" 
                               className="my-1"
@@ -6921,6 +7002,11 @@ export default function App() {
                               adsenseBannerSlotId={adsenseBannerSlotId}
                               adsenseInFeedSlotId={adsenseInFeedSlotId}
                               adsenseStickySlotId={adsenseStickySlotId}
+                              monetagEnabled={monetagEnabled}
+                              monetagBannerTagId={monetagBannerTagId}
+                              monetagMobileBannerTagId={monetagMobileBannerTagId}
+                              monetagInFeedTagId={monetagInFeedTagId}
+                              monetagStickyTagId={monetagStickyTagId}
                             />
                           )}
                           <motion.div
@@ -9586,6 +9672,166 @@ https://www.highperformanceformat.com/link2"
 
                       <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-[10px] sm:text-xs font-bold text-amber-800 leading-normal">
                         💡 <strong>বিশেষ দ্রষ্টব্য:</strong> এডসেন্স লাইভ বিজ্ঞাপন চালু হতে গুগল কর্তৃক আপনার সাইট অ্যাপ্রুভড থাকতে হবে। অ্যাপ্রুভড সাইটে ইনস্ট্যান্ট বিজ্ঞাপন প্রদর্শিত হবে।
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Monetag Revenue Hub & Monetization Console */}
+                <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6 mt-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 border border-blue-100 shadow-sm">
+                        <Flame size={24} className="text-blue-600" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-black text-slate-800 text-lg tracking-tight font-display">Monetag Monetization Console</h3>
+                          <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${monetagEnabled ? 'bg-blue-100 text-blue-800 font-extrabold font-sans' : 'bg-slate-100 text-slate-500'}`}>
+                            {monetagEnabled ? '● ACTIVE' : '○ DISABLED'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Configure Monetag Ad Tags & SmartLink formats</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="px-3.5 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-[10px] font-black uppercase tracking-wider border border-blue-100/50 flex items-center gap-1.5 font-sans">
+                        <Coins size={11} className="animate-bounce" />
+                        MONETAG OFFICIAL INTEGRATION
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Controls & Keys */}
+                    <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
+                      <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Configure Monetag Placements</h4>
+                      
+                      {/* Banner Tag ID */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
+                          <span>Header/Footer Banner / Native Tag ID</span>
+                          <span className="text-blue-700 lowercase font-mono">bannerTagId</span>
+                        </label>
+                        <div className="relative">
+                          <input 
+                            value={pendingMonetagBannerTagId}
+                            onChange={(e) => setPendingMonetagBannerTagId(e.target.value)}
+                            placeholder="e.g. 777263, script URL or code snippet"
+                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-300 shadow-2xs"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-blue-50 text-blue-650 px-1.5 py-0.5 rounded uppercase font-sans">Banner</span>
+                        </div>
+                      </div>
+
+                      {/* Mobile Banner Tag ID */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
+                          <span>Mobile Banner Tag ID (Optional)</span>
+                          <span className="text-blue-700 lowercase font-mono">mobileBannerTagId</span>
+                        </label>
+                        <div className="relative">
+                          <input 
+                            value={pendingMonetagMobileBannerTagId}
+                            onChange={(e) => setPendingMonetagMobileBannerTagId(e.target.value)}
+                            placeholder="e.g. 777264, script URL or code snippet"
+                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-305 shadow-2xs"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-blue-50 text-blue-650 px-1.5 py-0.5 rounded uppercase font-sans">M-Banner</span>
+                        </div>
+                      </div>
+
+                      {/* In-Feed Tag ID */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
+                          <span>In-Page Push / Vignette Ad Tag ID</span>
+                          <span className="text-blue-700 lowercase font-mono">inFeedTagId</span>
+                        </label>
+                        <div className="relative">
+                          <input 
+                            value={pendingMonetagInFeedTagId}
+                            onChange={(e) => setPendingMonetagInFeedTagId(e.target.value)}
+                            placeholder="e.g. 777265, script URL or code snippet"
+                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-350 shadow-2xs"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-blue-50 text-blue-650 px-1.5 py-0.5 rounded uppercase font-sans">Push</span>
+                        </div>
+                      </div>
+
+                      {/* Sticky Bottom Tag ID */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
+                          <span>Sticky Bottom Ad Tag ID</span>
+                          <span className="text-blue-700 lowercase font-mono">stickyTagId</span>
+                        </label>
+                        <div className="relative">
+                          <input 
+                            value={pendingMonetagStickyTagId}
+                            onChange={(e) => setPendingMonetagStickyTagId(e.target.value)}
+                            placeholder="e.g. 777266, script URL or code snippet"
+                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-350 shadow-2xs"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-blue-50 text-blue-650 px-1.5 py-0.5 rounded uppercase font-sans">Sticky</span>
+                        </div>
+                      </div>
+
+                      {/* Enable Switch */}
+                      <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200/60 shadow-2xs">
+                        <div>
+                          <span className="block font-bold text-slate-800 text-sm">Enable Monetag Ads</span>
+                          <span className="text-[10px] text-slate-450 font-bold uppercase">Activate Monetag placements across layout</span>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            const nextState = !pendingMonetagEnabled;
+                            setPendingMonetagEnabled(nextState);
+                          }}
+                          className={`w-12 h-6 rounded-full p-1 flex transition-colors duration-300 cursor-pointer ${pendingMonetagEnabled ? 'bg-blue-500 justify-end' : 'bg-slate-200 justify-start'}`}
+                        >
+                          <div className="w-4 h-4 bg-white rounded-full shadow-sm" />
+                        </button>
+                      </div>
+
+                      <button 
+                        onClick={() => updateMonetagSettings(
+                          pendingMonetagEnabled,
+                          pendingMonetagBannerTagId,
+                          pendingMonetagMobileBannerTagId,
+                          pendingMonetagInFeedTagId,
+                          pendingMonetagStickyTagId
+                        )}
+                        className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-blue-100 hover:opacity-95 transition-all text-center flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <Coins size={12} />
+                        Save Monetag Settings & Activate
+                      </button>
+                    </div>
+
+                    {/* Guidelines specifically customized for Monetag */}
+                    <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100 flex flex-col justify-between">
+                      <div>
+                        <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Monetag Integration Guide</h4>
+                        <p className="text-[10.5px] text-slate-500 font-semibold leading-relaxed mb-4">
+                          আপনার ওয়েবসাইটে Monetag বিজ্ঞাপন চালু করতে নিচের সহজ গাইডলাইন অনুসরণ করুন:
+                        </p>
+                        <div className="space-y-3 font-bold text-slate-600 text-[11px] sm:text-xs">
+                          <p>
+                            ১. প্রথমে <a href="https://monetag.com" target="_blank" rel="noreferrer" className="text-blue-650 font-black hover:underline font-sans">Monetag Publisher Panel-এ লগইন বা সাইনআপ</a> করুন।
+                          </p>
+                          <p>
+                            ২. আপনার ডেমেইনটি এড করুন এবং ভেরিফাই করুন। এরপর বিজ্ঞাপন ফরম্যাট (In-Page Push, Native Banner, MultiTag) তৈরি করুন।
+                          </p>
+                          <p>
+                            ৩. প্রতিটি ফরম্যাটের জন্য Monetag থেকে প্রাপ্ত <strong className="text-slate-800">Zone ID / Tag ID (যেমন: 777263)</strong> অথবা সম্পুর্ন স্ক্রিপ্ট সোর্স URL টি সংশ্লিষ্ট ইনপুটে বসিয়ে সেভ করুন।
+                          </p>
+                          <p>
+                            ৪. খালি রাখলে সিস্টেম অটোমেটিক Monetag এর হাই-কনভার্টিং রেভিনিউ প্রমোশনাল অফার প্রদর্শন করবে যা বাংলাদেশি ট্রাফিকের জন্য সর্বোচ্চ CPM জেনারেট করে।
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-[10px] sm:text-xs font-bold text-blue-850 leading-normal">
+                        💡 <strong>বিশেষ দ্রষ্টব্য:</strong> Monetag এর In-Page Push এবং Vignette ব্যানার বিজ্ঞাপনগুলো রেভিনিউ বাড়াতে অত্যন্ত কার্যকর। আপনার এডসেন্স ও এডস্টেরা নিষ্ক্রিয় থাকলে Monetag বিজ্ঞাপনগুলো স্বয়ংক্রিয়ভাবে মূল বিজ্ঞাপনের স্থান দখল করে নিবে।
                       </div>
                     </div>
                   </div>
@@ -12731,8 +12977,8 @@ https://www.highperformanceformat.com/link2"
 
 
 
-        {/* Sticky bottom Google AdSense banner */}
-        {(adsterraEnabled || adsenseEnabled) && view !== 'admin' && view !== 'login' && view !== 'register' && view !== 'forgot' && view !== 'reset' && (
+        {/* Sticky bottom Google AdSense/Monetag banner */}
+        {(adsterraEnabled || adsenseEnabled || monetagEnabled) && view !== 'admin' && view !== 'login' && view !== 'register' && view !== 'forgot' && view !== 'reset' && (
           <AdSenseSlot 
             type="sticky-bottom" 
             adsterraEnabled={adsterraEnabled}
@@ -12746,6 +12992,11 @@ https://www.highperformanceformat.com/link2"
             adsenseBannerSlotId={adsenseBannerSlotId}
             adsenseInFeedSlotId={adsenseInFeedSlotId}
             adsenseStickySlotId={adsenseStickySlotId}
+            monetagEnabled={monetagEnabled}
+            monetagBannerTagId={monetagBannerTagId}
+            monetagMobileBannerTagId={monetagMobileBannerTagId}
+            monetagInFeedTagId={monetagInFeedTagId}
+            monetagStickyTagId={monetagStickyTagId}
           />
         )}
 

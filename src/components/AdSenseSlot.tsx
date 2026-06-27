@@ -24,6 +24,13 @@ interface AdSenseSlotProps {
   adsenseBannerSlotId?: string;
   adsenseInFeedSlotId?: string;
   adsenseStickySlotId?: string;
+
+  // Monetag Configurations
+  monetagEnabled?: boolean;
+  monetagBannerTagId?: string;
+  monetagMobileBannerTagId?: string;
+  monetagInFeedTagId?: string;
+  monetagStickyTagId?: string;
 }
 
 // Beautiful high-CPM direct offers for Adsterra simulation
@@ -70,11 +77,55 @@ const SIMULATED_ADS_ADSTERRA = [
   }
 ];
 
+// Beautiful high-CPM direct offers for Monetag simulation
+const SIMULATED_ADS_MONETAG = [
+  {
+    title: "Monetag Publishers - Ultimate Monetization Platform",
+    descr: "Boost your ad earnings with high-impact native formats, smartlinks, and AI-optimized CPM rates. Instant payouts globally.",
+    cta: "Start Earning with Monetag",
+    url: "https://monetag.com",
+    bg: "from-blue-600/10 to-cyan-600/5",
+    accent: "text-blue-600",
+    border: "border-blue-500/20",
+    badge: "Monetag Certified Partner"
+  },
+  {
+    title: "X-Cleaner: Turbo Boost & Mobile Protection",
+    descr: "Instantly clean storage, optimize system memory, and block malicious tracking cookies in 1-tap. 100% free download.",
+    cta: "Download Free Cleaner",
+    url: "https://monetag.com",
+    bg: "from-teal-500/10 to-cyan-500/5",
+    accent: "text-teal-700",
+    border: "border-teal-500/20",
+    badge: "Android/iOS Utility"
+  },
+  {
+    title: "Play Galaxy Fleet: Elite Space Shooter",
+    descr: "Epic 3D space battles with millions of commanders online. Build bases, upgrade shields, and dominate the galaxy.",
+    cta: "Launch game",
+    url: "https://monetag.com",
+    bg: "from-violet-500/10 to-fuchsia-500/5",
+    accent: "text-violet-600",
+    border: "border-violet-500/20",
+    badge: "Space Strategy MMO"
+  },
+  {
+    title: "Earn 10,000 BDT Daily Reselling Gmail Accounts",
+    descr: "Fastest-growing secure trading desk in BD. Auto verification, instant bKash disbursements, and dedicated 24/7 support agent help.",
+    cta: "Sell Now",
+    url: "#",
+    bg: "from-sky-500/10 to-blue-500/5",
+    accent: "text-sky-700",
+    border: "border-sky-500/20",
+    badge: "BD Smart Earners"
+  }
+];
+
 export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
   type,
   className = "",
 
-  // Props with default fallback values connected to local storage or fallback to system active status
+  // Adsterra Configurations
   adsterraEnabled = true,
   adsterraBannerKey = "",
   adsterraMobileBannerKey = "",
@@ -82,12 +133,19 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
   adsterraStickyKey = "",
   bgColor = "",
 
-  // Google AdSense settings
+  // Google AdSense Configurations
   adsenseEnabled = true,
   adsensePublisherId = "pub-2555802954977566",
   adsenseBannerSlotId = "",
   adsenseInFeedSlotId = "",
-  adsenseStickySlotId = ""
+  adsenseStickySlotId = "",
+
+  // Monetag Configurations
+  monetagEnabled = false,
+  monetagBannerTagId = "",
+  monetagMobileBannerTagId = "",
+  monetagInFeedTagId = "",
+  monetagStickyTagId = ""
 }) => {
   const [adIndex, setAdIndex] = useState(0);
   const [dismissed, setDismissed] = useState(false);
@@ -106,8 +164,9 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
 
   // Pick a random simulated ad index on load
   useEffect(() => {
-    setAdIndex(Math.floor(Math.random() * SIMULATED_ADS_ADSTERRA.length));
-  }, []);
+    const listLength = monetagEnabled && !adsenseEnabled ? SIMULATED_ADS_MONETAG.length : SIMULATED_ADS_ADSTERRA.length;
+    setAdIndex(Math.floor(Math.random() * listLength));
+  }, [monetagEnabled, adsenseEnabled]);
 
   // Handle live AdSense push activation
   useEffect(() => {
@@ -129,7 +188,7 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
 
   // Handle live Adsterra script execution
   useEffect(() => {
-    if (!adsenseEnabled && adsterraEnabled && containerRef.current) {
+    if (!adsenseEnabled && !monetagEnabled && adsterraEnabled && containerRef.current) {
       // Clear containers
       containerRef.current.innerHTML = '';
       
@@ -202,7 +261,59 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
         }
       }
     }
-  }, [adsenseEnabled, adsterraEnabled, adsterraBannerKey, adsterraMobileBannerKey, adsterraInFeedKey, adsterraStickyKey, type, isMobile]);
+  }, [adsenseEnabled, adsterraEnabled, monetagEnabled, adsterraBannerKey, adsterraMobileBannerKey, adsterraInFeedKey, adsterraStickyKey, type, isMobile]);
+
+  // Handle live Monetag script execution
+  useEffect(() => {
+    if (!adsenseEnabled && monetagEnabled && containerRef.current) {
+      // Clear containers
+      containerRef.current.innerHTML = '';
+      
+      const canShowMonetag = monetagEnabled && (
+        (type === 'banner' && (isMobile ? (monetagMobileBannerTagId || monetagBannerTagId) : monetagBannerTagId)) ||
+        (type === 'in-feed' && monetagInFeedTagId) ||
+        (type === 'sticky-bottom' && monetagStickyTagId)
+      );
+
+      if (canShowMonetag) {
+        let activeKey = "";
+        if (type === 'banner') {
+          activeKey = isMobile ? (monetagMobileBannerTagId || monetagBannerTagId || "") : (monetagBannerTagId || "");
+        } else if (type === 'in-feed') {
+          activeKey = (monetagInFeedTagId || "").trim();
+        } else if (type === 'sticky-bottom') {
+          activeKey = (monetagStickyTagId || "").trim();
+        }
+
+        if (activeKey) {
+          try {
+            if (activeKey.includes('<script')) {
+              // Inject raw HTML safely
+              const range = document.createRange();
+              const documentFragment = range.createContextualFragment(activeKey);
+              containerRef.current.appendChild(documentFragment);
+            } else {
+              // Build dynamic script
+              const monetagScript = document.createElement('script');
+              monetagScript.type = 'text/javascript';
+              monetagScript.setAttribute('data-cfasync', 'false');
+              monetagScript.async = true;
+              
+              if (activeKey.startsWith('http') || activeKey.startsWith('//') || activeKey.includes('.js')) {
+                monetagScript.src = activeKey;
+              } else {
+                // Assume standard Zone ID and load from groleegni.net or common monetag direct endpoint
+                monetagScript.src = `https://groleegni.net/601/${activeKey}/invoke.js`;
+              }
+              containerRef.current.appendChild(monetagScript);
+            }
+          } catch (scriptErr) {
+            console.error("Monetag script loading exception:", scriptErr);
+          }
+        }
+      }
+    }
+  }, [adsenseEnabled, monetagEnabled, monetagBannerTagId, monetagMobileBannerTagId, monetagInFeedTagId, monetagStickyTagId, type, isMobile]);
 
   if (dismissed) return null;
 
@@ -279,9 +390,49 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
   }
 
   // ============================================
-  // CASE 2: REAL LIVE ADSTERRA SCRIPT RENDERING
+  // CASE 2: REAL LIVE MONETAG SCRIPT RENDERING
   // ============================================
-  const canShowAdsterra = !adsenseEnabled && adsterraEnabled && (
+  const canShowMonetag = !adsenseEnabled && monetagEnabled && (
+    (type === 'banner' && (isMobile ? (monetagMobileBannerTagId || monetagBannerTagId) : monetagBannerTagId)) ||
+    (type === 'in-feed' && monetagInFeedTagId) ||
+    (type === 'sticky-bottom' && monetagStickyTagId)
+  );
+
+  if (canShowMonetag) {
+    let containerWidth = "w-full max-w-[728px]";
+    let containerHeight = "min-h-[90px]";
+    if (type === 'in-feed') {
+      containerWidth = "w-full max-w-[300px]";
+      containerHeight = "min-h-[250px]";
+    } else if (isMobile || type === 'sticky-bottom') {
+      containerWidth = "w-full max-w-[320px]";
+      containerHeight = "min-h-[50px]";
+    }
+
+    return (
+      <div className={`monetag-wrapper my-6 overflow-hidden mx-auto text-center ${className}`}>
+        <div className={`mx-auto ${containerWidth} flex items-center justify-between px-3 py-1 bg-blue-900 border border-blue-800 rounded-t-xl text-[9px] text-blue-300 font-bold`}>
+          <div className="flex items-center gap-1.5 font-sans">
+            <Flame size={10} className="text-blue-300 animate-bounce" />
+            <span>MONETAG PREMIUM PARTNER SPONSOR</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="hover:underline text-[8.5px]">Secure Ad</span>
+          </div>
+        </div>
+        <div 
+          className={`bg-slate-950 border-x border-b border-slate-800 p-3 rounded-b-xl flex justify-center items-center ${containerHeight} mx-auto`}
+          ref={containerRef}
+          id={`ad-container-monetag-${type}`}
+        />
+      </div>
+    );
+  }
+
+  // ============================================
+  // CASE 3: REAL LIVE ADSTERRA SCRIPT RENDERING
+  // ============================================
+  const canShowAdsterra = !adsenseEnabled && !monetagEnabled && adsterraEnabled && (
     (type === 'banner' && (isMobile ? (adsterraMobileBannerKey || adsterraBannerKey) : adsterraBannerKey)) ||
     (type === 'in-feed' && adsterraInFeedKey) ||
     (type === 'sticky-bottom' && adsterraStickyKey)
@@ -312,15 +463,19 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
         <div 
           className={`bg-slate-950 border-x border-b border-slate-800 p-3 rounded-b-xl flex justify-center items-center ${containerHeight} mx-auto`}
           ref={containerRef}
-          id={`ad-container-${type}`}
+          id={`ad-container-adsterra-${type}`}
         />
       </div>
     );
   }
 
   // ============================================
-  // CASE 3: HIGH-FIDELITY SIMULATED AD DESIGN (Adsterra fallback)
+  // CASE 4: HIGH-FIDELITY SIMULATED AD DESIGN (Monetag / Adsterra Fallback)
   // ============================================
+  const isMonetagFallback = !adsenseEnabled && monetagEnabled;
+  const activeSimulatedList = isMonetagFallback ? SIMULATED_ADS_MONETAG : SIMULATED_ADS_ADSTERRA;
+  const currentAd = activeSimulatedList[adIndex % activeSimulatedList.length] || activeSimulatedList[0];
+
   if (type === 'sticky-bottom') {
     const isColorDark = (hexColor: string) => {
       if (!hexColor) return true; // default dark safety
@@ -345,7 +500,6 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
 
     const isBgDark = isColorDark(bgColor);
     const resolvedBg = bgColor || 'rgba(15, 23, 42, 0.95)'; // fallback Slate-900
-    const currentAd = SIMULATED_ADS_ADSTERRA[adIndex] || SIMULATED_ADS_ADSTERRA[0];
 
     return (
       <motion.div 
@@ -362,7 +516,7 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
           }}
         >
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shrink-0 animate-pulse ${isBgDark ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-700 border border-indigo-100'}`}>
+            <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shrink-0 animate-pulse ${isMonetagFallback ? 'bg-blue-600 text-white' : 'bg-indigo-600 text-white'}`}>
               AD
             </span>
             <div className="min-w-0">
@@ -379,7 +533,7 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
               href={currentAd.url} 
               target="_blank" 
               rel="noreferrer"
-              className="px-3.5 py-2 text-white font-black text-[10.5px] uppercase tracking-wider rounded-xl transition-all active:scale-95 flex items-center gap-1 shadow-sm bg-[#6366F1] hover:bg-indigo-700"
+              className={`px-3.5 py-2 text-white font-black text-[10.5px] uppercase tracking-wider rounded-xl transition-all active:scale-95 flex items-center gap-1 shadow-sm ${isMonetagFallback ? 'bg-blue-600 hover:bg-blue-700' : 'bg-[#6366F1] hover:bg-indigo-700'}`}
             >
               <span>{currentAd.cta}</span>
               <ExternalLink size={10} />
@@ -396,24 +550,22 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
     );
   }
 
-  const currentAd = SIMULATED_ADS_ADSTERRA[adIndex] || SIMULATED_ADS_ADSTERRA[0];
-
   if (type === 'in-feed') {
     return (
       <div className={`bg-gradient-to-r ${currentAd.bg} rounded-[2rem] border ${currentAd.border} p-4 sm:p-6 space-y-4 shadow-sm relative overflow-hidden transition-all hover:shadow-md ${className}`}>
         {/* Decorative elements */}
-        <div className="absolute top-0 right-0 w-24 h-24 rounded-full blur-xl pointer-events-none bg-gradient-to-br from-indigo-500/10 to-transparent" />
+        <div className="absolute top-0 right-0 w-24 h-24 rounded-full blur-xl pointer-events-none bg-gradient-to-br from-blue-500/10 to-transparent" />
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
-            <span className="border border-black/10 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest shrink-0 shadow-sm bg-indigo-600 text-white">
+            <span className={`border border-black/10 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest shrink-0 shadow-sm text-white ${isMonetagFallback ? 'bg-blue-600' : 'bg-indigo-600'}`}>
               AD
             </span>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{currentAd.badge}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[9px] font-bold text-slate-400 flex items-center gap-1">
-              Adsterra Ads <HelpCircle size={10} />
+              {isMonetagFallback ? 'Monetag Ads' : 'Adsterra Ads'} <HelpCircle size={10} />
             </span>
             <button 
               onClick={() => setDismissed(true)}
@@ -425,7 +577,7 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
         </div>
 
         <div className="space-y-2 text-left">
-          <h4 className="font-display text-base sm:text-lg font-black tracking-tight text-indigo-700 font-extrabold font-display">
+          <h4 className={`font-display text-base sm:text-lg font-black tracking-tight font-extrabold font-display ${isMonetagFallback ? 'text-blue-700' : 'text-indigo-700'}`}>
             {currentAd.title}
           </h4>
           <p className="text-[11px] sm:text-xs font-semibold text-slate-600 leading-relaxed">
@@ -435,13 +587,13 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
 
         <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold">
-            <span>adsterra-invoke.js</span>
+            <span>{isMonetagFallback ? 'monetag-invoke.js' : 'adsterra-invoke.js'}</span>
           </div>
           <a
             href={currentAd.url}
             target="_blank"
             rel="noreferrer"
-            className="px-4.5 py-2.5 text-white font-black text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-sm active:scale-95 flex items-center gap-1.5 cursor-pointer bg-indigo-600 hover:bg-slate-900"
+            className={`px-4.5 py-2.5 text-white font-black text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-sm active:scale-95 flex items-center gap-1.5 cursor-pointer ${isMonetagFallback ? 'bg-blue-600 hover:bg-blue-700' : 'bg-indigo-600 hover:bg-slate-900'}`}
           >
             <span>{currentAd.cta}</span>
             <ExternalLink size={11} />
@@ -456,10 +608,10 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
     <div className={`bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-2xs ${className}`}>
       <div className="flex items-center justify-between px-4 py-2 bg-slate-50/80 border-b border-slate-100/50 text-[9px] text-slate-400 font-bold">
         <div className="flex items-center gap-1">
-          <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider mr-1 text-white bg-indigo-600">
+          <span className={`px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider mr-1 text-white ${isMonetagFallback ? 'bg-blue-600' : 'bg-indigo-600'}`}>
             SPONSORED
           </span>
-          <span>ADSTERRA PREMIUM MONETIZATION SIMULATOR</span>
+          <span>{isMonetagFallback ? 'MONETAG PREMIUM MONETIZATION SIMULATOR' : 'ADSTERRA PREMIUM MONETIZATION SIMULATOR'}</span>
         </div>
         <div className="flex items-center gap-3">
           <span className="hover:underline cursor-pointer">Ad Choices</span>
@@ -470,12 +622,12 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
       </div>
 
       <div className={`p-5 sm:p-6 md:p-8 flex flex-col md:flex-row items-center gap-4 bg-gradient-to-r ${currentAd.bg}`}>
-        <div className="w-12 h-12 rounded-xl border flex items-center justify-center shrink-0 shadow-2xs font-bold text-lg bg-indigo-500/10 border-indigo-500/10 text-indigo-600">
+        <div className={`w-12 h-12 rounded-xl border flex items-center justify-center shrink-0 shadow-2xs font-bold text-lg bg-blue-500/10 border-blue-500/10 ${isMonetagFallback ? 'text-blue-600' : 'text-indigo-600'}`}>
           {currentAd.title.charAt(0)}
         </div>
         
         <div className="flex-1 min-w-0 text-center md:text-left space-y-1">
-          <h4 className="text-sm sm:text-base font-black tracking-tight text-indigo-600 truncate">
+          <h4 className={`text-sm sm:text-base font-black tracking-tight truncate ${isMonetagFallback ? 'text-blue-600' : 'text-indigo-600'}`}>
             {currentAd.title}
           </h4>
           <p className="text-[11px] sm:text-xs text-slate-600 font-semibold line-clamp-2 leading-relaxed font-sans">
@@ -488,7 +640,7 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
             href={currentAd.url}
             target="_blank"
             rel="noreferrer"
-            className="flex-1 md:flex-initial px-5 py-3 text-white font-black text-[10px] uppercase tracking-widest transition-all text-center rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95 bg-indigo-600 hover:bg-indigo-700"
+            className={`flex-1 md:flex-initial px-5 py-3 text-white font-black text-[10px] uppercase tracking-widest transition-all text-center rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95 ${isMonetagFallback ? 'bg-blue-600 hover:bg-blue-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
           >
             <span>{currentAd.cta}</span>
             <ExternalLink size={10} />
