@@ -12947,17 +12947,19 @@ https://www.highperformanceformat.com/link2"
 
                     {/* Recovery Email */}
                     <div className="space-y-1.5">
-                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                        <Mail size={10} className="text-[#2E7D32]" />
-                        Recovery Email
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center justify-between gap-1.5">
+                        <span className="flex items-center gap-1.5">
+                          <Mail size={10} className="text-[#2E7D32]" />
+                          Recovery Email (ঐচ্ছিক / Optional)
+                        </span>
+                        <span className="text-[8px] bg-slate-100 text-slate-500 px-1 rounded uppercase">If any</span>
                       </label>
                       <div className="relative group">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={16} />
                         <input 
                           type="text" 
-                          required
                           autoComplete="off"
-                          placeholder="Recovery Email"
+                          placeholder="Recovery Email (যদি থাকে)"
                           value={sellForm.recoveryEmail}
                           onChange={(e) => setSellForm({ ...sellForm, recoveryEmail: e.target.value })}
                           className="w-full pl-10 pr-3 py-2.5 sm:py-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-xs"
@@ -12967,16 +12969,19 @@ https://www.highperformanceformat.com/link2"
 
                     {/* 2FA Authenticator */}
                     <div className="space-y-1.5">
-                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                        <ShieldCheck size={10} className="text-[#2E7D32]" />
-                        2FA / Backup Code
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center justify-between gap-1.5">
+                        <span className="flex items-center gap-1.5">
+                          <ShieldCheck size={10} className="text-[#2E7D32]" />
+                          2FA / Backup Code (ঐচ্ছিক / Optional)
+                        </span>
+                        <span className="text-[8px] bg-slate-100 text-slate-500 px-1 rounded uppercase">If any</span>
                       </label>
                       <div className="relative group">
                         <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={16} />
                         <input 
                           type="text" 
                           autoComplete="off"
-                          placeholder="8-digit backup codes"
+                          placeholder="8-digit backup codes (যদি থাকে)"
                           value={sellForm.twoFactor}
                           onChange={(e) => setSellForm({ ...sellForm, twoFactor: e.target.value })}
                           className="w-full pl-10 pr-3 py-2.5 sm:py-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-xs"
