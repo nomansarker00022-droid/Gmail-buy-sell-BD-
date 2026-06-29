@@ -395,7 +395,7 @@ service cloud.firestore {
         isAdmin() || 
         (resource.data.toUserId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['read']))
       );
-      allow delete: if isAdmin();
+      allow delete: if isSignedIn() && (resource.data.toUserId == request.auth.uid || isAdmin());
     }
 
     // Reviews

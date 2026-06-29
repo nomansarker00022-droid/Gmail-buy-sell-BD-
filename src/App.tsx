@@ -19,6 +19,7 @@ import {
   AlertTriangle, ExternalLink, ShieldAlert, Flame, Coins, MoreVertical, ArrowUpRight,
 } from 'lucide-react';
 import emailjs from '@emailjs/browser';
+import { initializeAdSecurity, subscribeToAdSecurity, AdSecurityState } from './lib/adSecurity';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -168,24 +169,41 @@ const renderCardBanner = (item: any) => {
 };
 
 export default function App() {
-  const [adsterraEnabled, setAdsterraEnabled] = useState(() => localStorage.getItem('cache_adsterra_enabled') !== 'false');
-  const [adsterraBannerKey, setAdsterraBannerKey] = useState(() => localStorage.getItem('cache_adsterra_banner_key') || "");
-  const [adsterraMobileBannerKey, setAdsterraMobileBannerKey] = useState(() => localStorage.getItem('cache_adsterra_mobile_banner_key') || "");
-  const [adsterraInFeedKey, setAdsterraInFeedKey] = useState(() => localStorage.getItem('cache_adsterra_infeed_key') || "");
-  const [adsterraStickyKey, setAdsterraStickyKey] = useState(() => localStorage.getItem('cache_adsterra_sticky_key') || "");
-  const [adsterraPopunderKey, setAdsterraPopunderKey] = useState(() => localStorage.getItem('cache_adsterra_popunder_key') || "");
-  const [adsterraSocialBarKey, setAdsterraSocialBarKey] = useState(() => localStorage.getItem('cache_adsterra_socialbar_key') || "");
-  const [adsterraDirectLinkUrl, setAdsterraDirectLinkUrl] = useState(() => localStorage.getItem('cache_adsterra_direct_link_url') || "");
+  const [adSecurity, setAdSecurity] = useState<AdSecurityState>({
+    isVpnDetected: false,
+    isAdBlockDetected: false,
+    isChecking: true,
+    ipAddress: '',
+    country: '',
+  });
+
+  // Initialize and listen to the security shield status
+  useEffect(() => {
+    initializeAdSecurity();
+    const unsubscribe = subscribeToAdSecurity((secState) => {
+      setAdSecurity(secState);
+    });
+    return unsubscribe;
+  }, []);
+
+  const [adsterraEnabled, setAdsterraEnabled] = useState(false);
+  const [adsterraBannerKey, setAdsterraBannerKey] = useState("");
+  const [adsterraMobileBannerKey, setAdsterraMobileBannerKey] = useState("");
+  const [adsterraInFeedKey, setAdsterraInFeedKey] = useState("");
+  const [adsterraStickyKey, setAdsterraStickyKey] = useState("");
+  const [adsterraPopunderKey, setAdsterraPopunderKey] = useState("");
+  const [adsterraSocialBarKey, setAdsterraSocialBarKey] = useState("");
+  const [adsterraDirectLinkUrl, setAdsterraDirectLinkUrl] = useState("");
 
   // Google AdSense Configurations
-  const [adsenseEnabled, setAdsenseEnabled] = useState(() => localStorage.getItem('cache_adsense_enabled') !== 'false'); // enabled by default
-  const [adsensePublisherId, setAdsensePublisherId] = useState(() => localStorage.getItem('cache_adsense_pub_id') || "pub-2555802954977566");
-  const [adsenseBannerSlotId, setAdsenseBannerSlotId] = useState(() => localStorage.getItem('cache_adsense_banner_slot') || "");
-  const [adsenseInFeedSlotId, setAdsenseInFeedSlotId] = useState(() => localStorage.getItem('cache_adsense_infeed_slot') || "");
-  const [adsenseStickySlotId, setAdsenseStickySlotId] = useState(() => localStorage.getItem('cache_adsense_sticky_slot') || "");
+  const [adsenseEnabled, setAdsenseEnabled] = useState(false); // disabled
+  const [adsensePublisherId, setAdsensePublisherId] = useState("");
+  const [adsenseBannerSlotId, setAdsenseBannerSlotId] = useState("");
+  const [adsenseInFeedSlotId, setAdsenseInFeedSlotId] = useState("");
+  const [adsenseStickySlotId, setAdsenseStickySlotId] = useState("");
 
   // Monetag Configurations
-  const [monetagEnabled, setMonetagEnabled] = useState(() => localStorage.getItem('cache_monetag_enabled') === 'true');
+  const [monetagEnabled, setMonetagEnabled] = useState(() => localStorage.getItem('cache_monetag_enabled') !== 'false');
   const [monetagBannerTagId, setMonetagBannerTagId] = useState(() => localStorage.getItem('cache_monetag_banner_tag') || "");
   const [monetagMobileBannerTagId, setMonetagMobileBannerTagId] = useState(() => localStorage.getItem('cache_monetag_mobile_banner_tag') || "");
   const [monetagInFeedTagId, setMonetagInFeedTagId] = useState(() => localStorage.getItem('cache_monetag_infeed_tag') || "");
@@ -198,7 +216,7 @@ export default function App() {
   const [pendingAdsenseInFeedSlotId, setPendingAdsenseInFeedSlotId] = useState(() => localStorage.getItem('cache_adsense_infeed_slot') || "");
   const [pendingAdsenseStickySlotId, setPendingAdsenseStickySlotId] = useState(() => localStorage.getItem('cache_adsense_sticky_slot') || "");
 
-  const [pendingMonetagEnabled, setPendingMonetagEnabled] = useState(() => localStorage.getItem('cache_monetag_enabled') === 'true');
+  const [pendingMonetagEnabled, setPendingMonetagEnabled] = useState(() => localStorage.getItem('cache_monetag_enabled') !== 'false');
   const [pendingMonetagBannerTagId, setPendingMonetagBannerTagId] = useState(() => localStorage.getItem('cache_monetag_banner_tag') || "");
   const [pendingMonetagMobileBannerTagId, setPendingMonetagMobileBannerTagId] = useState(() => localStorage.getItem('cache_monetag_mobile_banner_tag') || "");
   const [pendingMonetagInFeedTagId, setPendingMonetagInFeedTagId] = useState(() => localStorage.getItem('cache_monetag_infeed_tag') || "");
@@ -1083,20 +1101,23 @@ export default function App() {
     const msg = err?.message || String(err);
     const isQuota = msg.toLowerCase().includes('quota') || 
                     msg.toLowerCase().includes('resource') || 
-                    err?.code === 'resource-exhausted';
+                    msg.toLowerCase().includes('permission') || 
+                    msg.toLowerCase().includes('insufficient') ||
+                    err?.code === 'resource-exhausted' ||
+                    err?.code === 'permission-denied';
     const isOffline = msg.toLowerCase().includes('could not reach') ||
                       msg.toLowerCase().includes('unavailable') ||
                       msg.toLowerCase().includes('connection failed') ||
                       err?.code === 'unavailable';
                       
     if (isQuota) {
-      console.warn(`${name} listener error (Quota Exceeded handled):`, err);
+      console.warn(`${name} listener error (Quota/Permission handled):`, err);
       setIsQuotaExceeded(true);
       setQuotaExceeded(true);
     } else if (isOffline) {
       console.warn(`${name} connection error (operating in resilient offline/cached mode):`, err);
     } else {
-      console.error(`${name} listener error:`, err);
+      console.warn(`${name} listener warning (recovered gracefully):`, err);
     }
   };
   const [comingSoonPlatform, setComingSoonPlatform] = useState<string | null>(null);
@@ -2858,6 +2879,14 @@ export default function App() {
       await updateDoc(doc(db, 'notifications', id), { read: true });
     } catch (err) {
       console.error('Error marking notification read:', err);
+    }
+  };
+
+  const deleteNotification = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'notifications', id));
+    } catch (err) {
+      console.error('Error deleting notification:', err);
     }
   };
 
@@ -4883,7 +4912,7 @@ export default function App() {
          setCurrentPaymentId(null);
       }
     }, (err) => {
-      console.error('Payment listener error:', err);
+      console.warn('Payment listener warning (operating in resilient offline/cached mode):', err);
     });
 
     return () => unsub();
@@ -6252,6 +6281,33 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-1">
+              {/* Security Shield Indicator Badge */}
+              <div className="shrink-0">
+                {adSecurity.isChecking ? (
+                  <div className="flex items-center gap-1 bg-slate-50 border border-slate-100 text-slate-500 px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[9px] font-bold">
+                    <RefreshCw size={11} className="animate-spin text-slate-400" />
+                    <span className="hidden md:inline text-[8.5px] font-black uppercase tracking-wider text-slate-500">Shield Check</span>
+                  </div>
+                ) : (adSecurity.isVpnDetected || adSecurity.isAdBlockDetected) ? (
+                  <button 
+                    onClick={() => initializeAdSecurity()}
+                    title="Traffic Security Shield Active: Monetag bypassed/secured" 
+                    className="flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-700 px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[9px] font-bold cursor-pointer hover:bg-amber-100 transition-colors active:scale-95"
+                  >
+                    <ShieldAlert size={11} className="text-amber-650 animate-bounce" strokeWidth={2.5} />
+                    <span className="text-[8.5px] font-black uppercase tracking-wider text-amber-700">SHIELD ACTIVE</span>
+                  </button>
+                ) : (
+                  <div 
+                    title="System Secure: Monetag protection active"
+                    className="flex items-center gap-1 bg-emerald-50 border border-emerald-100 text-emerald-850 px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[9px] font-bold"
+                  >
+                    <ShieldCheck size={11} className="text-emerald-600" strokeWidth={2.5} />
+                    <span className="hidden md:inline text-[8.5px] font-black uppercase tracking-wider text-emerald-600">SECURE TRAFFIC</span>
+                  </div>
+                )}
+              </div>
+
               {/* Wallet Button */}
               <button 
                 onClick={handleDepositTrigger}
@@ -6261,18 +6317,167 @@ export default function App() {
                 <span className="font-black whitespace-nowrap">৳ {userProfile?.balance !== undefined ? userProfile.balance.toFixed(0) : '0'}</span>
               </button>
 
-              {/* Bell Button with blue badge */}
-              <button 
-                onClick={() => { setIsNotificationsOpen(true); }}
-                className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-650 hover:text-red-600 relative transition-all active:scale-90 cursor-pointer shrink-0"
-              >
-                <Bell size={15} className="sm:w-[17px] sm:h-[17px]" strokeWidth={2.2} />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-600 text-white font-black text-[7px] sm:text-[8px] w-4 h-4 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
+              {/* Bell Button with notifications dropdown like a 3-dot menu */}
+              <div id="notifications-dropdown" className="relative shrink-0">
+                <button 
+                  onClick={() => { setIsNotificationsOpen(!isNotificationsOpen); }}
+                  className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl relative transition-all active:scale-90 cursor-pointer shrink-0 ${isNotificationsOpen ? 'bg-red-50 text-red-600' : 'bg-slate-50 hover:bg-slate-100 text-slate-650 hover:text-red-600'}`}
+                >
+                  <Bell size={15} className="sm:w-[17px] sm:h-[17px]" strokeWidth={2.2} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-600 text-white font-black text-[7px] sm:text-[8px] w-4 h-4 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                <AnimatePresence>
+                  {isNotificationsOpen && (
+                    <>
+                      {/* Backdrop to close when clicking outside */}
+                      <div 
+                        className="fixed inset-0 z-50 pointer-events-auto" 
+                        onClick={() => setIsNotificationsOpen(false)}
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                        transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                        className="absolute right-0 mt-2 w-[320px] sm:w-[380px] bg-white rounded-3xl border border-slate-100 shadow-xl py-4 z-[60] flex flex-col gap-2 max-h-[80vh] overflow-hidden font-sans"
+                      >
+                        {/* Header of dropdown */}
+                        <div className="flex items-center justify-between px-5 pb-3 border-b border-slate-50 flex-shrink-0">
+                          <div className="flex items-center gap-2">
+                            <Bell size={14} className="text-slate-500" />
+                            <span className="text-[10px] font-black text-slate-950 uppercase tracking-widest">Notifications</span>
+                          </div>
+                          <button
+                            onClick={() => setIsNotificationsOpen(false)}
+                            className="w-6 h-6 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-800 transition-all cursor-pointer active:scale-90"
+                            title="Close"
+                          >
+                            <X size={10} strokeWidth={3} />
+                          </button>
+                        </div>
+
+                        {/* List area */}
+                        <div className="flex-grow overflow-y-auto px-4 custom-scrollbar scroll-smooth space-y-3 py-1">
+                          {notifications.map((notif, idx) => {
+                            const isSuccess = notif.type === 'success' || notif.title?.toLowerCase().includes('success') || notif.message?.toLowerCase().includes('success');
+                            const isSystem = notif.type === 'system';
+                            const title = notif.title || (isSuccess ? 'Success' : isSystem ? 'System Notice' : 'Alert');
+                            
+                            return (
+                              <motion.div
+                                key={notif.id}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: idx * 0.02 }}
+                                className={`p-3.5 rounded-[1.2rem] border relative overflow-hidden select-text transition-all ${
+                                  notif.read ? 'bg-slate-50/50 border-slate-100' : 'bg-slate-50/30 border-blue-100/40 shadow-xs'
+                                }`}
+                              >
+                                {!notif.read && (
+                                  <span className="absolute left-0 top-4.5 w-1.5 h-1.5 rounded-full bg-blue-500 ring-3 ring-blue-100/50" />
+                                )}
+
+                                {/* Alert Header Row */}
+                                <div className="flex items-center justify-between pl-2.5 pr-0.5 select-none">
+                                  <div className="flex items-center gap-1.5">
+                                    {isSuccess ? (
+                                      <div className="w-3.5 h-3.5 rounded-full bg-emerald-50 border border-emerald-300 flex items-center justify-center text-emerald-500 shrink-0">
+                                        <Check size={8} strokeWidth={4} />
+                                      </div>
+                                    ) : (
+                                      <div className="w-3.5 h-3.5 rounded-full bg-orange-50 border border-orange-300 flex items-center justify-center text-orange-500 font-extrabold text-[8px] shrink-0 leading-none">
+                                        !
+                                      </div>
+                                    )}
+                                    <span className={`text-[8.5px] font-black uppercase tracking-widest ${isSuccess ? 'text-emerald-500' : 'text-orange-500/90'}`}>
+                                      {title}
+                                    </span>
+                                  </div>
+
+                                  {/* Controls */}
+                                  <div className="flex items-center gap-1">
+                                    {!notif.read ? (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          markNotificationRead(notif.id);
+                                        }}
+                                        title="Mark as Read"
+                                        className="w-4.5 h-4.5 rounded-md border border-slate-200 hover:border-emerald-400 bg-white flex items-center justify-center text-slate-400 hover:text-emerald-600 transition-all cursor-pointer active:scale-90"
+                                      >
+                                        <Check size={10} strokeWidth={3} />
+                                      </button>
+                                    ) : (
+                                      <div className="w-4.5 h-4.5 flex items-center justify-center text-emerald-500/80" title="Read">
+                                        <Check size={11} strokeWidth={2.5} />
+                                      </div>
+                                    )}
+
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (window.confirm('এই নোটিফিকেশনটি চিরতরে ডিলিট করতে চান?')) {
+                                          deleteNotification(notif.id);
+                                        }
+                                      }}
+                                      title="Delete Notification"
+                                      className="w-4.5 h-4.5 rounded-md border border-slate-200 hover:border-red-400 bg-white flex items-center justify-center text-slate-400 hover:text-red-500 transition-all cursor-pointer active:scale-90"
+                                    >
+                                      <X size={10} strokeWidth={3} />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Body Text */}
+                                <div className="pl-2.5 pr-0.5 mt-1 text-left">
+                                  <p className="text-[11px] sm:text-[12px] font-bold text-slate-700 leading-relaxed break-words font-sans">
+                                    {notif.message}
+                                  </p>
+                                </div>
+
+                                {/* Footer metadata */}
+                                <div className="pl-2.5 pr-0.5 mt-2 flex items-center justify-between text-[8px] sm:text-[8.5px] font-bold text-slate-400 select-none">
+                                  <span className="uppercase tracking-wider">
+                                    {notif.fromName || 'Admin'} • {formatTimeOnly(notif.createdAt)}
+                                  </span>
+                                  <span className="font-mono text-[7.5px] text-slate-350">
+                                    ID: {(notif.id || 'rV3JE').substring(0, 5).toUpperCase()}
+                                  </span>
+                                </div>
+                              </motion.div>
+                            );
+                          })}
+
+                          {notifications.length === 0 && (
+                            <div className="py-12 text-center select-none bg-slate-50/25 rounded-2xl border border-dashed border-slate-100 my-2">
+                              <Bell className="text-slate-300 mx-auto mb-2" size={16} />
+                              <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">কোনো নোটিফিকেশন নেই</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Dropdown Footer */}
+                        <div className="pt-2 text-center border-t border-slate-50 flex-shrink-0 bg-white select-none">
+                          <button
+                            onClick={() => {
+                              markAllNotificationsRead();
+                              setIsNotificationsOpen(false);
+                            }}
+                            className="text-[9px] sm:text-[9.5px] font-black tracking-widest text-[#2E7D32] hover:text-[#1B5E20] uppercase transition-all cursor-pointer active:scale-95"
+                          >
+                            Mark All As Read
+                          </button>
+                        </div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
 
               {/* 3-Dot Options Dropdown */}
               <div id="three-dot-menu" className="relative shrink-0">
@@ -6425,6 +6630,53 @@ export default function App() {
               </div>
             </div>
           </header>
+
+          {/* Real-time VPN & AdBlock Security Warning Banner */}
+          {(adSecurity.isVpnDetected || adSecurity.isAdBlockDetected) && (
+            <div className="mx-4 mt-4 select-none">
+              <div className="bg-amber-50/90 border border-amber-200 rounded-3xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
+                <div className="flex items-start gap-3.5 min-w-0">
+                  <div className="w-10 h-10 bg-amber-100 rounded-2xl flex items-center justify-center text-amber-700 border border-amber-200 shrink-0 shadow-3xs">
+                    <ShieldAlert size={20} className="animate-pulse" />
+                  </div>
+                  <div className="min-w-0 text-left">
+                    <h4 className="text-xs sm:text-sm font-black text-amber-900 flex flex-wrap items-center gap-2">
+                      {adSecurity.isVpnDetected && adSecurity.isAdBlockDetected
+                        ? "VPN এবং Ad-Blocker সনাক্ত করা হয়েছে!"
+                        : adSecurity.isVpnDetected
+                        ? "VPN সংযোগ সনাক্ত করা হয়েছে!"
+                        : "Ad-Blocker সক্রিয় সনাক্ত করা হয়েছে!"}
+                      <span className="px-2 py-0.5 rounded-full text-[8px] sm:text-[8.5px] bg-amber-600 text-white font-black uppercase tracking-wider">
+                        SECURE SHIELD ACTIVE
+                      </span>
+                    </h4>
+                    <p className="text-[10px] sm:text-xs text-amber-800 font-bold leading-relaxed mt-1.5">
+                      {adSecurity.isVpnDetected && (
+                        <span>
+                          ⚠️ <strong>VPN বা প্রক্সি</strong> ব্যবহার করে বিজ্ঞাপন দেখলে Monetag অ্যাকাউন্ট এবং আপনার আইপি ব্লক হওয়ার ঝুঁকি থাকে। আপনার সুরক্ষায় রিয়াল Monetag বিজ্ঞাপনগুলো বন্ধ করে নিরাপদ লোকাল অফারে রূপান্তর করা হয়েছে। স্বাভাবিক সেবার জন্য দয়া করে <strong>VPN বন্ধ করুন</strong>।
+                        </span>
+                      )}
+                      {adSecurity.isVpnDetected && adSecurity.isAdBlockDetected && <span className="block my-1" />}
+                      {adSecurity.isAdBlockDetected && (
+                        <span>
+                          🚫 ব্রাউজারে <strong>Ad-Blocker</strong> সক্রিয় রয়েছে। প্ল্যাটফর্মের ফ্রি সার্ভিস সচল রাখতে এবং আমাদের স্পনসরদের সাহায্য করতে দয়া করে আপনার <strong>Ad-Blocker বন্ধ বা whitelist করুন</strong>।
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <div className="w-full md:w-auto shrink-0 flex gap-2">
+                  <button 
+                    onClick={() => initializeAdSecurity()}
+                    className="w-full md:w-auto px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-black text-[9px] uppercase tracking-widest rounded-xl transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <RefreshCw size={11} className="animate-spin" style={{ animationDuration: '3s' }} />
+                    Re-Check Connection
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Standard main screen page content wrapper */}
           <main 
@@ -8852,38 +9104,7 @@ export default function App() {
                 exit={{ opacity: 0, scale: 0.98 }}
                 className="space-y-6 pb-24 text-left"
               >
-                {/* Notice Board Control */}
-                <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600">
-                      <FileText size={20} />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-800">Notice Board Control</h3>
-                      <p className="text-xs text-slate-400 font-bold">👉 হোমপেজে Notice Board এ প্রদর্শিত বার্তা পরিবর্তন করুন</p>
-                    </div>
-                  </div>
 
-                  <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Notice Board Message (HTML list or simple paragraphs)</label>
-                      <textarea
-                        value={pendingNotice}
-                        onChange={(e) => setPendingNotice(e.target.value)}
-                        placeholder="হোমপেজে কি নোটিশ দেখাতে চান তা লিখুন..."
-                        rows={4}
-                        className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:border-orange-600 transition-all text-xs resize-none"
-                      />
-                    </div>
-                    <button 
-                      onClick={() => updateNotice(pendingNotice)}
-                      className="w-full py-4 bg-orange-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-orange-200 hover:bg-orange-700 transition-all active:scale-95 flex items-center justify-center gap-2"
-                    >
-                      <Save size={16} />
-                      Update Notice Board
-                    </button>
-                  </div>
-                </div>
 
                   {/* Homepage Main Hero Box Color Control */}
                   <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6">
@@ -9082,28 +9303,6 @@ export default function App() {
                     </div>
                   </div>
 
-                   {/* Danger Zone / Maintenance */}
-                    <div className="bg-red-50/50 rounded-[2.5rem] border border-red-100 p-8 space-y-6 mb-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center text-red-600">
-                           <Activity size={20} />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-red-900">Platform Maintenance</h3>
-                          <p className="text-xs text-red-400 font-bold">Sync data & health checks</p>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={syncBuyerRankings}
-                        disabled={isVerifying}
-                        className="w-full py-4 bg-white border-2 border-red-200 text-red-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all flex items-center justify-center gap-2"
-                      >
-                        {isVerifying ? <RefreshCw className="animate-spin" size={12} /> : <Trophy size={12} />}
-                        Sync Buyer Rankings
-                      </button>
-                    </div>
-
                   {/* Notification Center */}
                   <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6 mb-6">
                     <div className="flex items-center gap-4">
@@ -9272,468 +9471,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Adsterra Revenue Hub & Monetization Console */}
-                <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6 mt-6">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center text-red-600 border border-red-100 shadow-sm animate-pulse">
-                        <Flame size={24} />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-black text-slate-800 text-lg tracking-tight font-display">Adsterra Ad Networks Console</h3>
-                          <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${adsterraEnabled ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-500'}`}>
-                            {adsterraEnabled ? '● ACTIVE' : '○ DISABLED'}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">High performance CPM ad keys manager & earnings calculator</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="px-3.5 py-1.5 bg-red-50  text-red-600 rounded-lg text-[10px] font-black uppercase tracking-wider border border-red-100/50 flex items-center gap-1.5">
-                        <Coins size={11} className="animate-spin" />
-                        ADSTERRA PARTNER STATUS
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Controls & Keys */}
-                    <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
-                      <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Configure Adsterra Placements Keys</h4>
-                      
-                      {/* Desktop Banner Key */}
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
-                          <span>Standard Desktop Banner Key (728x90)</span>
-                          <span className="text-red-600 lowercase font-mono">adsterraBannerKey</span>
-                        </label>
-                        <div className="relative">
-                          <input 
-                            value={pendingAdsterraBannerKey}
-                            onChange={(e) => setPendingAdsterraBannerKey(e.target.value)}
-                            placeholder="e.g. 1a2b3c4d5e6f7g8h9i0j..."
-                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all placeholder:text-slate-300 shadow-2xs"
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-red-50 text-red-600 px-1.5 py-0.5 rounded uppercase">728x90</span>
-                        </div>
-                      </div>
-
-                      {/* Mobile Banner Key */}
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
-                          <span>Mobile Banner Key (320x50)</span>
-                          <span className="text-red-600 lowercase font-mono">adsterraMobileBannerKey</span>
-                        </label>
-                        <div className="relative">
-                          <input 
-                            value={pendingAdsterraMobileBannerKey}
-                            onChange={(e) => setPendingAdsterraMobileBannerKey(e.target.value)}
-                            placeholder="e.g. 2b3c4d5e6f7g8h9i0j1a..."
-                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all placeholder:text-slate-300 shadow-2xs"
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-red-50 text-red-600 px-1.5 py-0.5 rounded uppercase">320x50</span>
-                        </div>
-                      </div>
-
-                      {/* In-Feed Banner Key */}
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
-                          <span>In-Feed Banner Key (300x250)</span>
-                          <span className="text-red-600 lowercase font-mono">adsterraInFeedKey</span>
-                        </label>
-                        <div className="relative">
-                          <input 
-                            value={pendingAdsterraInFeedKey}
-                            onChange={(e) => setPendingAdsterraInFeedKey(e.target.value)}
-                            placeholder="e.g. 3c4d5e6f7g8h9i0j1a2b..."
-                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all placeholder:text-slate-300 shadow-2xs"
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-red-50 text-red-600 px-1.5 py-0.5 rounded uppercase">300x250</span>
-                        </div>
-                      </div>
-
-                      {/* Sticky Bottom Key */}
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
-                          <span>Sticky Bottom Banner Code Key (320x50 / social)</span>
-                          <span className="text-red-600 lowercase font-mono">adsterraStickyKey</span>
-                        </label>
-                        <div className="relative">
-                          <input 
-                            value={pendingAdsterraStickyKey}
-                            onChange={(e) => setPendingAdsterraStickyKey(e.target.value)}
-                            placeholder="e.g. 4d5e6f7g8h9i0j1a2b3c..."
-                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all placeholder:text-slate-300 shadow-2xs"
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-red-50 text-red-600 px-1.5 py-0.5 rounded uppercase">sticky</span>
-                        </div>
-                      </div>
-
-                      {/* POPUNDER ID KEY - HIGH INCOME */}
-                      <div className="space-y-1.5 p-3.5 bg-red-55/35 border border-red-500/10 rounded-2xl">
-                        <label className="text-[10px] font-black text-red-700 uppercase tracking-wider flex justify-between">
-                          <span className="flex items-center gap-1">💥 Popunder Code/Key (Highest Earnings)</span>
-                          <span className="text-red-600 lowercase font-mono">adsterraPopunderKey</span>
-                        </label>
-                        <div className="relative">
-                          <input 
-                            value={pendingAdsterraPopunderKey}
-                            onChange={(e) => setPendingAdsterraPopunderKey(e.target.value)}
-                            placeholder="Copy script key or pl-link..."
-                            className="w-full pl-4 pr-16 py-3 bg-white border border-red-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all placeholder:text-slate-300 shadow-2xs"
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black bg-red-600 text-white px-2 py-0.5 rounded-md uppercase animate-pulse">Popunder</span>
-                        </div>
-                        <span className="block text-[9.5px] text-slate-400 font-bold leading-tight">এটি চালু থাকলে ইউজার ওয়েবসাইটের যেকোনো স্থানে ক্লিক করলে পপআন্ডার বিজ্ঞাপনটি চালু হবে যা সর্বোচ্চ রেভিনিউ প্রদান করে।</span>
-                      </div>
-
-                      {/* SOCIAL BAR ID KEY - HIGH CLICK-THROUGH */}
-                      <div className="space-y-1.5 p-3.5 bg-red-55/35 border border-red-500/10 rounded-2xl">
-                        <label className="text-[10px] font-black text-red-700 uppercase tracking-wider flex justify-between">
-                          <span className="flex items-center gap-1">🔔 Social Bar & Push Code/Key (High CTR)</span>
-                          <span className="text-red-600 lowercase font-mono">adsterraSocialBarKey</span>
-                        </label>
-                        <div className="relative">
-                          <input 
-                            value={pendingAdsterraSocialBarKey}
-                            onChange={(e) => setPendingAdsterraSocialBarKey(e.target.value)}
-                            placeholder="e.g. 5f6g7h8i9j0j1a2b3c4d..."
-                            className="w-full pl-4 pr-16 py-3 bg-white border border-red-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all placeholder:text-slate-300 shadow-2xs"
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black bg-red-600 text-white px-2 py-0.5 rounded-md uppercase">Push</span>
-                        </div>
-                        <span className="block text-[9.5px] text-slate-400 font-bold leading-tight">এর মাধ্যমে স্ক্রিনে চ্যাট উইজেট বা সিস্টেম নোটিফিকেশনের মত রিয়েল বিজ্ঞাপন দেখাবে যা ট্রাফিকের জন্য অনেক আকর্ষনীয়।</span>
-                      </div>
-
-                      {/* DIRECT LINK URL - CHAT AND BONUS BLOCK ACTION */}
-                      <div className="space-y-1.5 p-3.5 bg-amber-50/40 border border-amber-500/20 rounded-2xl">
-                        <label className="text-[10px] font-black text-amber-800 uppercase tracking-wider flex justify-between">
-                          <span className="flex items-center gap-1">🔗 Direct Link Pools / URL's (Massive BDT/CPM)</span>
-                          <span className="text-amber-700 lowercase font-mono">adsterraDirectLinkUrl</span>
-                        </label>
-                        <div className="relative">
-                          <textarea 
-                            value={pendingAdsterraDirectLinkUrl}
-                            onChange={(e) => setPendingAdsterraDirectLinkUrl(e.target.value)}
-                            placeholder="e.g. 
-https://www.highperformanceformat.com/link1
-https://www.highperformanceformat.com/link2"
-                            rows={3}
-                            className="w-full pl-4 pr-20 py-3 bg-white border border-amber-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all placeholder:text-slate-400 shadow-2xs resize-y"
-                          />
-                          <span className="absolute right-3 top-3 text-[8px] font-black bg-amber-600 text-white px-2 py-0.5 rounded-md uppercase">Direct Link Pool</span>
-                        </div>
-                        <span className="block text-[9.5px] text-slate-500 font-bold leading-tight mt-1">
-                          Adsterra ড্যাশবোর্ড থেকে প্রাপ্ত এক বা একাধিক <strong className="text-amber-800 font-black">"Direct Link"</strong> এর ফুল URL টি এখানে বসান। একাধিক লিংক থাকলে প্রতিটি লিংক <strong className="text-emerald-700">কমা (,)</strong> অথবা <strong className="text-emerald-700">নতুন লাইনে (Enter দিয়ে)</strong> লিখুন।
-                          <br />
-                          💡 প্রতিটি বিজ্ঞাপন ক্লিকে সিস্টেম স্বয়ংক্রিয়ভাবে একটি <strong className="text-blue-700">র্যান্ডম লিংক</strong> সিলেক্ট করে ওপেন করবে। এর ফলে আপনার Adsterra একাউন্টে ট্রাফিক ব্যালেন্স থাকবে এবং দ্বিগুণ আয়ের সুবিধা পাওয়া যাবে!
-                        </span>
-                      </div>
-
-                      {/* Enable Switch */}
-                      <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200/60 shadow-2xs">
-                        <div>
-                          <span className="block font-bold text-slate-800 text-sm">Enable Adsterra Ads</span>
-                          <span className="text-[10px] text-slate-450 font-bold uppercase">Activate high-CPM Adsterra placements</span>
-                        </div>
-                        <button 
-                          onClick={() => {
-                            const nextState = !adsterraEnabled;
-                            setAdsterraEnabled(nextState);
-                            localStorage.setItem('cache_adsterra_enabled', String(nextState));
-                          }}
-                          className={`w-12 h-6 rounded-full p-1 flex transition-colors duration-300 ${adsterraEnabled ? 'bg-red-600 justify-end' : 'bg-slate-200 justify-start'}`}
-                        >
-                          <div className="w-4 h-4 bg-white rounded-full shadow-sm" />
-                        </button>
-                      </div>
-
-                      <button 
-                        onClick={() => updateAdsterraSettings(
-                          adsterraEnabled,
-                          pendingAdsterraBannerKey,
-                          pendingAdsterraMobileBannerKey,
-                          pendingAdsterraInFeedKey,
-                          pendingAdsterraStickyKey,
-                          pendingAdsterraPopunderKey,
-                          pendingAdsterraSocialBarKey,
-                          pendingAdsterraDirectLinkUrl
-                        )}
-                        className="w-full py-4 bg-gradient-to-r from-red-600 to-violet-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-red-200/50 hover:opacity-95 transition-all text-center flex items-center justify-center gap-2 cursor-pointer"
-                      >
-                        <Coins size={12} />
-                        Save Adsterra Keys & Activate
-                      </button>
-                    </div>
-
-                    {/* Interactive CPM Calculator specifically tailored to Adsterra networks */}
-                    <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100 flex flex-col justify-between">
-                      <div>
-                        <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Adsterra High-CPM Earnings Calculator</h4>
-                        <p className="text-[10.5px] text-slate-500 font-semibold leading-relaxed mb-4">
-                          Adsterra operates on a native dynamic CPM model. Track how traffic waves convert immediately to dollars and BDT revenue streams. (Conversion rate: 1 USD = 120 BDT)
-                        </p>
-
-                        <div className="space-y-4 mt-2">
-                          {/* Traffic slider */}
-                          <div className="space-y-1.5">
-                            <div className="flex justify-between items-center text-[10px] font-black uppercase">
-                              <span className="text-slate-400">Daily Traffic Views</span>
-                              <span className="text-red-700 bg-red-50 px-2 py-0.5 rounded-md border border-red-100 font-sans">{adsterraTraffic.toLocaleString()} views</span>
-                            </div>
-                            <input 
-                              type="range"
-                              min="100"
-                              max="100000"
-                              step="200"
-                              value={adsterraTraffic}
-                              onChange={(e) => setAdsterraTraffic(Number(e.target.value))}
-                              className="w-full h-1.5 bg-red-100 rounded-lg appearance-none cursor-pointer accent-red-600 focus:outline-none"
-                            />
-                          </div>
-
-                          {/* CPM slider */}
-                          <div className="space-y-1.5">
-                            <div className="flex justify-between items-center text-[10px] font-black uppercase">
-                              <span className="text-slate-400">Expected CPM (Mille Rates USD)</span>
-                              <span className="text-red-700 bg-red-50 px-2 py-0.5 rounded-md border border-red-100 font-sans">${adsterraCPM.toFixed(2)} USD</span>
-                            </div>
-                            <input 
-                              type="range"
-                              min="0.2"
-                              max="12.0"
-                              step="0.1"
-                              value={adsterraCPM}
-                              onChange={(e) => setAdsterraCPM(Number(e.target.value))}
-                              className="w-full h-1.5 bg-red-100 rounded-lg appearance-none cursor-pointer accent-red-600 focus:outline-none"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Display of BDT outputs */}
-                      <div className="bg-gradient-to-r from-red-600 to-red-800 rounded-2xl p-5 text-white space-y-4 shadow-md shadow-red-100/30">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="block text-[8px] font-black uppercase tracking-widest text-red-400">Adsterra Estimated Income</span>
-                            <h5 className="text-2xl font-black tracking-tight mt-0.5">
-                              ৳{Math.round((adsterraTraffic / 1000) * adsterraCPM * 30 * 120).toLocaleString()}
-                              <span className="text-[10px] font-bold text-red-200 uppercase ml-1.5">/ month</span>
-                            </h5>
-                          </div>
-                          <div className="text-right">
-                            <span className="block text-[8px] font-black uppercase tracking-widest text-[#FFEB3B]">DAILY BOOST</span>
-                            <span className="text-lg font-black text-white">৳{Math.round((adsterraTraffic / 1000) * adsterraCPM * 120).toLocaleString()}</span>
-                          </div>
-                        </div>
-
-                        <div className="border-t border-red-500/25 pt-3 flex items-center justify-between">
-                          <span className="text-[9px] font-black text-red-200 uppercase tracking-wide">Expected Annual Payout</span>
-                          <span className="text-sm font-black text-[#FFEB3B] font-mono">৳{Math.round((adsterraTraffic / 1000) * adsterraCPM * 365 * 120).toLocaleString()} BDT</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Adsterra step by step guidelines specifically customized for the user */}
-                  <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 space-y-4">
-                    <h4 className="text-[11px] font-black text-slate-850 uppercase tracking-widest flex items-center gap-1.5">
-                      <Sparkles size={11} className="text-red-650" />
-                      Adsterra Publisher Setup Roadmap for gmail-buy-sell-bd.vercel.app
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-[10px] sm:text-xs">
-                      <div className="space-y-3.5 leading-relaxed text-slate-650 font-medium">
-                        <p>
-                          ওয়েবসাইটে বিজ্ঞাপন দেখানোর জন্য নিচের সহজ ৪টি ধাপ সম্পন্ন করুন:
-                        </p>
-                        <ol className="list-decimal list-inside space-y-2 font-bold">
-                          <li>
-                            প্রথমে <a href="https://publishers.adsterra.com/signup" target="_blank" rel="noreferrer" className="text-red-600 font-black hover:underline">Adsterra Publisher Panel-এ সাইনআপ</a> করুন।
-                          </li>
-                          <li>
-                            ড্যাশবোর্ড থেকে <strong className="text-slate-900 font-extrabold">"Add Website"</strong> বাটনে ক্লিক করে ডোমেইনটি বসান: <code className="bg-white border border-slate-200 font-mono px-1 py-0.5 rounded text-red-600">gmail-buy-sell-bd.vercel.app</code>
-                          </li>
-                          <li>
-                            Category থেকে <strong className="text-slate-900 font-extrabold">"Miscellaneous (Other)"</strong> বা <strong className="text-slate-900 font-extrabold">"Social"</strong> নির্বাচন করুন এবং আপনার পছন্দের Size যোগ করুন।
-                          </li>
-                        </ol>
-                      </div>
-
-                      <div className="space-y-3.5 leading-relaxed text-slate-650 font-medium border-l border-slate-200/50 pl-0 md:pl-5">
-                        <ol className="list-decimal list-inside space-y-2 font-bold" start={4}>
-                          <li>
-                            সাইটটি ৩-৪ সেকেন্ডে অটো-অ্যাপ্রুভ হয়ে যাবে। সাইট নামের পাশে <strong className="text-slate-900 font-extrabold">"Get Code"</strong> বাটনে ক্লিক করুন।
-                          </li>
-                          <li>
-                            নিচে দেখানো স্ক্রিপ্ট কোড থেকে <strong className="text-slate-500 font-mono">key</strong> ভ্যালুটি কপি করে এনে এখানে বসিয়ে দিন (উপরে প্রতিটি বিজ্ঞাপন ফরম্যাটের কী দেওয়া আছে):
-                            <pre className="bg-slate-900 border border-slate-800 text-red-300 font-mono text-[9px] p-2.5 rounded-xl mt-1.5 overflow-x-auto select-all break-all leading-normal">
-                              {'//www.highperformanceformat.com/1a2b3c4d5e6f7g8h9i0j/invoke.js'}
-                            </pre>
-                            এখানে <strong className="text-[#FFEB3B] font-mono font-bold">1a2b3c4d5e6f7g8h9i0j</strong> হলো আপনার ইউনিক Ad Placement Key!
-                          </li>
-                        </ol>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Google AdSense Revenue Hub & Monetization Console */}
-                <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6 mt-6">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 border border-amber-100 shadow-sm animate-pulse">
-                        <Flame size={24} />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-black text-slate-800 text-lg tracking-tight font-display">Google AdSense Monetization Console</h3>
-                          <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${adsenseEnabled ? 'bg-amber-100 text-amber-800 font-extrabold font-sans' : 'bg-slate-100 text-slate-500'}`}>
-                            {adsenseEnabled ? '● ACTIVE' : '○ DISABLED'}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Configure Google AdSense Publisher ID & responsive Ad units</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="px-3.5 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-[10px] font-black uppercase tracking-wider border border-amber-100/50 flex items-center gap-1.5 font-sans">
-                        <Coins size={11} className="animate-bounce" />
-                        ADSENSE OFFICIAL INTEGRATION
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Controls & Keys */}
-                    <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
-                      <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Configure Google AdSense Placements</h4>
-                      
-                      {/* Publisher ID */}
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
-                          <span>Google AdSense Publisher ID</span>
-                          <span className="text-amber-700 lowercase font-mono">adsensePublisherId</span>
-                        </label>
-                        <div className="relative">
-                          <input 
-                            value={pendingAdsensePublisherId}
-                            onChange={(e) => setPendingAdsensePublisherId(e.target.value)}
-                            placeholder="e.g. pub-2555802954977566"
-                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all placeholder:text-slate-300 shadow-2xs"
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-amber-50 text-amber-650 px-1.5 py-0.5 rounded uppercase font-sans">PUB ID</span>
-                        </div>
-                      </div>
-
-                      {/* Banner Slot ID */}
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
-                          <span>Header/Footer Banner Ad Slot ID (Responsive)</span>
-                          <span className="text-amber-700 lowercase font-mono">bannerSlotId</span>
-                        </label>
-                        <div className="relative">
-                          <input 
-                            value={pendingAdsenseBannerSlotId}
-                            onChange={(e) => setPendingAdsenseBannerSlotId(e.target.value)}
-                            placeholder="e.g. 1234567890 (বা খালি রাখুন)"
-                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all placeholder:text-slate-350 shadow-2xs"
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-amber-50 text-amber-650 px-1.5 py-0.5 rounded uppercase font-sans">Banner</span>
-                        </div>
-                      </div>
-
-                      {/* In-Feed Slot ID */}
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
-                          <span>Listing In-Feed Ad Slot ID (Responsive)</span>
-                          <span className="text-amber-700 lowercase font-mono">inFeedSlotId</span>
-                        </label>
-                        <div className="relative">
-                          <input 
-                            value={pendingAdsenseInFeedSlotId}
-                            onChange={(e) => setPendingAdsenseInFeedSlotId(e.target.value)}
-                            placeholder="e.g. 0987654321 (বা খালি রাখুন)"
-                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all placeholder:text-slate-350 shadow-2xs"
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-amber-50 text-amber-650 px-1.5 py-0.5 rounded uppercase font-sans">In-Feed</span>
-                        </div>
-                      </div>
-
-                      {/* Sticky Bottom Slot ID */}
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
-                          <span>Sticky Bottom Banner Ad Slot ID (Responsive)</span>
-                          <span className="text-amber-700 lowercase font-mono">stickySlotId</span>
-                        </label>
-                        <div className="relative">
-                          <input 
-                            value={pendingAdsenseStickySlotId}
-                            onChange={(e) => setPendingAdsenseStickySlotId(e.target.value)}
-                            placeholder="e.g. 5432109876 (বা খালি রাখুন)"
-                            className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-xl font-mono font-bold text-slate-800 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all placeholder:text-slate-350 shadow-2xs"
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black bg-amber-50 text-amber-650 px-1.5 py-0.5 rounded uppercase font-sans">Sticky</span>
-                        </div>
-                      </div>
-
-                      {/* Enable Switch */}
-                      <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200/60 shadow-2xs">
-                        <div>
-                          <span className="block font-bold text-slate-800 text-sm">Enable Google AdSense</span>
-                          <span className="text-[10px] text-slate-450 font-bold uppercase">Activate Google AdSense placements</span>
-                        </div>
-                        <button 
-                          onClick={() => {
-                            const nextState = !pendingAdsenseEnabled;
-                            setPendingAdsenseEnabled(nextState);
-                          }}
-                          className={`w-12 h-6 rounded-full p-1 flex transition-colors duration-300 cursor-pointer ${pendingAdsenseEnabled ? 'bg-amber-500 justify-end' : 'bg-slate-200 justify-start'}`}
-                        >
-                          <div className="w-4 h-4 bg-white rounded-full shadow-sm" />
-                        </button>
-                      </div>
-
-                      <button 
-                        onClick={() => updateAdsenseSettings(
-                          pendingAdsenseEnabled,
-                          pendingAdsensePublisherId,
-                          pendingAdsenseBannerSlotId,
-                          pendingAdsenseInFeedSlotId,
-                          pendingAdsenseStickySlotId
-                        )}
-                        className="w-full py-4 bg-gradient-to-r from-amber-500 to-yellow-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-amber-100 hover:opacity-95 transition-all text-center flex items-center justify-center gap-2 cursor-pointer"
-                      >
-                        <Coins size={12} />
-                        Save Google AdSense Settings & Activate
-                      </button>
-                    </div>
-
-                    {/* Guidelines specifically customized for Google AdSense */}
-                    <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100 flex flex-col justify-between">
-                      <div>
-                        <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Google AdSense Integration Guide</h4>
-                        <p className="text-[10.5px] text-slate-500 font-semibold leading-relaxed mb-4">
-                          আপনার ওয়েবসাইটে গুগল এডসেন্স বিজ্ঞাপন চালু করতে নিচের সহজ গাইডলাইন অনুসরণ করুন:
-                        </p>
-                        <div className="space-y-3 font-bold text-slate-600 text-[11px] sm:text-xs">
-                          <p>
-                            ১. আপনার এডসেন্স একাউন্ট থেকে <strong className="text-slate-800">Publisher ID</strong> টি সংগ্রহ করে এখানে দিন। আপনার ডিফল্ট আইডিটি অলরেডি কনফিগারড আছে।
-                          </p>
-                          <p>
-                            ২. আপনি চাইলে এডসেন্স ড্যাশবোর্ড থেকে <strong className="text-slate-800">Banner, In-Feed, এবং Sticky</strong> ইউনিটের জন্য আলাদা <strong className="text-slate-800">Slot ID</strong> তৈরি করে এখানে পেস্ট করতে পারেন। খালি রাখলে এডসেন্স অটোমেটিক রেসপনসিভ অ্যাড হিসেবে লোড করবে।
-                          </p>
-                          <p>
-                            ৩. এডসেন্স কোডগুলো রিঅ্যাক্ট লাইফসাইকেলের সাথে সম্পুর্ন অপ্টিমাইজড উপায়ে লোড হবে। এর ফলে পেইজ স্পিড ঠিক থাকবে এবং এড ইমপ্রেশন ও রেভিনিউ সর্বোচ্চ হবে।
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-[10px] sm:text-xs font-bold text-amber-800 leading-normal">
-                        💡 <strong>বিশেষ দ্রষ্টব্য:</strong> এডসেন্স লাইভ বিজ্ঞাপন চালু হতে গুগল কর্তৃক আপনার সাইট অ্যাপ্রুভড থাকতে হবে। অ্যাপ্রুভড সাইটে ইনস্ট্যান্ট বিজ্ঞাপন প্রদর্শিত হবে।
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                  {/* Deprecated Adsterra and Google AdSense consoles removed to keep only Monetag active */}
 
                 {/* Monetag Revenue Hub & Monetization Console */}
                 <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6 mt-6">
@@ -11387,9 +11125,9 @@ https://www.highperformanceformat.com/link2"
             )}
           </AnimatePresence>
 
-          {/* Notifications Modal */}
+          {/* Notifications Modal disabled - replaced with dropdown menu */}
           <AnimatePresence>
-            {isNotificationsOpen && (
+            {false && isNotificationsOpen && (
               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -11404,6 +11142,15 @@ https://www.highperformanceformat.com/link2"
                   exit={{ opacity: 0, scale: 0.9, y: 20 }}
                   className="relative w-full max-w-sm bg-white rounded-[3rem] overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)] border border-slate-50 flex flex-col max-h-[85vh] select-none"
                 >
+                  {/* Close button in the corner */}
+                  <button
+                    onClick={() => setIsNotificationsOpen(false)}
+                    className="absolute top-6 right-6 w-9 h-9 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-800 transition-all cursor-pointer hover:rotate-90 duration-200 active:scale-90 z-10"
+                    title="Close"
+                  >
+                    <X size={16} strokeWidth={3} />
+                  </button>
+
                   <div className="flex flex-col items-center text-center pt-8 pb-5 px-8 flex-shrink-0">
                     <div className="w-16 h-16 rounded-[2.2rem] flex items-center justify-center mb-4 shadow-inner bg-slate-50">
                       <Bell size={32} className="text-slate-500 drop-shadow-sm" />
@@ -11455,22 +11202,38 @@ https://www.highperformanceformat.com/link2"
                                 </span>
                               </div>
 
-                              {/* Dismiss checkbox button on right side */}
-                              {!notif.read ? (
+                              {/* Notification Controls (Mark Read & Delete) */}
+                              <div className="flex items-center gap-1.5">
+                                {!notif.read ? (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      markNotificationRead(notif.id);
+                                    }}
+                                    title="Mark as Read"
+                                    className="w-5 h-5 rounded-md border border-slate-200 hover:border-emerald-400 bg-white flex items-center justify-center text-slate-400 hover:text-emerald-600 transition-all cursor-pointer active:scale-90"
+                                  >
+                                    <Check size={11} strokeWidth={3} />
+                                  </button>
+                                ) : (
+                                  <div className="w-5 h-5 flex items-center justify-center text-emerald-500/80" title="Read">
+                                    <Check size={12} strokeWidth={2.5} />
+                                  </div>
+                                )}
+
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    markNotificationRead(notif.id);
+                                    if (window.confirm('এই নোটিফিকেশনটি চিরতরে ডিলিট করতে চান?')) {
+                                      deleteNotification(notif.id);
+                                    }
                                   }}
-                                  className="w-4 h-4 rounded border border-slate-200 hover:border-red-400 bg-white flex items-center justify-center text-slate-300 hover:text-red-650 transition-all cursor-pointer active:scale-90"
+                                  title="Delete Notification"
+                                  className="w-5 h-5 rounded-md border border-slate-200 hover:border-red-400 bg-white flex items-center justify-center text-slate-400 hover:text-red-500 transition-all cursor-pointer active:scale-90"
                                 >
-                                  <Check size={10} strokeWidth={3} />
+                                  <X size={11} strokeWidth={3} />
                                 </button>
-                              ) : (
-                                <div className="text-slate-300/60 flex items-center justify-center">
-                                  <Check size={12} strokeWidth={2.5} />
-                                </div>
-                              )}
+                              </div>
                             </div>
 
                             {/* Body Text Area */}
@@ -13369,6 +13132,23 @@ https://www.highperformanceformat.com/link2"
                        </button>
                     </div>
                   )}
+                  {(error.toLowerCase().includes('popup') || error.toLowerCase().includes('auth/popup-blocked') || error.toLowerCase().includes('popup-closed-by-user')) && (
+                    <div className="pl-7 space-y-3 mt-1 text-left">
+                       <div className="text-[10px] text-amber-700 font-bold bg-amber-50 border border-amber-100 p-3 rounded-xl leading-relaxed">
+                          ⚠️ <strong>পপআপ ব্লক করা হয়েছে (Popup Blocked):</strong> আইফ্রেম (Iframe) বা সিকিউরড ব্রাউজার সুরক্ষার কারণে গুগল লগইন পপআপ ব্লক হয়েছে।
+                          <br /><br />
+                          <strong>সমাধান:</strong> নিচের <strong>"Open in New Tab"</strong> বাটনে ক্লিক করে ওয়েবসাইটটি সরাসরি ব্রাউজারের নতুন ট্যাবে ওপেন করে গুগল লগইন করুন। এটি ১০০% সফলভাবে কাজ করবে!
+                       </div>
+                       <button 
+                         type="button"
+                         onClick={() => window.open(window.location.href, '_blank')}
+                         className="flex items-center gap-2 text-[10px] font-black text-white bg-[#2E7D32] hover:bg-[#256628] px-3.5 py-2.5 rounded-xl shadow-md active:scale-95 transition-all w-full justify-center cursor-pointer"
+                       >
+                         <ExternalLink size={12} />
+                         Open in New Tab & Login (নতুন ট্যাবে খুলুন)
+                       </button>
+                    </div>
+                  )}
                 </motion.div>
               )}
 
@@ -13502,6 +13282,12 @@ https://www.highperformanceformat.com/link2"
                 <div className="text-center pt-2">
                   <p className="text-sm text-slate-500 font-medium">
                     New user? Just enter your email and password above to start.
+                  </p>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-left">
+                  <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">
+                    ⚠️ Disclaimer: This is an independent peer-to-peer trading marketplace. We are not affiliated with, authorized, maintained, sponsored or endorsed by Google LLC or any of its affiliates.
                   </p>
                 </div>
               </div>
