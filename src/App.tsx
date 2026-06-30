@@ -1858,6 +1858,7 @@ export default function App() {
   };
 
   const [withdrawMode, setWithdrawMode] = useState<'referral' | 'earnings'>('referral');
+  const [legalModal, setLegalModal] = useState<'privacy' | 'terms' | 'refund' | 'about' | 'abuse' | null>(null);
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
   const [welcomeForm, setWelcomeForm] = useState({
     firstName: '',
@@ -12468,7 +12469,167 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* Global Floating WhatsApp Support Button */}
+        {/* Legal & Compliance Modals (Privacy, Terms, Refund, About Us) */}
+        <AnimatePresence>
+          {legalModal && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setLegalModal(null)}
+                className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[150]"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-[650px] bg-white rounded-3xl shadow-2xl p-6 md:p-8 z-[160] overflow-hidden flex flex-col max-h-[85vh] text-left border border-slate-100 font-sans"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-3 rounded-xl ${legalModal === 'abuse' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-[#2E7D32]'}`}>
+                      {legalModal === 'about' && <Info size={24} />}
+                      {legalModal === 'privacy' && <ShieldCheck size={24} />}
+                      {legalModal === 'terms' && <Lock size={24} />}
+                      {legalModal === 'refund' && <FileText size={24} />}
+                      {legalModal === 'abuse' && <ShieldCheck size={24} />}
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black text-slate-800 tracking-tight">
+                        {legalModal === 'about' && 'About Our Marketplace'}
+                        {legalModal === 'privacy' && 'Privacy Policy'}
+                        {legalModal === 'terms' && 'Terms & Conditions'}
+                        {legalModal === 'refund' && 'Refund & Escrow Policy'}
+                        {legalModal === 'abuse' && 'Google Compliance & Abuse Policy'}
+                      </h3>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                        {legalModal === 'about' && 'Trusted P2P Platform'}
+                        {legalModal === 'privacy' && 'Your Security is Our Priority'}
+                        {legalModal === 'terms' && 'User Rules & Escrow Guidelines'}
+                        {legalModal === 'refund' && 'Safe Escrow Protection'}
+                        {legalModal === 'abuse' && 'Zero Tolerance Policy for Malicious Activity'}
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setLegalModal(null)}
+                    className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                  >
+                    <X size={20} className="text-slate-400" />
+                  </button>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto pr-2 space-y-6 text-slate-600 text-sm leading-relaxed scrollbar-thin">
+                  {legalModal === 'about' && (
+                    <>
+                      <div className="space-y-2">
+                        <h4 className="font-extrabold text-slate-800 text-base">১. আমাদের লক্ষ্য (Our Mission)</h4>
+                        <p>topmail-sell-bd.vercel.app বাংলাদেশে মেইল অ্যাকাউন্ট বেচাকেনার একটি অত্যন্ত বিশ্বস্ত, সুরক্ষিত এবং উন্মুক্ত পিয়ার-টু-পিয়ার (P2P) এস্ক্রো প্লাটফর্ম। আমাদের মূল লক্ষ্য হলো ক্রেতা এবং বিক্রেতার মধ্যে নিরাপদ লেনদেন নিশ্চিত করা এবং যেকোনো ধরণের প্রতারণা বা স্ক্যাম প্রতিরোধ করা।</p>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="font-extrabold text-slate-800 text-base">২. নিরাপদ মধ্যস্থতা (Safe Escrow Facilitator)</h4>
+                        <p>আমরা কোনো ইমেইল তৈরি বা নিয়ন্ত্রণ করি না। আমরা শুধুমাত্র একটি রেগুলেটেড এস্ক্রো প্লাটফর্ম হিসেবে কাজ করি, যেখানে ক্রেতা তার মেইল বুঝে পাওয়ার পর নিশ্চিত করলেই কেবল বিক্রেতা পেমেন্ট পান। এর মাধ্যমে লেনদেনের ১০০% নিরাপত্তা বজায় থাকে।</p>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="font-extrabold text-slate-800 text-base">৩. ২৪/৭ কাস্টমার সাপোর্ট (24/7 Dedicated Support)</h4>
+                        <p>যেকোনো সমস্যা সমাধানে আমাদের ডেডিকেটেড অ্যাডমিন প্যানেল এবং সাপোর্ট টিম সবসময় আপনার পাশে আছে। কোনো জটিলতা বা বিরোধ দেখা দিলে আমরা তথ্য উপাত্ত যাচাই করে নিরপেক্ষ সমাধান প্রদান করি।</p>
+                      </div>
+                    </>
+                  )}
+
+                  {legalModal === 'privacy' && (
+                    <>
+                      <div className="space-y-2">
+                        <h4 className="font-extrabold text-slate-800 text-base">১. তথ্য সংগ্রহ (Information We Collect)</h4>
+                        <p>নিরাপদ লেনদেন বজায় রাখার উদ্দেশ্যে আমরা ব্যবহারকারীর নাম, ইমেইল ঠিকানা, মোবাইল নম্বর এবং লেনদেনের স্ক্রিনশট বা প্রুফ সংগ্রহ করে থাকি। আপনার সংবেদনশীল পাসওয়ার্ড বা ক্রেডেনশিয়াল আমাদের সিস্টেমে সম্পূর্ণ এনক্রিপ্টেড থাকে এবং তৃতীয় কোনো পক্ষের নিকট কখনো প্রকাশ করা হয় না।</p>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="font-extrabold text-slate-800 text-base">২. তথ্যের ব্যবহার (Usage of Personal Data)</h4>
+                        <p>সংগৃহীত তথ্যসমূহ আমরা শুধুমাত্র অ্যাকাউন্ট ভেরিফিকেশন, সফল উইথড্রয়াল প্রসেসিং, পেমেন্ট ক্লিয়ারিং এবং যেকোনো স্ক্যামিং বা পলিসি ভায়োলেশন ট্র্যাকিংয়ের জন্য ব্যবহার করে থাকি।</p>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="font-extrabold text-slate-800 text-base">৩. কুকিজ এবং ডেটা নিরাপত্তা (Cookies & Local Storage)</h4>
+                        <p>আপনার ব্রাউজারে নিরাপদ সেশন এবং লগইন স্ট্যাটাস মনে রাখার সুবিধার্থে আমরা ব্রাউজার লোকাল স্টোরেজ (localStorage) ও স্ট্যান্ডার্ড কুকিজ ব্যবহার করি। আমরা কোনো বিজ্ঞাপনী ট্র্যাকার বা থার্ড পার্টি স্ক্রিপ্ট ব্যবহার করে আপনার ব্যক্তিগত ব্রাউজিং প্যাটার্ন সংগ্রহ করি না।</p>
+                      </div>
+                    </>
+                  )}
+
+                  {legalModal === 'terms' && (
+                    <>
+                      <div className="space-y-2">
+                        <h4 className="font-extrabold text-slate-800 text-base">১. বিক্রেতার বাধ্যবাধকতা (Seller Agreement)</h4>
+                        <p>বিক্রেতাকে অবশ্যই সম্পূর্ণ সচল, বৈধ এবং সঠিক মেইল আপলোড করতে হবে। কোনো হ্যাকড, স্প্যামড বা পূর্বে ব্যবহৃত নষ্ট মেইল আপলোড করা কঠোরভাবে নিষিদ্ধ। আইন অমান্য করলে বা অবৈধ উপায়ে অ্যাকাউন্ট লিস্টিং করলে অ্যাডমিন যেকোনো সময় অ্যাকাউন্ট পজ করতে পারেন এবং ওয়ালেট ব্যালেন্স বাতিল করতে পারেন।</p>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="font-extrabold text-slate-800 text-base">২. ক্রেতার বাধ্যবাধকতা ও এস্ক্রো চেক (Buyer Security Guard)</h4>
+                        <p>মেইল কেনার পর ক্রেতা ২৪ ঘণ্টার একটি স্ট্যান্ডার্ড সিকিউরিটি উইন্ডো পাবেন। এই সময়ের মধ্যে মেইল সম্পূর্ণ চেক করে পাসওয়ার্ড, রিকভারি ইমেইল এবং টু-ফ্যাক্টর অথেনটিকেশন (2FA) পরিবর্তন করে নিজের নিয়ন্ত্রণে নিতে হবে। মেইল ডেলিভারি পাওয়ার পর অবহেলার কারণে কোনো অ্যাকাউন্ট নষ্ট বা অ্যাক্সেস হারালে প্লাটফর্ম কর্তৃপক্ষ দায়ী থাকবে না।</p>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="font-extrabold text-slate-800 text-base">৩. আইনসম্মত ব্যবহার (Acceptable Use Policy)</h4>
+                        <p>আমাদের ওয়েবসাইট বা এর কোনো সার্ভিস ব্যবহার করে কোনো প্রকার আর্থিক জালিয়াতি, ফিশিং বা অন্য কোনো বেআইনি কাজ সম্পাদন করা সম্পূর্ণ নিষিদ্ধ। অপরাধমূলক কাজের প্রমাণ পাওয়া গেলে ব্যবহারকারীর প্রোফাইল ব্যান করে আইনি ব্যবস্থা নেওয়া হবে।</p>
+                      </div>
+                    </>
+                  )}
+
+                  {legalModal === 'refund' && (
+                    <>
+                      <div className="space-y-2">
+                        <h4 className="font-extrabold text-slate-800 text-base">১. এস্ক্রো সুরক্ষা ও রিফান্ড পলিসি (Safe Escrow Hold)</h4>
+                        <p>আপনার কষ্টার্জিত টাকা লেনদেন সম্পন্ন হওয়ার পূর্ব পর্যন্ত আমাদের এস্ক্রো সিস্টেমে সম্পূর্ণ নিরাপদ থাকে। কেনার পর ক্রেডেনশিয়াল কাজ না করলে বা মেইলটি অচল হলে ক্রেতা রিফান্ড পাওয়ার অধিকারী হবেন।</p>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="font-extrabold text-slate-800 text-base">২. যেসব ক্ষেত্রে রিফান্ড প্রযোজ্য (Eligible Cases)</h4>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>যদি মেইলটির পাসওয়ার্ড ভুল বা ইনভ্যালিড হয়।</li>
+                          <li>যদি মেইলটি ডেলিভারির পূর্বেই ডিজেবল বা সাসপেন্ডেড হয়ে থাকে।</li>
+                          <li>যদি মেইলের বিবরণ এবং প্রকৃত অ্যাকাউন্টের তথ্যের মধ্যে বড় ধরনের অসঙ্গতি থাকে।</li>
+                        </ul>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="font-extrabold text-slate-800 text-base">৩. যেসব ক্ষেত্রে রিফান্ড প্রযোজ্য নয় (Non-Refundable Cases)</h4>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>যদি ক্রেতা ২৪ ঘণ্টার সময়সীমার মধ্যে কোনো ক্লেম বা অভিযোগ দাখিল না করেন।</li>
+                          <li>ক্রেতা সফলভাবে পাসওয়ার্ড পরিবর্তন করার পর পাসওয়ার্ড ভুলে গেলে বা অ্যাকাউন্ট হ্যাক হলে।</li>
+                          <li>ভুল বা স্প্যাম কার্যকলাপের কারণে কেনার পর গুগল অ্যাকাউন্টটি রেস্ট্রিক্ট হয়ে গেলে।</li>
+                        </ul>
+                      </div>
+                    </>
+                  )}
+
+                  {legalModal === 'abuse' && (
+                    <>
+                      <div className="space-y-2">
+                        <h4 className="font-extrabold text-slate-800 text-base text-red-600">১. গুগলের নিয়মাবলী ও কমপ্লায়েন্স (Google Compliance Policy)</h4>
+                        <p>আমরা গুগলের কোনো নিয়মাবলী লঙ্ঘন করি না এবং হ্যাকিং বা ক্র্যাকিং জাতীয় অনৈতিক কার্যক্রম সম্পূর্ণ নিষিদ্ধ করি। আমরা ইমেইল অ্যাকাউন্ট হ্যাক করি না বা অন্য কোনো উপায়ে অনধিকার প্রবেশ করি না। এটি একটি উন্মুক্ত পিয়ার-টু-পিয়ার (P2P) এস্ক্রো প্ল্যাটফর্ম যেখানে স্বাধীন ব্যবহারকারীরা নিজেদের তৈরি করা মেইল বা মার্কেটিং প্রচারণার জন্য অতিরিক্ত অ্যাকাউন্ট এক্সচেঞ্জ করে থাকেন।</p>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="font-extrabold text-slate-800 text-base">২. স্ক্যাম ও হ্যাকিংয়ের বিরুদ্ধে জিরো টলারেন্স (Anti-Hacking & Abuse Policy)</h4>
+                        <p>আমাদের প্ল্যাটফর্মে হ্যাকড বা অননুমোদিত অ্যাকাউন্টের কেনাবেচা কঠোরভাবে নিষিদ্ধ। কোনো বিক্রেতা যদি স্ক্যামিং, ফিশিং বা হ্যাকড ক্রেডেনশিয়াল আপলোড করে, তবে তাৎক্ষণিকভাবে তার অ্যাকাউন্ট আজীবনের জন্য ব্যান করা হবে এবং তার ওয়ালেট ব্যালেন্স ফ্রিজ করা হবে।</p>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="font-extrabold text-slate-800 text-base">৩. অপব্যবহার রিপোর্ট বা টেকডাউন নোটিশ (Abuse & Takedown Report)</h4>
+                        <p>যদি আপনার মনে হয় প্ল্যাটফর্মের কোনো লিস্টিং গুগলের পলিসি লঙ্ঘন করছে, অথবা কোনো বিক্রেতা বেআইনি কার্যকলাপে লিপ্ত, তবে সাথে সাথে আমাদের অ্যাডমিনকে রিপোর্ট করুন। আমরা ২৪ ঘণ্টার মধ্যে সেই লিস্টিং বা বিক্রেতাকে প্ল্যাটফর্ম থেকে ব্লক করে দেব। আপনি সরাসরি আমাদের <strong>support@topmail-sell-bd.vercel.app</strong> অথবা WhatsApp সাপোর্টের মাধ্যমে রিপোর্ট সাবমিট করতে পারেন।</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Footer Button */}
+                <div className="border-t border-slate-100 pt-6 mt-6 flex justify-end">
+                  <button 
+                    onClick={() => setLegalModal(null)}
+                    className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors"
+                  >
+                    I Understand & Accept
+                  </button>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
         <a 
           id="site-chat-button"
           href="https://wa.me/8801410731308"
@@ -12952,9 +13113,11 @@ export default function App() {
               { 
                 title: 'Company', 
                 links: [
-                  { label: 'About Us', href: '#' },
-                  { label: 'Privacy Policy', href: '#' },
-                  { label: 'Terms & Conditions', href: '#' }
+                  { label: 'About Us', action: () => setLegalModal('about') },
+                  { label: 'Privacy Policy', action: () => setLegalModal('privacy') },
+                  { label: 'Terms & Conditions', action: () => setLegalModal('terms') },
+                  { label: 'Refund Policy', action: () => setLegalModal('refund') },
+                  { label: 'Google Compliance & Abuse Policy', action: () => setLegalModal('abuse') }
                 ] 
               }
             ].map((section) => (
@@ -12986,8 +13149,16 @@ export default function App() {
               </div>
             ))}
           </div>
-          <div className="max-w-7xl mx-auto px-4 md:px-8 mt-16 pt-8 border-t border-slate-50 flex justify-center">
-            <div className="flex items-center gap-6 text-[10px] text-slate-300 font-bold uppercase tracking-[0.2em]">
+          <div className="max-w-7xl mx-auto px-4 md:px-8 mt-12 pt-8 border-t border-slate-50 space-y-6">
+            <div className="text-center max-w-3xl mx-auto space-y-4">
+              <p className="text-[11px] text-slate-400 font-medium leading-relaxed">
+                <strong>Legal Disclaimer:</strong> topmail-sell-bd.vercel.app is an independent peer-to-peer advertising, brokering, and escrow index for virtual email items. We do not create, manage, or issue email accounts. We are not affiliated with, authorized, maintained, sponsored, or endorsed by Google LLC, Gmail, or any of their affiliates or subsidiaries. All trademarks, logos, and brand names are the properties of their respective owners.
+              </p>
+              <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
+                <strong>Anti-Fraud Notice:</strong> Buyers must secure all purchased credentials immediately upon delivery. We strictly prohibit any illegal or unauthorized activities on our marketplace. Transactions are monitored under escrow guidelines to protect both parties.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-6 text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] pt-4 font-sans">
                 <a 
                   href="https://wa.me/8801410731308" 
                   target="_blank" 
@@ -12999,6 +13170,8 @@ export default function App() {
                 </a>
               <span>&bull;</span>
               <span>Secure 256-bit AES</span>
+              <span>&bull;</span>
+              <span>© {new Date().getFullYear()} topmail-sell-bd. All Rights Reserved</span>
             </div>
           </div>
         </footer>

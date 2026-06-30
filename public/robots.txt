@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /api
 
-Sitemap: https://ais-pre-l7dvqkyypwoucilhqhgqqi-886784280898.asia-southeast1.run.app/sitemap.xml
+Sitemap: https://topmail-sell-bd.vercel.app/sitemap.xml
