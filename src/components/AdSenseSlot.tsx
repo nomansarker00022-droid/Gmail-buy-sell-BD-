@@ -78,7 +78,7 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
   bgColor = "",
 
   // Monetag Configurations (Default to active for Monetag-only setup)
-  monetagEnabled = true,
+  monetagEnabled = false,
   monetagBannerTagId = "",
   monetagMobileBannerTagId = "",
   monetagInFeedTagId = "",
@@ -166,7 +166,7 @@ export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
     }
   }, [monetagEnabled, monetagBannerTagId, monetagMobileBannerTagId, monetagInFeedTagId, monetagStickyTagId, type, isMobile, isTrafficUnsafe]);
 
-  if (dismissed) return null;
+  if (!monetagEnabled || dismissed) return null;
 
   // ============================================
   // REAL LIVE MONETAG SCRIPT RENDERING

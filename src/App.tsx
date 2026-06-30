@@ -203,20 +203,20 @@ export default function App() {
   const [adsenseStickySlotId, setAdsenseStickySlotId] = useState("");
 
   // Monetag Configurations
-  const [monetagEnabled, setMonetagEnabled] = useState(() => localStorage.getItem('cache_monetag_enabled') !== 'false');
+  const [monetagEnabled, setMonetagEnabled] = useState(() => localStorage.getItem('cache_monetag_enabled') === 'true');
   const [monetagBannerTagId, setMonetagBannerTagId] = useState(() => localStorage.getItem('cache_monetag_banner_tag') || "");
   const [monetagMobileBannerTagId, setMonetagMobileBannerTagId] = useState(() => localStorage.getItem('cache_monetag_mobile_banner_tag') || "");
   const [monetagInFeedTagId, setMonetagInFeedTagId] = useState(() => localStorage.getItem('cache_monetag_infeed_tag') || "");
   const [monetagStickyTagId, setMonetagStickyTagId] = useState(() => localStorage.getItem('cache_monetag_sticky_tag') || "");
   const [monetagMultiTag, setMonetagMultiTag] = useState(() => localStorage.getItem('cache_monetag_multitag') || "");
 
-  const [pendingAdsenseEnabled, setPendingAdsenseEnabled] = useState(() => localStorage.getItem('cache_adsense_enabled') !== 'false');
+  const [pendingAdsenseEnabled, setPendingAdsenseEnabled] = useState(() => localStorage.getItem('cache_adsense_enabled') === 'true');
   const [pendingAdsensePublisherId, setPendingAdsensePublisherId] = useState(() => localStorage.getItem('cache_adsense_pub_id') || "pub-2555802954977566");
   const [pendingAdsenseBannerSlotId, setPendingAdsenseBannerSlotId] = useState(() => localStorage.getItem('cache_adsense_banner_slot') || "");
   const [pendingAdsenseInFeedSlotId, setPendingAdsenseInFeedSlotId] = useState(() => localStorage.getItem('cache_adsense_infeed_slot') || "");
   const [pendingAdsenseStickySlotId, setPendingAdsenseStickySlotId] = useState(() => localStorage.getItem('cache_adsense_sticky_slot') || "");
 
-  const [pendingMonetagEnabled, setPendingMonetagEnabled] = useState(() => localStorage.getItem('cache_monetag_enabled') !== 'false');
+  const [pendingMonetagEnabled, setPendingMonetagEnabled] = useState(() => localStorage.getItem('cache_monetag_enabled') === 'true');
   const [pendingMonetagBannerTagId, setPendingMonetagBannerTagId] = useState(() => localStorage.getItem('cache_monetag_banner_tag') || "");
   const [pendingMonetagMobileBannerTagId, setPendingMonetagMobileBannerTagId] = useState(() => localStorage.getItem('cache_monetag_mobile_banner_tag') || "");
   const [pendingMonetagInFeedTagId, setPendingMonetagInFeedTagId] = useState(() => localStorage.getItem('cache_monetag_infeed_tag') || "");
@@ -5716,8 +5716,8 @@ export default function App() {
           if (adsenseSnap.exists()) {
             const data = adsenseSnap.data();
             if (data) {
-              setAdsenseEnabled(data.enabled !== false); // default to true
-              setPendingAdsenseEnabled(data.enabled !== false);
+              setAdsenseEnabled(data.enabled === true); // default to false unless explicitly true
+              setPendingAdsenseEnabled(data.enabled === true);
               setAdsensePublisherId(data.publisherId || "pub-2555802954977566");
               setPendingAdsensePublisherId(data.publisherId || "pub-2555802954977566");
               setAdsenseBannerSlotId(data.bannerSlotId || "");
@@ -5727,7 +5727,7 @@ export default function App() {
               setAdsenseStickySlotId(data.stickySlotId || "");
               setPendingAdsenseStickySlotId(data.stickySlotId || "");
 
-              localStorage.setItem('cache_adsense_enabled', String(data.enabled !== false));
+              localStorage.setItem('cache_adsense_enabled', String(data.enabled === true));
               localStorage.setItem('cache_adsense_pub_id', data.publisherId || "pub-2555802954977566");
               localStorage.setItem('cache_adsense_banner_slot', data.bannerSlotId || "");
               localStorage.setItem('cache_adsense_infeed_slot', data.inFeedSlotId || "");
