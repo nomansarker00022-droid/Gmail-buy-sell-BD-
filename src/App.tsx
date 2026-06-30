@@ -1334,7 +1334,7 @@ export default function App() {
   const setAllWithdrawals = (val: any) => {
     _setAllWithdrawals((prev: any) => mergeLocalVirtualData('withdrawals', typeof val === 'function' ? val(prev) : val));
   };
-  const [headline, setHeadline] = useState({ text: '★ স্বাগতম Gmail Buy & Sell BD-এ! ★ বিশ্বের সেরা এবং দ্রুততম জিমেইল মার্কেটপ্লেস ★', speed: 25 });
+  const [headline, setHeadline] = useState({ text: '★ স্বাগতম TopMail Sell BD-এ! ★ বিশ্বের সেরা এবং দ্রুততম মেইল মার্কেটপ্লেস ★', speed: 25 });
   const [pendingHeadline, setPendingHeadline] = useState('');
   const [pendingSpeed, setPendingSpeed] = useState(25);
   const [showSellModal, setShowSellModal] = useState(false);
@@ -6077,7 +6077,7 @@ export default function App() {
                 </div>
                 <div>
                   <h1 className="font-display text-lg font-black tracking-tight text-slate-900 flex items-center gap-1.5 leading-none">
-                    Gmail Buy & Sell <span className="text-[9px] font-black tracking-[0.1em] text-yellow-500 bg-yellow-400/10 px-2 py-0.5 rounded-full border border-yellow-400/20">BD</span>
+                    TopMail Sell <span className="text-[9px] font-black tracking-[0.1em] text-yellow-500 bg-yellow-400/10 px-2 py-0.5 rounded-full border border-yellow-400/20">BD</span>
                   </h1>
                   <p className="text-[9px] font-black tracking-[0.15em] text-red-500 uppercase mt-0.5">V4.0 ULTIMATE</p>
                 </div>
@@ -6272,7 +6272,7 @@ export default function App() {
                 </div>
                 <div className="text-left leading-none shrink-0 min-w-0">
                   <h1 className="font-sans text-[11px] min-[360px]:text-[12px] sm:text-[13.5px] font-black text-slate-900 tracking-tight leading-none whitespace-nowrap">
-                    Gmail Buy & Sell <span className="text-[#4F46E5]">BD</span>
+                    TopMail Sell <span className="text-[#4F46E5]">BD</span>
                   </h1>
                   <p className="text-[6.5px] min-[360px]:text-[7px] sm:text-[7.5px] font-black tracking-widest text-[#64748B] uppercase mt-0.5 sm:mt-1 leading-none whitespace-nowrap">
                      TRUSTED MARKETPLACE
@@ -6707,7 +6707,7 @@ export default function App() {
 
                     {/* Brand Display heading */}
                     <h1 className="text-4xl sm:text-5xl font-black tracking-tight leading-none text-white z-10 my-1 font-display">
-                      Gmail Buy Sell BD
+                      TopMail Sell BD
                     </h1>
 
                     {/* Subheading Bengali with Glow */}
@@ -12371,7 +12371,7 @@ export default function App() {
                 
                 <div className="flex-1 overflow-y-auto pr-1 -mr-2 scrollbar-none space-y-4 pt-2">
                   <div className="text-center space-y-2 mb-4">
-                    <h2 className="text-xl font-black text-slate-900 tracking-tight">Welcome to Gmail Buy & Sell BD</h2>
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight">Welcome to TopMail Sell BD</h2>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">সম্পূর্ণ ভেরিফাইড মার্কেটপ্লেস এ আপনাকে স্বাগতম। অনুগ্রহ করে প্রোফাইলটি সম্পূর্ণ করুন।</p>
                   </div>
 
@@ -13088,7 +13088,7 @@ export default function App() {
                 }}
                 className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
               >
-                <span className="font-display font-black text-2xl tracking-tighter text-[#0D1B3E]">Gmail Buy & Sell<span className="text-[#0D1B3E]/80"> BD</span></span>
+                <span className="font-display font-black text-2xl tracking-tighter text-[#0D1B3E]">TopMail Sell<span className="text-[#0D1B3E]/80"> BD</span></span>
               </div>
               <p className="text-slate-500 text-sm leading-relaxed font-medium">
                 Empowering the digital marketplace in Bangladesh with secure account handling and verified transactions.
@@ -13270,7 +13270,7 @@ export default function App() {
                 </div>
 
                 <h1 className="font-display text-2xl sm:text-3xl font-black tracking-tight text-[#0D1B3E] leading-tight">
-                  Gmail Buy & Sell<span className="text-[#0D1B3E]/80"> BD</span>
+                  TopMail Sell<span className="text-[#0D1B3E]/80"> BD</span>
                 </h1>
                 <p className="text-slate-500 text-xs font-bold uppercase tracking-widest opacity-60">Verified Gmail Marketplace</p>
               </div>

@@ -1,4 +1,4 @@
-# Security Specification for Gmail BuySell BD
+# Security Specification for TopMail Sell BD
 
 ## Data Invariants
 1. A listing must have a valid seller ID matching the authenticated user.
