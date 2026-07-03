@@ -11899,119 +11899,25 @@ export default function App() {
                   )}
                 </AnimatePresence>
 
+                {/* Ads view Earn Modal */}
                 <AnimatePresence>
-                  {showReferModal && (
+                  {showAdsEarnModal && (
                     <>
                       <motion.div 
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        onClick={() => setShowReferModal(false)}
+                        onClick={() => setShowAdsEarnModal(false)}
                         className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200]"
                       />
                       <motion.div
                         initial={{ opacity: 0, scale: 0.9, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="fixed inset-x-6 top-[20%] md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:w-[400px] bg-white rounded-[2.5rem] shadow-2xl z-[210] p-8 space-y-6 overflow-hidden"
-                      >
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-purple-50 rounded-full -mr-16 -mt-16 blur-2xl" />
-                        <div className="relative space-y-6 text-center">
-                          <div className="w-20 h-20 bg-purple-50 text-purple-600 rounded-[2rem] flex items-center justify-center mx-auto shadow-sm">
-                            <Share2 size={36} />
-                          </div>
-                          <div className="space-y-2">
-                            <h3 className="text-2xl font-black text-slate-800 tracking-tight">Refer & Earn</h3>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-relaxed">Share this link with your friends</p>
-                          </div>
-        
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-slate-50 p-4 rounded-2xl space-y-1">
-                              <p className="text-[10px] font-black text-slate-400 tracking-widest uppercase">Referrals</p>
-                              <p className="text-xl font-black text-slate-800 tracking-tight">{userProfile?.successfulReferrals || 0}</p>
-                            </div>
-                            <div className="bg-slate-50 p-4 rounded-2xl space-y-1">
-                              <p className="text-[10px] font-black text-slate-400 tracking-widest uppercase">Bonus Earned</p>
-                              <p className="text-xl font-black text-[#2E7D32] tracking-tight">৳{(userProfile?.successfulReferrals || 0) * 5}</p>
-                            </div>
-                          </div>
-
-                          <div className="space-y-3">
-                            <div className="p-4 bg-slate-900 rounded-2xl space-y-1 select-all relative overflow-hidden group">
-                              <div className="absolute top-0 right-0 w-16 h-16 bg-white/5 rounded-full -mr-8 -mt-8" />
-                              <p className="text-[7px] font-black text-white/40 tracking-widest uppercase">Your Referral URL</p>
-                              <p className="text-[10px] font-mono text-white/90 truncate pr-8 leading-relaxed">
-                                {window.location.origin}/?ref={userProfile?.numericId}
-                              </p>
-                              <button 
-                                onClick={() => {
-                                  navigator.clipboard.writeText(`${window.location.origin}/?ref=${userProfile?.numericId}`);
-                                  alert('Referral link copied!');
-                                }}
-                                className="absolute top-1/2 -translate-y-1/2 right-4 w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-all active:scale-95"
-                              >
-                                <Copy size={14} />
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="pt-2">
-                             <button 
-                               onClick={() => {
-                                 setShowReferModal(false);
-                                 setWithdrawMode('referral');
-                                 setShowWithdrawModal(true);
-                               }}
-                               disabled={(userProfile?.successfulReferrals || 0) === 0}
-                               className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-                             >
-                               <Wallet size={16} />
-                               Withdraw Bonus
-                             </button>
-                          </div>
-                        </div>
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
-
-                {/* Ads view Earn Modal */}
-                <AnimatePresence>
-                  {showAdsEarnModal && (
-                    <>
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={() => {
-                          if (adWatchStatus !== 'watching') {
-                            setShowAdsEarnModal(false);
-                          } else {
-                            alert("বিজ্ঞাপন চলাকালীন বন্ধ করা যাবে না! অনুগ্রহ করে অপেক্ষা করুন।");
-                          }
-                        }}
-                        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200]"
-                      />
-                       <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 15 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 15 }}
-                        className="fixed inset-x-4 max-w-[350px] mx-auto top-1/2 -translate-y-1/2 md:left-1/2 md:-translate-x-1/2 md:w-[350px] bg-white rounded-[1.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.06)] z-[210] p-3 flex flex-col max-h-[90vh] border border-amber-100/60 overflow-hidden"
+                        className="fixed inset-x-6 top-[20%] md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:w-[400px] bg-white rounded-[2rem] shadow-2xl z-[210] p-6 flex flex-col max-h-[85vh] overflow-hidden font-sans"
                       >
                         {/* Header */}
-                        <div className="relative pb-1">
-                          <button 
-                            onClick={() => {
-                              if (adWatchStatus !== 'watching') {
-                                setShowAdsEarnModal(false);
-                              } else {
-                                alert("বিজ্ঞাপন চলাকালীন বন্ধ করা যাবে না! অনুগ্রহ করে অপেক্ষা করুন।");
-                              }
-                            }}
-                            className="absolute -top-1 -right-1 p-1.5 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors z-10 animate-hover"
-                          >
-                            <X size={15} className="text-slate-400" />
-                          </button>
+                        <div className="relative pb-3 border-b border-slate-100 flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center text-amber-600 border border-amber-100 font-sans shadow-sm animate-pulse">
                               <Megaphone size={12} className="text-amber-600 shrink-0" />
@@ -12021,6 +11927,12 @@ export default function App() {
                               <p className="text-[8px] font-black text-amber-500 uppercase tracking-wider">১০৫% পেমেন্ট নিশ্চিত</p>
                             </div>
                           </div>
+                          <button
+                            onClick={() => setShowAdsEarnModal(false)}
+                            className="p-1.5 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+                          >
+                            <X size={15} className="text-slate-400" />
+                          </button>
                         </div>
 
                         {/* Main Content Area */}
@@ -12524,6 +12436,7 @@ export default function App() {
                       {legalModal === 'terms' && <Lock size={24} />}
                       {legalModal === 'refund' && <FileText size={24} />}
                       {legalModal === 'abuse' && <ShieldCheck size={24} />}
+                      {legalModal === 'security' && <ShieldCheck size={24} />}
                     </div>
                     <div>
                       <h3 className="text-xl font-black text-slate-800 tracking-tight">
@@ -12532,6 +12445,7 @@ export default function App() {
                         {legalModal === 'terms' && 'Terms & Conditions'}
                         {legalModal === 'refund' && 'Refund & Escrow Policy'}
                         {legalModal === 'abuse' && 'Google Compliance & Abuse Policy'}
+                        {legalModal === 'security' && 'Trust, Safety & ScamAdviser Compliance'}
                       </h3>
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
                         {legalModal === 'about' && 'Trusted P2P Platform'}
@@ -12539,6 +12453,7 @@ export default function App() {
                         {legalModal === 'terms' && 'User Rules & Escrow Guidelines'}
                         {legalModal === 'refund' && 'Safe Escrow Protection'}
                         {legalModal === 'abuse' && 'Zero Tolerance Policy for Malicious Activity'}
+                        {legalModal === 'security' && 'ScamAdviser Verified & Legitimate Platform'}
                       </p>
                     </div>
                   </div>
