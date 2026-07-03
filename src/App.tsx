@@ -11611,7 +11611,7 @@ export default function App() {
                                       setShowDepositArea(true);
                                       setShowPaymentModal({ show: true, price: 100, listingId: 'deposit' });
                                     }}
-                                    className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-xl text-[9.5px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md font-sans"
+                                    className="w-full bg-red-650 hover:bg-red-750 text-white py-2 rounded-xl text-[9.5px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md font-sans"
                                   >
                                     <Wallet size={11} />
                                     টাকা ডেপোজিট করুন (Deposit Balance)
@@ -11642,6 +11642,34 @@ export default function App() {
                                 </button>
                               ))}
                             </div>
+                          </div>
+                        )}
+
+                        {/* Payment Selection Tab (Only for Deposits) */}
+                        {showPaymentModal.listingId === 'deposit' && (
+                          <div className="flex gap-2.5 p-1 bg-slate-50 rounded-2xl border border-slate-100">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPaymentForm(prev => ({ ...prev, method: 'bkash', trxId: '' }));
+                                setPaymentError(null);
+                              }}
+                              className={`flex-1 py-3.5 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all relative overflow-hidden group ${paymentForm.method === 'bkash' ? 'bg-[#e2136e] text-white shadow-md' : 'bg-white text-slate-700 hover:bg-slate-50/50 border border-slate-100'}`}
+                            >
+                              <img src="https://www.logo.wine/a/logo/BKash/BKash-Logo.wine.svg" alt="bKash" className="h-6 w-auto object-contain z-10 filter brightness-110" />
+                              <span className="text-[8px] font-black uppercase tracking-widest z-10">bKash (Send Money)</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPaymentForm(prev => ({ ...prev, method: 'nagad', trxId: '' }));
+                                setPaymentError(null);
+                              }}
+                              className={`flex-1 py-3.5 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all relative overflow-hidden group ${paymentForm.method === 'nagad' ? 'bg-[#ed1c24] text-white shadow-md' : 'bg-white text-slate-700 hover:bg-slate-50/50 border border-slate-100'}`}
+                            >
+                              <img src="https://www.logo.wine/a/logo/Nagad/Nagad-Logo.wine.svg" alt="Nagad" className="h-6 w-auto object-contain z-10 filter brightness-110" />
+                              <span className="text-[8px] font-black uppercase tracking-widest z-10">Nagad (Send Money)</span>
+                            </button>
                           </div>
                         )}
 
@@ -11714,7 +11742,7 @@ export default function App() {
                                          </p>
                                       </div>
                                       <div className="space-y-1.5 pl-1">
-                                        <p className="text-[8.5px] text-slate-650 font-bold leading-relaxed">
+                                        <p className="text-[8.5px] text-slate-655 font-bold leading-relaxed">
                                           ১. নাম্বারটি কপি করে আপনার {paymentForm.method === 'bkash' ? 'বিকাশ' : 'নগদ'} অ্যাপ থেকে <span className="font-extrabold text-slate-900">Send Money</span> করুন।
                                         </p>
                                         <p className="text-[8.5px] text-slate-655 font-bold leading-relaxed">
@@ -11792,7 +11820,7 @@ export default function App() {
                                        {paymentError}
                                      </div>
                                     </motion.div>
-                                 )}
+                                  )}
                               </AnimatePresence>
 
                               <button 
@@ -11829,6 +11857,7 @@ export default function App() {
             </>
           )}
         </AnimatePresence>
+
         <AnimatePresence>
           {showReportModal?.show && (
             <>
@@ -12062,9 +12091,9 @@ export default function App() {
 
                               {/* Clean Light-Themed Status Dashboard instead of the Dark Sponsor Ad box */}
                               {adWatchStatus === 'idle' ? (
-                                <div className="bg-red-50/40 border border-red-100 p-2.5 rounded-xl text-center space-y-1 font-sans">
-                                  <Sparkles size={15} className="text-red-500 mx-auto animate-pulse" />
-                                  <h4 className="text-[9.5px] font-black text-red-800 uppercase tracking-wider">বিজ্ঞাপন দেখে আয় শুরু করুন</h4>
+                                <div className="bg-[#FFF8E1] border border-[#FFE082] p-2.5 rounded-xl text-center space-y-1 font-sans">
+                                  <Sparkles size={15} className="text-amber-500 mx-auto animate-pulse" />
+                                  <h4 className="text-[9.5px] font-black text-amber-800 uppercase tracking-wider">বিজ্ঞাপন দেখে আয় শুরু করুন</h4>
                                   <p className="text-[8.5px] text-slate-600 leading-normal font-semibold">
                                     নিচে <strong className="text-red-700">"👉 VIEW (৳০.১০ আয় করুন)"</strong> বাটনে ক্লিক করলে একটি বিজ্ঞাপনের ট্যাব ওপেন হবে।
                                   </p>
@@ -12075,7 +12104,7 @@ export default function App() {
                                     <CheckCircle size={13} />
                                   </div>
                                   <h4 className="text-[9.5px] font-black text-emerald-700 uppercase tracking-wider">বিজ্ঞাপন লিংক সফলভাবে ওপেন করা হয়েছে!</h4>
-                                  <p className="text-[8.5px] text-slate-600 leading-normal font-semibold">
+                                  <p className="text-[8.5px] text-slate-655 leading-normal font-semibold">
                                     ⚠️ অবশ্যই ওপেন হওয়া উইন্ডোতে <strong className="text-rose-600 font-extrabold">১৫ সেকেন্ড অপেক্ষা</strong> করুন। তারপর এখানে ফিরে এসে ক্লেম করুন!
                                   </p>
                                   {adPopupBlocked && currOpenedAdUrl && (
@@ -12134,60 +12163,30 @@ export default function App() {
                                   }
                                   startWatchingAd();
                                 }}
-                                className="w-full py-2.5 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-500 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-md shadow-amber-100/50 hover:opacity-95 transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer font-sans"
+                                className="w-full py-2.5 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl font-sans font-black text-[10px] sm:text-[10.5px] uppercase tracking-[0.15em] hover:shadow-md hover:shadow-rose-100 transition-all flex items-center justify-center gap-2 cursor-pointer text-center"
                               >
-                                <Megaphone size={11} className="animate-pulse font-sans" />
                                 👉 VIEW (৳০.১০ আয় করুন)
                               </a>
                             ) : adWatchStatus === 'watching' ? (
-                              <button
-                                disabled
-                                className="w-full py-2.5 bg-slate-100 text-slate-400 rounded-xl font-black text-[9px] uppercase tracking-[0.12em] transition-all text-center flex items-center justify-center gap-1.5 cursor-not-allowed font-sans"
-                              >
-                                <RefreshCw size={11} className="animate-spin" />
-                                Verifying Advertisement {adWatchCountdown}s...
-                              </button>
+                              <div className="space-y-1.5">
+                                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                  <div className="h-full bg-amber-500 animate-[loading_15s_linear_infinite]" />
+                                </div>
+                                <div className="text-center font-sans">
+                                  <span className="text-[9px] text-slate-500 font-extrabold flex items-center justify-center gap-1">
+                                    <Clock size={11} className="text-amber-500 animate-spin" />
+                                    বিজ্ঞাপন পেজে কমপক্ষে ১৫ সেকেন্ড অপেক্ষা করুন...
+                                  </span>
+                                </div>
+                              </div>
                             ) : (
                               <button
-                                disabled={isClaimingAd}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (claimSecondsRemaining > 0 || isClaimingAd) {
-                                    e.preventDefault();
-                                    return;
-                                  }
-                                  claimAdEarning();
-                                }}
-                                className={`w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-black text-[9px] uppercase tracking-[0.15em] shadow-md shadow-emerald-100/50 hover:opacity-95 transition-all text-center flex items-center justify-center gap-1.5 font-sans ${isClaimingAd ? 'opacity-80 cursor-not-allowed' : 'cursor-pointer animate-pulse'}`}
+                                onClick={claimAdEarning}
+                                className="w-full py-2.5 bg-emerald-600 text-white rounded-xl font-sans font-black text-[10px] uppercase tracking-[0.15em] hover:bg-emerald-700 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                               >
-                                {isClaimingAd ? (
-                                  <>
-                                    <RefreshCw size={10} className="animate-spin" />
-                                    ব্যালেন্স যোগ হচ্ছে... অনুগ্রহ করে অপেক্ষা করুন
-                                  </>
-                                ) : claimSecondsRemaining > 0 ? (
-                                  <>
-                                    <RefreshCw size={10} className="animate-spin" />
-                                    ক্লেম করতে {claimSecondsRemaining} সেকেন্ড অপেক্ষা করুন
-                                  </>
-                                ) : (
-                                  <>
-                                    <CheckCircle size={10} />
-                                    Claim Reward (৳০.১০ ওয়ালেটে নিন)
-                                  </>
-                                )}
+                                🎁 CLAIM REWARD (৳০.১০)
                               </button>
                             )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setShowAdsEarnModal(false);
-                              }}
-                              disabled={adWatchStatus === 'watching'}
-                              className="w-full py-2 bg-slate-55 text-slate-500 rounded-lg font-black text-[8px] uppercase tracking-wider hover:bg-slate-100 hover:text-slate-700 transition-all text-center cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed font-sans"
-                            >
-                              Close Window
-                            </button>
                           </div>
                         )}
                       </motion.div>
@@ -12195,10 +12194,11 @@ export default function App() {
                   )}
                 </AnimatePresence>
 
+                {/* Withdrawal Modal */}
                 <AnimatePresence>
                   {showWithdrawModal && (
                     <>
-                      <motion.div 
+                      <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -12206,59 +12206,87 @@ export default function App() {
                         className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200]"
                       />
                       <motion.div
-                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="fixed inset-x-6 top-[20%] md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:w-[400px] bg-white rounded-[2.5rem] shadow-2xl z-[210] p-8 space-y-6 overflow-hidden"
+                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                        className="fixed inset-x-4 max-w-[400px] mx-auto top-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl z-[210] p-6 flex flex-col max-h-[90vh] border border-slate-100 font-sans"
                       >
-                         <div className="space-y-2 text-center">
-                            <h3 className="text-2xl font-black text-slate-800 tracking-tight">
-                              {withdrawMode === 'referral' ? 'Withdraw Referral Bonus' : 'Withdraw Seller Earnings'}
-                            </h3>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-relaxed">
-                              Amount: ৳{withdrawMode === 'referral' ? ((userProfile?.successfulReferrals || 0) * 5).toFixed(2) : (userProfile?.earningsBalance || 0).toFixed(2)}
+                        {/* Header */}
+                        <div className="relative pb-4 border-b border-slate-100 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center shadow-md shadow-slate-100">
+                              <Wallet size={18} />
+                            </div>
+                            <div>
+                              <h3 className="font-extrabold text-slate-800 text-base leading-tight">Withdrawal Console</h3>
+                              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
+                                {withdrawMode === 'referral' ? 'Referral Balance' : 'Sales Balance'}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => setShowWithdrawModal(false)}
+                            className="p-1.5 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+                          >
+                            <X size={16} className="text-slate-400" />
+                          </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto py-4 space-y-4 no-scrollbar">
+                          {/* Balance Display */}
+                          <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center justify-between">
+                            <div>
+                              <span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest">Withdrawal Amount</span>
+                              <span className="text-2xl font-black text-slate-900 tracking-tight mt-1 block">
+                                ৳{withdrawMode === 'referral' 
+                                  ? (userProfile?.successfulReferrals || 0) * 5 
+                                  : (userProfile?.earningsBalance || 0)}
+                              </span>
+                            </div>
+                            <div className="bg-emerald-50 text-emerald-700 font-black text-[9px] px-2.5 py-1 rounded-full uppercase tracking-wider">
+                              Verified
+                            </div>
+                          </div>
+
+                          {/* Method Select */}
+                          <div className="space-y-1.5">
+                            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest">Select Method</label>
+                            <select
+                              id="withdraw-method"
+                              className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all cursor-pointer"
+                            >
+                              <option value="bKash">bKash (Personal)</option>
+                              <option value="Nagad">Nagad (Personal)</option>
+                              <option value="Rocket">Rocket (Personal)</option>
+                            </select>
+                          </div>
+
+                          {/* Number Input */}
+                          <div className="space-y-1.5">
+                            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest">Receiver Account Number</label>
+                            <input
+                              id="withdraw-number"
+                              type="tel"
+                              placeholder="e.g. 01712345678"
+                              className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all"
+                            />
+                          </div>
+
+                          {/* Instructions */}
+                          <div className="bg-amber-50/40 border border-amber-100/60 p-3 rounded-xl">
+                            <p className="text-[9px] text-amber-700 font-bold leading-relaxed">
+                              ⚠️ সতর্কবার্তা: অবশ্যই সঠিক নাম্বার ইনপুট করুন। ভুল নাম্বারে পেমেন্ট চলে গেলে কতৃপক্ষ দায়ী থাকবে না। সর্বনিম্ন উইথড্র ৳৫০।
                             </p>
-                         </div>
+                          </div>
+                        </div>
 
-                         <div className="space-y-4 text-left">
-                            <div className="space-y-1.5 group">
-                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Payment Method</label>
-                              <select 
-                                id="withdraw-method"
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold focus:outline-none focus:ring-4 focus:ring-green-50 focus:border-green-500 transition-all"
-                                defaultValue="bKash"
-                                onChange={(e) => {
-                                  const numInput = document.getElementById('withdraw-number') as HTMLInputElement;
-                                  if (e.target.value === 'bKash') {
-                                    numInput.placeholder = "bKash: 01XXXXXXXXX";
-                                    numInput.value = userProfile?.bkashNumber || '';
-                                  } else {
-                                    numInput.placeholder = "Nagad: 01XXXXXXXXX";
-                                    numInput.value = userProfile?.nagadNumber || '';
-                                  }
-                                }}
-                              >
-                                <option value="bKash">bKash</option>
-                                <option value="Nagad">Nagad</option>
-                              </select>
-                            </div>
-                            <div className="space-y-1.5 group">
-                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Payment Number</label>
-                              <input 
-                                type="text" 
-                                placeholder="01XXXXXXXXX"
-                                defaultValue={userProfile?.bkashNumber || ''}
-                                id="withdraw-number"
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold focus:outline-none focus:ring-4 focus:ring-green-50 focus:border-green-500 transition-all"
-                              />
-                            </div>
-                         </div>
-
-                         <button 
-                           disabled={isSubmitting}
-                           onClick={async () => {
-                             const method = (document.getElementById('withdraw-method') as HTMLSelectElement).value;
-                             const number = (document.getElementById('withdraw-number') as HTMLInputElement).value;
+                        {/* Footer Button */}
+                        <div className="pt-4 border-t border-slate-100">
+                          <button
+                            onClick={async () => {
+                              const method = (document.getElementById('withdraw-method') as HTMLSelectElement).value;
+                              const number = (document.getElementById('withdraw-number') as HTMLInputElement).value;
                              if (!number || number.length < 11) {
                                alert(`${method} নাম্বার সঠিক নয়!`);
                                return;
@@ -12340,7 +12368,8 @@ export default function App() {
                          >
                            {isSubmitting ? <RefreshCw className="animate-spin" size={16} /> : 'Submit Withdrawal'}
                          </button>
-                      </motion.div>
+                       </div>
+                     </motion.div>
                     </>
                   )}
                 </AnimatePresence>
