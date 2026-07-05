@@ -10864,747 +10864,144 @@ export default function App() {
                     <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="text"
-                      placeholder="সার্চ করুন জিমেইল অ্যাকাউন্ট..."
+                      placeholder="Search accounts..."
                       value={sellerSearchQuery}
                       onChange={(e) => setSellerSearchQuery(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs font-bold focus:outline-none focus:ring-4 focus:ring-[#2e7d32]/10 focus:border-[#2e7d32] transition-all"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:border-[#2E7D32] text-xs text-slate-700 transition-all"
                     />
                   </div>
                 </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </main>
 
-                {/* Seller Listings Title */}
-                <div className="flex items-center justify-between px-2">
-                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                    <ShoppingBag size={14} /> My Gmail Listings
-                  </h3>
-                  <span className="text-[10px] font-black text-[#2e7d32] bg-green-50 border border-green-100 px-3 py-1 rounded-full uppercase tracking-wider">
-                    Total: {sellerListings.length}
-                  </span>
-                </div>
-
-                {/* Listings Main Container */}
-                <div className="space-y-4">
-                  {sellerListings.filter(l => {
-                    const matchesSearch = l.gmailAccount.toLowerCase().includes(sellerSearchQuery.toLowerCase());
-                    const matchesFilter = listingFilter === 'All' || l.status === listingFilter;
-                    return matchesSearch && matchesFilter;
-                  }).length === 0 ? (
-                    <div className="py-20 text-center select-none bg-slate-50/20 rounded-[2rem] border-2 border-dashed border-slate-100 my-4">
-                      <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner border border-slate-50">
-                        <ShoppingBag className="text-slate-300" size={20} />
-                      </div>
-                      <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.25em]">কোনো অ্যাকাউন্ট পাওয়া যায়নি</p>
-                      <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mt-0.5">
-                        {sellerSearchQuery ? 'সার্চের সাথে মিলে এমন কোনো জিমেইল পাওয়া যায়নি।' : 'আপনি এখনো কোনো Gmail লিস্টিং করেননি।'}
-                      </p>
+          {/* Payment Modal */}
+          <AnimatePresence>
+            {showPaymentModal.show && (
+              <>
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={handleClosePaymentModal}
+                  className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100]"
+                />
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9, y: 30 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 30 }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                  className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] max-w-[360px] bg-white rounded-[2rem] shadow-2xl z-[101] overflow-hidden border border-slate-100 flex flex-col"
+                >
+                  {/* Modal Header */}
+                  <div className={`p-4 text-white flex items-center justify-between ${showPaymentModal.listingId === 'deposit' ? (paymentForm.method === 'bkash' ? 'bg-[#e2136e]' : 'bg-[#ed1c24]') : 'bg-slate-900'}`}>
+                    <div className="flex items-center gap-2">
+                      <Wallet size={16} className="text-white shrink-0 animate-pulse" />
+                      <span className="text-[11px] font-black uppercase tracking-widest text-white font-sans">
+                        {showPaymentModal.listingId === 'deposit' ? 'Deposit Balance' : 'Checkout Payment'}
+                      </span>
                     </div>
-                  ) : (
-                    sellerListings
-                      .filter(l => {
-                        const matchesSearch = l.gmailAccount.toLowerCase().includes(sellerSearchQuery.toLowerCase());
-                        const matchesFilter = listingFilter === 'All' || l.status === listingFilter;
-                        return matchesSearch && matchesFilter;
-                      })
-                      .map((item, i) => (
-                      <motion.div
-                        key={item.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="bg-white rounded-2xl sm:rounded-[2rem] border border-slate-100 p-4 sm:p-6 md:p-8 space-y-4 md:space-y-6 shadow-sm shadow-slate-200/40 relative min-w-0 overflow-hidden"
-                      >
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
-                          <div className="min-w-0 flex-1">
-                            <h4 className="font-display text-base sm:text-xl font-bold text-slate-800 truncate break-all block" title={item.gmailAccount}>
-                              {item.gmailAccount}
-                            </h4>
-                          </div>
-                          <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2 shrink-0">
-                            <span className={`px-2.5 py-1 rounded-lg border text-[10px] sm:text-[11px] font-bold uppercase tracking-wider ${
-                              item.status === 'Approved' ? 'bg-blue-50 border-blue-100 text-blue-600' :
-                              item.status === 'Available' ? 'bg-green-50 border-green-100 text-green-600' :
-                              item.status === 'Dispute' ? 'bg-red-50 border-red-100 text-red-600' :
-                              item.status === 'Sold' ? 'bg-red-50 border-red-100 text-red-600 shadow-inner' :
-                              'bg-slate-50 border-slate-100 text-slate-500'
-                            }`}>
-                              {item.status === 'Sold' && item.paymentStatus === 'Paid' ? 'Approved' : (item.status === 'Approved' ? 'Approved' : item.status)}
-                            </span>
-                            <p className="text-[10px] sm:text-xs font-black text-red-600">৳{item.price}</p>
-                          </div>
-                        </div>
+                    <button 
+                      onClick={handleClosePaymentModal}
+                      className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors cursor-pointer"
+                    >
+                      <X size={14} className="text-white" />
+                    </button>
+                  </div>
 
-                        <div className="inline-block px-3 py-1 rounded-lg bg-slate-50 border border-slate-100 text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                          {item.type}
-                        </div>
-
-                        {false && (
-                          <div className="space-y-4 min-w-0">
-                            <p className="text-[12px] font-black text-slate-400 uppercase tracking-[0.1em]">ACCOUNT DETAILS</p>
-                            <div className="space-y-3 min-w-0">
-                              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 min-w-0 gap-2">
-                                <div className="flex-1 min-w-0 flex flex-col gap-1">
-                                  <span className="text-[8px] font-black text-slate-400 uppercase">Account Credentials</span>
-                                  <div className="space-y-2 mt-1 min-w-0">
-                                    <div className="flex flex-col min-w-0">
-                                      <span className="text-[8px] text-slate-500">Email:</span>
-                                      <span className="font-mono text-slate-900 text-xs sm:text-sm break-all font-semibold select-all">
-                                        {revealedPasswords[item.id] ? revealedPasswords[item.id].email : '**********'}
-                                      </span>
-                                    </div>
-                                    {revealedPasswords[item.id] && (
-                                      <>
-                                        <div className="flex flex-col min-w-0">
-                                          <span className="text-[8px] text-slate-500">Password:</span>
-                                          <span className="font-mono text-slate-900 text-xs sm:text-sm font-bold break-all select-all">
-                                            {revealedPasswords[item.id].password}
-                                          </span>
-                                        </div>
-                                        {(revealedPasswords[item.id].recoveryEmail || revealedPasswords[item.id].recovery) && (
-                                          <div className="flex flex-col min-w-0">
-                                            <span className="text-[8px] text-slate-500">Recovery:</span>
-                                            <span className="font-mono text-slate-900 text-xs sm:text-sm break-all select-all">
-                                              {revealedPasswords[item.id].recoveryEmail || revealedPasswords[item.id].recovery}
-                                            </span>
-                                          </div>
-                                        )}
-                                        {revealedPasswords[item.id].twoFactor && (
-                                          <div className="flex flex-col min-w-0">
-                                            <span className="text-[8px] text-slate-500">2FA / Security Code:</span>
-                                            <span className="font-mono text-slate-900 text-xs sm:text-sm break-all select-all">
-                                              {revealedPasswords[item.id].twoFactor}
-                                            </span>
-                                          </div>
-                                        )}
-                                      </>
-                                    )}
-                                    {!revealedPasswords[item.id] && (
-                                      <div className="flex flex-col min-w-0">
-                                        <span className="text-[8px] text-slate-500">Password:</span>
-                                        <span className="font-mono text-slate-900 text-xs sm:text-sm italic opacity-30 break-all select-none">
-                                          Hidden
-                                        </span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                                <button 
-                                  onClick={() => revealPassword(item.id, item.sellerId)}
-                                  className="p-2 hover:bg-white rounded-lg transition-colors shadow-sm self-start shrink-0"
-                                >
-                                  {revealedPasswords[item.id] ? <Eye className="text-[#2E7D32]" size={16} /> : <EyeOff className="text-slate-400" size={16} />}
-                                </button>
-                              </div>
-                            </div>
+                  {/* Modal Body */}
+                  <div className="p-4 space-y-3.5 max-h-[80vh] overflow-y-auto custom-scrollbar">
+                    <AnimatePresence mode="wait">
+                      {purchasedCreds ? (
+                        <motion.div 
+                          key="success"
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          className="space-y-4 pt-1"
+                        >
+                          <div className="text-center py-3 bg-[#E8F5E9] rounded-2xl border-2 border-[#C8E6C9] mb-3 shadow-sm">
+                             <p className="text-[#2E7D32] font-black uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 font-sans">
+                               <CheckCircle size={18} />
+                               PAYMENT VERIFIED
+                             </p>
                           </div>
-                        )}
-
-                        {/* Seller payout info for sold item */}
-                        {item.status === 'Sold' && (
-                          <div className="bg-slate-100/50 rounded-2xl p-4 sm:p-5 border border-slate-200/50 space-y-3 shadow-inner min-w-0 overflow-hidden">
-                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <div className={`w-2 h-2 rounded-full shrink-0 ${item.paymentStatus === 'Paid' ? 'bg-green-500' : 'bg-orange-500 animate-pulse'}`} />
-                                  <p className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest truncate">Payout Tracking</p>
-                                </div>
-                                <span className={`text-[8px] sm:text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border self-start sm:self-auto ${item.paymentStatus === 'Paid' ? 'bg-green-50 border-green-100 text-green-700' : 'bg-orange-50 border-orange-100 text-orange-700'}`}>
-                                   {item.paymentStatus === 'Paid' ? 'PAID / CONFIRMED' : 'PAYMENT PENDING'}
-                                </span>
+                          
+                          <div className="p-4 bg-[#0F172A] rounded-2xl space-y-4 shadow-2xl relative overflow-hidden border border-slate-800">
+                             <div className="absolute top-0 right-0 p-4 opacity-5">
+                                <ShieldCheck size={60} className="text-white" />
                              </div>
                              
-                             {item.paymentStatus === 'Paid' ? (
-                               <div className="bg-white p-3 rounded-xl border border-green-50 shadow-sm flex flex-col gap-1.5 min-w-0">
-                                  <div className="flex items-center justify-between gap-2">
-                                     <span className="text-[9px] font-bold text-slate-400 uppercase">Payout Method:</span>
-                                     <span className="text-[10px] font-black text-slate-700 uppercase">bKash</span>
+                             <div className="space-y-2.5 relative z-10">
+                              <div className="space-y-1 text-left">
+                                <span className="text-[8px] text-white/30 uppercase font-black tracking-widest block font-sans">Purchased Gmail</span>
+                                <div className="flex items-center justify-between bg-white/5 p-2 rounded-xl border border-white/10">
+                                  <p className="font-mono font-bold text-white text-xs truncate mr-2 select-all">{purchasedCreds.gmail}</p>
+                                  <button type="button" onClick={() => { navigator.clipboard.writeText(purchasedCreds.gmail); alert('Gmail Copied!'); }} className="w-6.5 h-6.5 rounded-lg bg-white/10 flex items-center justify-center text-[#FFEB3B] hover:scale-110 transition-all cursor-pointer"><Copy size={11}/></button>
+                                </div>
+                              </div>
+
+                              <div className="space-y-1 text-left">
+                                <span className="text-[8px] text-white/30 uppercase font-black tracking-widest block font-sans">Account Password</span>
+                                <div className="flex items-center justify-between bg-white/5 p-2 rounded-xl border border-white/10">
+                                  <p className="font-mono font-bold text-[#FFEB3B] text-xs truncate mr-2 select-all">{purchasedCreds.pass}</p>
+                                  <button type="button" onClick={() => { navigator.clipboard.writeText(purchasedCreds.pass); alert('Password Copied!'); }} className="w-6.5 h-6.5 rounded-lg bg-white/10 flex items-center justify-center text-white hover:scale-110 transition-all cursor-pointer"><Copy size={11}/></button>
+                                </div>
+                              </div>
+
+                              {purchasedCreds.recovery && (
+                                <div className="space-y-1 text-left">
+                                  <span className="text-[8px] text-white/30 uppercase font-black tracking-widest block font-sans">Recovery Email</span>
+                                  <div className="flex items-center justify-between bg-white/5 p-2 rounded-xl border border-white/10">
+                                    <p className="font-mono font-bold text-green-300 text-xs truncate mr-2 select-all">{purchasedCreds.recovery}</p>
+                                    <button type="button" onClick={() => { navigator.clipboard.writeText(purchasedCreds.recovery!); alert('Recovery Copied!'); }} className="w-6.5 h-6.5 rounded-lg bg-white/10 flex items-center justify-center text-white hover:scale-110 transition-all cursor-pointer"><Copy size={11}/></button>
                                   </div>
-                                  <div className="flex items-center justify-between gap-2 min-w-0">
-                                     <span className="text-[9px] font-bold text-slate-400 uppercase shrink-0">TRX ID:</span>
-                                     <span className="text-[10px] sm:text-[11px] font-black text-red-600 font-mono tracking-wider select-all break-all text-right">{item.payoutTrxId}</span>
-                                  </div>
-                                  <div className="mt-1 pt-1 border-t border-slate-50 flex items-center justify-center gap-1.5 text-green-600">
-                                     <CheckCircle size={12} className="shrink-0" />
-                                     <span className="text-[9px] font-black uppercase text-center">আপনার বিকাশ চেক করুন</span>
-                                  </div>
-                               </div>
-                             ) : (
-                               <div className="bg-white/40 p-3 rounded-xl border border-slate-100 text-center min-w-0">
-                                  <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 leading-relaxed break-words">
-                                     আইটেমটি সফলভাবে বিক্রি হয়েছে। এডমিন বিকাশ থেকে আপনার নম্বরে পেমেন্ট পাঠিয়ে এখানে TRX ID সাবমিট করলে আপনি সেটি নিশ্চিত দেখতে পাবেন।
-                                  </p>
-                               </div>
-                             )}
-                          </div>
-                        )}
-
-                        {item.status === 'Dispute' && (
-                          <div className="border-t border-slate-50 pt-6">
-                            <button 
-                              onClick={() => openSellerEditModal(item.id)}
-                              className="w-full py-5 rounded-2xl bg-blue-600 text-white text-sm font-black flex items-center justify-center gap-3 hover:bg-blue-700 transition-all active:scale-[0.98] shadow-lg shadow-blue-900/10"
-                            >
-                              <Edit size={20} strokeWidth={3} />
-                              Check Now / Edit করুন
-                            </button>
-                          </div>
-                        )}
-                      </motion.div>
-                    ))
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </main>
-
-                    {/* Ranking Modal */}
-          <AnimatePresence>
-            {showRankModal.show && (
-              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setShowRankModal({ ...showRankModal, show: false })}
-                  className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-                />
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                  className="relative w-full max-w-sm bg-white rounded-[3rem] overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)] border border-slate-50 flex flex-col max-h-[85vh]"
-                >
-                  <div className="flex flex-col items-center text-center pt-8 pb-5 px-8 flex-shrink-0">
-                    <div className={`w-16 h-16 rounded-[2.2rem] flex items-center justify-center mb-4 shadow-inner ${showRankModal.type === 'seller' ? 'bg-orange-50' : 'bg-purple-50'}`}>
-                      {showRankModal.type === 'seller' ? (
-                        <Trophy size={32} className="text-orange-500 drop-shadow-sm" />
-                      ) : (
-                        <ShoppingBag size={32} className="text-purple-500 drop-shadow-sm" />
-                      )}
-                    </div>
-
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-1.5">
-                      Top 10 {showRankModal.type === 'seller' ? 'Sellers' : 'Buyers'}
-                    </h2>
-                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.25em]">
-                      {showRankModal.type === 'seller' ? 'MOST ACTIVE SELLERS ON PLATFORM' : 'MOST ACTIVE INVESTORS ON PLATFORM'}
-                    </p>
-                  </div>
-
-                  <div className="flex-grow overflow-y-auto px-5 custom-scrollbar scroll-smooth">
-                    <div className="space-y-2 pb-6">
-                      {(showRankModal.type === 'seller' ? topSellers : topBuyers).map((item, idx) => (
-                        <motion.div
-                          key={item.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className={`flex items-center justify-between p-2.5 rounded-[1.5rem] border ${
-                            showRankModal.type === 'seller' 
-                              ? 'bg-orange-50/30 border-orange-100/20' 
-                              : 'bg-purple-50/30 border-purple-100/20'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="relative">
-                              {item.photoURL ? (
-                                <img src={item.photoURL} alt="" className="w-11 h-11 rounded-xl object-cover shadow-sm border-2 border-white bg-white" referrerPolicy="no-referrer" />
-                              ) : (
-                                <div className="w-11 h-11 rounded-xl flex items-center justify-center border-2 border-white shadow-sm bg-white text-slate-300">
-                                  <UserIcon size={20} />
                                 </div>
                               )}
-                              
-                              <div className={`absolute -top-1 -left-1 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black border border-white shadow-md z-10
-                                ${idx === 0 ? 'bg-orange-500 text-white' : 
-                                  idx === 1 ? 'bg-slate-400 text-white' :
-                                  idx === 2 ? 'bg-amber-700 text-white' : 'bg-slate-400 text-white'}`}
-                              >
-                                {idx + 1}
-                              </div>
-                            </div>
-                            <div className="text-left">
-                              <div className="flex items-center gap-1 mb-0.5">
-                                <p className="text-[13px] font-black text-slate-800 truncate max-w-[90px] leading-tight">
-                                  {item.displayName || item.name || item.username || item.email?.split('@')[0] || 'User'}
+
+                              {purchasedCreds.twoFactor && (
+                                <div className="space-y-1 text-left">
+                                  <span className="text-[8px] text-white/30 uppercase font-black tracking-widest block font-sans">2FA / Authenticator</span>
+                                  <div className="flex items-center justify-between bg-white/5 p-2 rounded-xl border border-white/10">
+                                    <p className="font-mono font-bold text-blue-300 text-xs truncate mr-2 select-all">{purchasedCreds.twoFactor}</p>
+                                    <button type="button" onClick={() => { navigator.clipboard.writeText(purchasedCreds.twoFactor!); alert('2FA Copied!'); }} className="w-6.5 h-6.5 rounded-lg bg-white/10 flex items-center justify-center text-white hover:scale-110 transition-all cursor-pointer"><Copy size={11}/></button>
+                                  </div>
+                                </div>
+                              )}
+                             </div>
+
+                             <div className="bg-white/5 p-2.5 rounded-xl flex items-center gap-2 border border-white/5 text-left">
+                                <AlertCircle size={12} className="text-yellow-300/80 shrink-0" />
+                                <p className="text-[8.5px] text-white/50 font-medium leading-tight">
+                                   You can find your credentials under "Bought" tab or logs at any time.
                                 </p>
-                                {idx < 3 && (
-                                  <Crown 
-                                    size={10} 
-                                    className={`${idx === 0 ? 'text-orange-500' : idx === 1 ? 'text-slate-400' : 'text-amber-700'} fill-current`} 
-                                  />
-                                )}
-                              </div>
-                              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest opacity-80">
-                                {showRankModal.type === 'seller' ? 'TOTAL SELL' : 'TOTAL INVESTMENTS'}
-                              </p>
-                            </div>
+                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className={`text-lg font-black italic tracking-tighter leading-none mb-0.5 ${showRankModal.type === 'seller' ? 'text-slate-900' : 'text-purple-600'}`}>
-                              {showRankModal.type === 'seller' ? (item.totalSales || 0) : `৳${(item.totalSpent || 0).toLocaleString()}`}
-                            </p>
-                            <p className={`text-[7px] font-black uppercase tracking-widest ${showRankModal.type === 'seller' ? 'text-orange-500' : 'text-purple-400'}`}>
-                              {showRankModal.type === 'seller' ? 'GMAILS' : 'SPENT'}
-                            </p>
-                          </div>
-                        </motion.div>
-                      ))}
 
-                      {(showRankModal.type === 'seller' ? topSellers : topBuyers).length === 0 && (
-                        <div className="py-12 text-center bg-slate-50/50 rounded-2xl flex flex-col items-center justify-center p-4">
-                           <Trophy className="text-slate-300 mb-2" size={32} />
-                           <p className="text-sm font-semibold text-slate-400">র‍্যাংকিং খালি রয়েছে।</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-            )}
-          </AnimatePresence>
-
-          {/* Notifications Modal disabled - replaced with dropdown menu */}
-          <AnimatePresence>
-            {false && isNotificationsOpen && (
-              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setIsNotificationsOpen(false)}
-                  className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-                />
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                  className="relative w-full max-w-sm bg-white rounded-[3rem] overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)] border border-slate-50 flex flex-col max-h-[85vh] select-none"
-                >
-                  {/* Close button in the corner */}
-                  <button
-                    onClick={() => setIsNotificationsOpen(false)}
-                    className="absolute top-6 right-6 w-9 h-9 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-800 transition-all cursor-pointer hover:rotate-90 duration-200 active:scale-90 z-10"
-                    title="Close"
-                  >
-                    <X size={16} strokeWidth={3} />
-                  </button>
-
-                  <div className="flex flex-col items-center text-center pt-8 pb-5 px-8 flex-shrink-0">
-                    <div className="w-16 h-16 rounded-[2.2rem] flex items-center justify-center mb-4 shadow-inner bg-slate-50">
-                      <Bell size={32} className="text-slate-500 drop-shadow-sm" />
-                    </div>
-
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-1.5">
-                      Notifications
-                    </h2>
-                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.25em]">
-                      YOUR RECENT UPDATES & ALERTS
-                    </p>
-                  </div>
-
-                  <div className="flex-grow overflow-y-auto px-5 custom-scrollbar scroll-smooth">
-                    <div className="space-y-4 pb-6">
-                      {notifications.map((notif, idx) => {
-                        const isSuccess = notif.type === 'success' || notif.title?.toLowerCase().includes('success') || notif.message?.toLowerCase().includes('success');
-                        const isSystem = notif.type === 'system';
-                        const title = notif.title || (isSuccess ? 'Success' : isSystem ? 'System Notice' : 'Alert');
-                        
-                        return (
-                          <motion.div
-                            key={notif.id}
-                            initial={{ opacity: 0, y: 15 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: idx * 0.03 }}
-                            className={`p-4 rounded-[1.8rem] border relative overflow-hidden select-text transition-all ${
-                              notif.read ? 'bg-slate-50/50 border-slate-100' : 'bg-slate-50/30 border-blue-100/50 shadow-sm'
-                            }`}
-                          >
-                            {!notif.read && (
-                              <span className="absolute left-0 top-5 w-2 h-2 rounded-full bg-blue-500 ring-4 ring-blue-100/50" />
-                            )}
-
-                            {/* Alert Header Row */}
-                            <div className="flex items-center justify-between pl-3.5 pr-1 select-none">
-                              <div className="flex items-center gap-1.5">
-                                {isSuccess ? (
-                                  <div className="w-4 h-4 rounded-full bg-emerald-50 border border-emerald-300 flex items-center justify-center text-emerald-500 shrink-0">
-                                    <Check size={9} strokeWidth={4} />
-                                  </div>
-                                ) : (
-                                  <div className="w-4 h-4 rounded-full bg-orange-50 border border-orange-300 flex items-center justify-center text-orange-500 font-extrabold text-[9px] shrink-0 leading-none">
-                                    !
-                                  </div>
-                                )}
-                                <span className={`text-[9.5px] min-[360px]:text-[10px] font-black uppercase tracking-widest ${isSuccess ? 'text-emerald-500' : 'text-orange-500/90'}`}>
-                                  {title}
-                                </span>
-                              </div>
-
-                              {/* Notification Controls (Mark Read & Delete) */}
-                              <div className="flex items-center gap-1.5">
-                                {!notif.read ? (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      markNotificationRead(notif.id);
-                                    }}
-                                    title="Mark as Read"
-                                    className="w-5 h-5 rounded-md border border-slate-200 hover:border-emerald-400 bg-white flex items-center justify-center text-slate-400 hover:text-emerald-600 transition-all cursor-pointer active:scale-90"
-                                  >
-                                    <Check size={11} strokeWidth={3} />
-                                  </button>
-                                ) : (
-                                  <div className="w-5 h-5 flex items-center justify-center text-emerald-500/80" title="Read">
-                                    <Check size={12} strokeWidth={2.5} />
-                                  </div>
-                                )}
-
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (window.confirm('এই নোটিফিকেশনটি চিরতরে ডিলিট করতে চান?')) {
-                                      deleteNotification(notif.id);
-                                    }
-                                  }}
-                                  title="Delete Notification"
-                                  className="w-5 h-5 rounded-md border border-slate-200 hover:border-red-400 bg-white flex items-center justify-center text-slate-400 hover:text-red-500 transition-all cursor-pointer active:scale-90"
-                                >
-                                  <X size={11} strokeWidth={3} />
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Body Text Area */}
-                            <div className="pl-3.5 pr-1 mt-1 text-left">
-                              <p className="text-[12px] min-[360px]:text-[13px] font-bold text-slate-700 leading-relaxed break-words font-sans">
-                                {notif.message}
-                              </p>
-                            </div>
-
-                            {/* Subtitle/Footer metadata block matching layout detail */}
-                            <div className="pl-3.5 pr-1 mt-2 flex items-center justify-between text-[9px] sm:text-[9.5px] font-bold text-slate-400 select-none">
-                              <span className="uppercase tracking-wider">
-                                {notif.fromName || 'MD SAYFULLAH'} • {formatTimeOnly(notif.createdAt)}
-                              </span>
-                              <span className="font-mono text-[8.5px] sm:text-[9px] text-slate-350 font-medium">
-                                ID: {(notif.id || 'rV3JE').substring(0, 5).toUpperCase()}
-                              </span>
-                            </div>
-                           </motion.div>
-                         );
-                       })}
-
-                       {notifications.length === 0 && (
-                         <div className="py-20 text-center select-none bg-slate-50/20 rounded-[2rem] border-2 border-dashed border-slate-100 my-4">
-                           <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner border border-slate-50">
-                             <Bell className="text-slate-300" size={20} />
-                           </div>
-                           <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.25em]">কোনো নোটিফিকেশন নেই</p>
-                           <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mt-0.5">No notifications found</p>
-                         </div>
-                       )}
-                     </div>
-                   </div>
-
-                   {/* See all activity matching footer */}
-                   <div className="py-4.5 text-center border-t border-slate-100 flex-shrink-0 bg-white select-none">
-                     <button
-                       onClick={() => setIsNotificationsOpen(false)}
-                       className="text-[10px] min-[360px]:text-[11px] font-black tracking-widest text-[#2E7D32] hover:text-[#1B5E20] uppercase transition-all cursor-pointer active:scale-95"
-                     >
-                       SEE ALL ACTIVITY
-                     </button>
-                   </div>
-                 </motion.div>
-               </div>
-             )}
-           </AnimatePresence>
-          
-{/* bKash Payment Modal */}
-        <AnimatePresence>
-          {isBulkConfirmModalOpen && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="bg-white rounded-[2rem] w-full max-w-sm overflow-hidden shadow-2xl flex flex-col"
-              >
-                <div className="p-8 text-center bg-red-50/50">
-                   <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
-                      <Layers size={32} className="text-red-600" />
-                   </div>
-                   <h2 className="text-xl font-black text-slate-800 mb-2 font-display uppercase tracking-tight">Bulk Confirmation</h2>
-                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Selected: {selectedListings.length} Gmail Accounts</p>
-                </div>
-                <div className="p-8">
-                   <div className="bg-slate-50 rounded-2xl p-6 mb-6 text-center border border-slate-100">
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Payable</p>
-                      <h3 className="text-4xl font-black text-slate-900">৳{
-                        marketListings
-                          .filter(l => selectedListings.includes(l.id))
-                          .reduce((sum, item) => {
-                            const priceObj = (gmailPrices as any)[item.type];
-                            const currentPrice = priceObj?.buyer ? parseFloat(priceObj.buyer) : item.price;
-                            return sum + currentPrice;
-                          }, 0).toFixed(2)
-                      }</h3>
-                   </div>
-                   <div className="flex flex-col gap-3">
-                      <button 
-                        onClick={proceedToBulkPayment}
-                        disabled={isSubmitting}
-                        id="bulk-confirm-btn"
-                        className="w-full py-4 rounded-xl bg-red-600 text-white font-black uppercase tracking-widest text-xs shadow-lg shadow-red-100 hover:bg-slate-900 transition-all flex items-center justify-center gap-2 active:scale-95"
-                      >
-                        {isSubmitting ? <RefreshCw size={14} className="animate-spin" /> : 'Confirm Order'}
-                      </button>
-                      <button 
-                        onClick={() => setIsBulkConfirmModalOpen(false)}
-                        className="w-full py-4 rounded-xl bg-slate-100 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-600 transition-all active:scale-95"
-                      >
-                        Cancel
-                      </button>
-                   </div>
-                </div>
-              </motion.div>
-            </div>
-          )}
-
-          {comingSoonPlatform && (
-            <>
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setComingSoonPlatform(null)}
-                className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100]"
-              />
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.9, y: 30 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 30 }}
-                className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-[360px] bg-white rounded-3xl shadow-2xl z-[101] overflow-hidden border border-slate-100 p-6 text-center"
-              >
-                <div className="flex flex-col items-center">
-                  {/* Platform-specific beautiful icon/badge */}
-                  <div className={`w-14 h-14 ${
-                    comingSoonPlatform === 'Instagram' ? 'bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7]' :
-                    comingSoonPlatform === 'Telegram OTP' ? 'bg-[#229ED9]' : 'bg-[#25D366]'
-                  } rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg`}>
-                    {comingSoonPlatform === 'Instagram' && <Camera size={26} strokeWidth={2.5} />}
-                    {comingSoonPlatform === 'Telegram OTP' && <Send size={24} strokeWidth={2.5} className="-ml-0.5 mt-0.5" />}
-                    {comingSoonPlatform === 'WhatsApp OTP' && <MessageSquare size={26} strokeWidth={2.5} />}
-                  </div>
-
-                  <span className="text-[10px] font-black uppercase tracking-widest text-red-600 mb-1">Coming Soon</span>
-                  <h3 className="text-xl font-black text-slate-800 tracking-tight mb-2">
-                    {comingSoonPlatform} Integration
-                  </h3>
-                  
-                  <p className="text-xs text-slate-500 leading-relaxed font-semibold mb-6 px-1">
-                    আমরা খুবই শীঘ্রই আমাদের নিরাপদ এস্ক্রো সিস্টেমে <span className="font-extrabold text-slate-800">{comingSoonPlatform}</span> বেচাকেনা সুবিধা চালু করতে যাচ্ছি। আপডেট পেতে নোটিশ বোর্ড লক্ষ্য রাখুন!
-                  </p>
-
-                  <button 
-                    onClick={() => setComingSoonPlatform(null)}
-                    className="w-full py-3.5 bg-red-600 hover:bg-slate-900 text-white font-black text-xs uppercase tracking-widest rounded-xl shadow-lg shadow-red-100 transition-all active:scale-95"
-                  >
-                    ঠিক আছে
-                  </button>
-                </div>
-              </motion.div>
-            </>
-          )}
-
-          {showPaymentModal.show && (
-            <>
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={handleClosePaymentModal}
-                className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100]"
-              />
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.9, y: 30 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 30 }}
-                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className={`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] max-w-[380px] ${showPaymentModal.listingId === 'deposit' ? (paymentForm.method === 'bkash' ? 'bg-[#e2136e] border-[#d11264]' : 'bg-[#ed1c24] border-[#d11218]') : 'bg-slate-900 border-slate-950'} rounded-[2rem] shadow-2xl z-[101] overflow-hidden border transition-colors duration-500`}
-              >
-                <div className="py-2.5 px-4 text-white relative font-sans">
-                   <div className="flex items-center justify-between mb-2">
-                     {showPaymentModal.listingId === 'deposit' ? (
-                       <div className="flex gap-2.5 p-0.5 flex-1 max-w-[280px]">
-                         <button 
-                           onClick={() => setPaymentForm(prev => ({...prev, method: 'bkash'}))}
-                           className={`flex-1 h-10 rounded-xl flex items-center justify-center p-1 shadow-md transition-all relative ${paymentForm.method === 'bkash' ? 'bg-white scale-105 ring-2 ring-white/30' : 'bg-white/40 hover:bg-white/60 opacity-70 hover:opacity-100'}`}
-                         >
-                           <img src="https://www.logo.wine/a/logo/BKash/BKash-Logo.wine.svg" alt="bKash" className="w-full h-full object-contain scale-125" referrerPolicy="no-referrer" />
-                           {paymentForm.method === 'bkash' && <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-pink-600 rounded-full border border-white"></div>}
-                         </button>
-                         <button 
-                           onClick={() => setPaymentForm(prev => ({...prev, method: 'nagad'}))}
-                           className={`flex-1 h-10 rounded-xl flex items-center justify-center p-1 shadow-md transition-all relative ${paymentForm.method === 'nagad' ? 'bg-white scale-105 ring-2 ring-white/30' : 'bg-white/45 hover:bg-white/65 opacity-70 hover:opacity-100'}`}
-                         >
-                           <img src="https://www.logo.wine/a/logo/Nagad/Nagad-Logo.wine.svg" alt="Nagad" className="w-full h-full object-contain scale-125" referrerPolicy="no-referrer" />
-                           {paymentForm.method === 'nagad' && <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-600 rounded-full border border-white"></div>}
-                         </button>
-                       </div>
-                     ) : (
-                       <div className="flex items-center gap-2 py-1 pl-1">
-                         <Wallet size={16} className="text-white animate-pulse" />
-                         <span className="text-[11px] font-black uppercase tracking-widest text-[#FFEB3B]">GMAIL MARKETPLACE CHECKOUT</span>
-                       </div>
-                     )}
-                     <button 
-                       onClick={handleClosePaymentModal}
-                       className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors ml-2"
-                     >
-                       <X size={14} />
-                     </button>
-                   </div>
-
-                  <div className="flex items-end justify-between px-2 pb-1 bg-transparent border-0 shadow-none">
-                    {showPaymentModal.listingId === 'deposit' ? (
-                      <div className="space-y-1">
-                        <p className="text-white/80 text-[9px] font-black uppercase tracking-[0.2em]">Deposit Amount (BDT)</p>
-                        <div className="flex items-center gap-1.5 bg-white/20 px-3 py-1 rounded-xl border border-white/10 animate-in fade-in duration-300">
-                          <span className="font-extrabold text-base text-white">৳</span>
-                          <input 
-                            type="number"
-                            min="10"
-                            max="50000"
-                            value={showPaymentModal.price || ''}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              setShowPaymentModal(prev => ({ ...prev, price: val }));
-                              setPaymentForm(prev => ({ ...prev, senderNumber: e.target.value }));
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              setShowPaymentModal({ show: false, price: 0 });
+                              setPurchasedCreds(null);
+                              setView('gmail-market');
+                              setMarketTab('Bought');
                             }}
-                            className="bg-transparent text-white font-extrabold text-base w-24 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            placeholder="Amount"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-0">
-                        <p className="text-white/80 text-[10px] font-black uppercase tracking-[0.2em]">Pay Amount</p>
-                        <h3 className="text-2xl font-black italic tracking-tighter">৳{showPaymentModal.price.toFixed(2)}</h3>
-                      </div>
-                    )}
-                    <div className="mb-0.5 flex flex-col items-end gap-1">
-                      <span className="bg-white/20 px-2.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest border border-white/10 leading-none">Personal</span>
-                      <span className="text-[7.5px] font-black text-white/80 tracking-tight leading-none">Balance: ৳{userProfile?.balance?.toFixed(2) || '0.00'}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-t-[1.5rem] px-4 py-4 space-y-3 max-h-[75vh] overflow-y-auto custom-scrollbar shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
-                  <AnimatePresence mode="wait">
-                    {purchasedCreds ? (
-                      <motion.div 
-                        key="success"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="space-y-6 pt-2"
-                      >
-                        <div className="text-center py-4 bg-[#E8F5E9] rounded-2xl border-2 border-[#C8E6C9] mb-4 shadow-sm">
-                           <p className="text-[#2E7D32] font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 font-sans">
-                             <CheckCircle size={20} />
-                             PAYMENT VERIFIED
-                           </p>
-                        </div>
-                        
-                        <div className="p-6 bg-[#0F172A] rounded-[2rem] space-y-6 shadow-2xl relative overflow-hidden border border-slate-800">
-                           <div className="absolute top-0 right-0 p-6 opacity-5">
-                              <ShieldCheck size={80} className="text-white" />
-                           </div>
-                           
-                           <div className="space-y-3 relative z-10">
-                            <div className="space-y-1 text-left">
-                              <span className="text-[8px] text-white/30 uppercase font-black tracking-widest block font-sans">Purchased Gmail</span>
-                              <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10">
-                                <p className="font-mono font-bold text-white text-xs truncate mr-2 select-all">{purchasedCreds.gmail}</p>
-                                <button type="button" onClick={() => { navigator.clipboard.writeText(purchasedCreds.gmail); alert('Gmail Copied!'); }} className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-[#FFEB3B] hover:scale-110 transition-all cursor-pointer"><Copy size={12}/></button>
-                              </div>
-                            </div>
-
-                            <div className="space-y-1 text-left">
-                              <span className="text-[8px] text-white/30 uppercase font-black tracking-widest block font-sans">Account Password</span>
-                              <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10">
-                                <p className="font-mono font-bold text-[#FFEB3B] text-xs truncate mr-2 select-all">{purchasedCreds.pass}</p>
-                                <button type="button" onClick={() => { navigator.clipboard.writeText(purchasedCreds.pass); alert('Password Copied!'); }} className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-white hover:scale-110 transition-all cursor-pointer"><Copy size={12}/></button>
-                              </div>
-                            </div>
-
-                            {purchasedCreds.recovery && (
-                              <div className="space-y-1 text-left">
-                                <span className="text-[8px] text-white/30 uppercase font-black tracking-widest block font-sans">Recovery Email</span>
-                                <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10">
-                                  <p className="font-mono font-bold text-green-300 text-xs truncate mr-2 select-all">{purchasedCreds.recovery}</p>
-                                  <button type="button" onClick={() => { navigator.clipboard.writeText(purchasedCreds.recovery!); alert('Recovery Copied!'); }} className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-white hover:scale-110 transition-all cursor-pointer"><Copy size={12}/></button>
-                                </div>
-                              </div>
-                            )}
-
-                            {purchasedCreds.twoFactor && (
-                              <div className="space-y-1 text-left">
-                                <span className="text-[8px] text-white/30 uppercase font-black tracking-widest block font-sans">2FA / Authenticator</span>
-                                <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10">
-                                  <p className="font-mono font-bold text-blue-300 text-xs truncate mr-2 select-all">{purchasedCreds.twoFactor}</p>
-                                  <button type="button" onClick={() => { navigator.clipboard.writeText(purchasedCreds.twoFactor!); alert('2FA Copied!'); }} className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-white hover:scale-110 transition-all cursor-pointer"><Copy size={12}/></button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="bg-white/5 p-3 rounded-xl flex items-center gap-2.5 border border-white/5 text-left">
-                             <AlertCircle size={14} className="text-yellow-300/80 shrink-0" />
-                             <p className="text-[9px] text-white/50 font-medium leading-tight">
-                                You can find your credentials under "Bought" tab or logs at any time.
-                              </p>
-                          </div>
-                        </div>
-
-                        <button 
-                          type="button"
-                          onClick={() => {
-                            setShowPaymentModal({ show: false, price: 0 });
-                            setPurchasedCreds(null);
-                            setView('gmail-market');
-                            setMarketTab('Bought');
-                          }}
-                          className="w-full py-5 rounded-[1.5rem] bg-[#2E7D32] text-white font-black text-xs uppercase tracking-[0.15em] hover:bg-[#1B5E20] transition-all shadow-[0_10px_30px_rgba(46,125,50,0.3)] active:scale-95 flex items-center justify-center gap-3 cursor-pointer"
+                            className="w-full py-3 rounded-xl bg-[#2E7D32] text-white font-black text-xs uppercase tracking-[0.15em] hover:bg-[#1B5E20] transition-all shadow-[0_10px_30px_rgba(46,125,50,0.3)] active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                          >
+                            FINISH & VIEW ACCOUNT
+                          </button>
+                        </motion.div>
+                      ) : (
+                        <motion.div 
+                          key="form"
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          className="space-y-3"
                         >
-                          FINISH & VIEW ACCOUNT
-                        </button>
-                      </motion.div>
-                    ) : (
-                      <motion.div 
-                        key="form"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="space-y-3.5"
-                      >
-                        {showPaymentModal.listingId !== 'deposit' && (
-                          <div className="space-y-3 animate-in fade-in duration-300">
-                            <div className="p-3.5 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col gap-2">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2.5 h-2.5 rounded-full bg-slate-300" />
-                                  <div className="flex flex-col text-left">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none font-sans">Wallet Balance</span>
-                                    <span className="text-xs font-black text-slate-700">৳{userProfile?.balance?.toFixed(2) || '0.00'}</span>
-                                  </div>
-                                </div>
-                                <div className="text-right font-sans">
-                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block leading-none">Total Cost</span>
-                                  <span className="text-xs font-black text-[#2E7D32]">৳{showPaymentModal.price.toFixed(2)}</span>
-                                </div>
-                              </div>
-
+                          {showPaymentModal.listingId !== 'deposit' && (
+                            <div className="space-y-2">
                               {userProfile && userProfile.balance >= showPaymentModal.price ? (
                                 <button
                                   type="button"
@@ -11655,8 +11052,7 @@ export default function App() {
                                 </div>
                               )}
                             </div>
-                          </div>
-                        )}
+                          )}
 
                         {showPaymentModal.listingId === 'deposit' && (
                           <div className="space-y-1 text-left bg-slate-50 p-2 rounded-2xl border border-slate-100 animate-in fade-in duration-300">
@@ -11683,17 +11079,17 @@ export default function App() {
 
                         {/* Payment Selection Tab (Only for Deposits) */}
                         {showPaymentModal.listingId === 'deposit' && (
-                          <div className="flex gap-2.5 p-1 bg-slate-50 rounded-2xl border border-slate-100">
+                          <div className="flex gap-2 p-0.5 bg-slate-50 rounded-xl border border-slate-100">
                             <button
                               type="button"
                               onClick={() => {
                                 setPaymentForm(prev => ({ ...prev, method: 'bkash', trxId: '' }));
                                 setPaymentError(null);
                               }}
-                              className={`flex-1 py-3.5 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all relative overflow-hidden group ${paymentForm.method === 'bkash' ? 'bg-[#e2136e] text-white shadow-md' : 'bg-white text-slate-700 hover:bg-slate-50/50 border border-slate-100'}`}
+                              className={`flex-1 py-1.5 rounded-lg flex flex-col items-center justify-center gap-0.5 transition-all relative overflow-hidden group ${paymentForm.method === 'bkash' ? 'bg-[#e2136e] text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-50/50 border border-slate-100'}`}
                             >
-                              <img src="https://www.logo.wine/a/logo/BKash/BKash-Logo.wine.svg" alt="bKash" className="h-6 w-auto object-contain z-10 filter brightness-110" />
-                              <span className="text-[8px] font-black uppercase tracking-widest z-10">bKash (Send Money)</span>
+                              <img src="https://www.logo.wine/a/logo/BKash/BKash-Logo.wine.svg" alt="bKash" className="h-4.5 w-auto object-contain z-10 filter brightness-110" />
+                              <span className="text-[7.5px] font-black uppercase tracking-wider z-10">bKash</span>
                             </button>
                             <button
                               type="button"
@@ -11701,10 +11097,10 @@ export default function App() {
                                 setPaymentForm(prev => ({ ...prev, method: 'nagad', trxId: '' }));
                                 setPaymentError(null);
                               }}
-                              className={`flex-1 py-3.5 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all relative overflow-hidden group ${paymentForm.method === 'nagad' ? 'bg-[#ed1c24] text-white shadow-md' : 'bg-white text-slate-700 hover:bg-slate-50/50 border border-slate-100'}`}
+                              className={`flex-1 py-1.5 rounded-lg flex flex-col items-center justify-center gap-0.5 transition-all relative overflow-hidden group ${paymentForm.method === 'nagad' ? 'bg-[#ed1c24] text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-50/50 border border-slate-100'}`}
                             >
-                              <img src="https://www.logo.wine/a/logo/Nagad/Nagad-Logo.wine.svg" alt="Nagad" className="h-6 w-auto object-contain z-10 filter brightness-110" />
-                              <span className="text-[8px] font-black uppercase tracking-widest z-10">Nagad (Send Money)</span>
+                              <img src="https://www.logo.wine/a/logo/Nagad/Nagad-Logo.wine.svg" alt="Nagad" className="h-4.5 w-auto object-contain z-10 filter brightness-110" />
+                              <span className="text-[7.5px] font-black uppercase tracking-wider z-10">Nagad</span>
                             </button>
                           </div>
                         )}
@@ -12781,11 +12177,11 @@ export default function App() {
                 initial={{ opacity: 0, y: 50, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 50, scale: 0.95 }}
-                className="relative w-full max-w-lg bg-white rounded-2xl md:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[95vh] z-[120]"
+                className="relative w-full max-w-md bg-white rounded-2xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh] z-[120]"
               >
-                <div className="bg-gradient-to-br from-[#1B5E20] to-[#2E7D32] p-3 sm:p-5 text-white relative shrink-0">
+                <div className="bg-gradient-to-br from-[#1B5E20] to-[#2E7D32] p-3 sm:p-4 text-white relative shrink-0">
                   <div className="flex justify-between items-center mb-0.5">
-                    <h3 className="font-display text-lg sm:text-xl md:text-2xl font-black tracking-tight">{sellListingToEdit ? 'Edit & Resell' : 'Sell Gmail'}</h3>
+                    <h3 className="font-display text-base sm:text-lg md:text-xl font-black tracking-tight">{sellListingToEdit ? 'Edit & Resell' : 'Sell Gmail'}</h3>
                     <button onClick={() => { 
                       setShowSellModal(false); 
                       setSellListingToEdit(null); 
@@ -12801,24 +12197,24 @@ export default function App() {
                         description: ''
                       });
                     }} className="p-1.5 hover:bg-white/20 rounded-full transition-all active:scale-95">
-                      <X size={18} />
+                      <X size={16} />
                     </button>
                   </div>
-                  <p className="text-white/80 text-[10px] font-medium">{sellListingToEdit ? 'Update your Gmail details to resolve dispute.' : 'Please provide accurate details.'}</p>
+                  <p className="text-white/80 text-[9px] font-medium">{sellListingToEdit ? 'Update your Gmail details to resolve dispute.' : 'Please provide accurate details.'}</p>
                 </div>
 
-                <form onSubmit={handleSellGmail} className="p-3 sm:p-5 space-y-3 overflow-y-auto flex-1 bg-slate-50/50">
-                  <div className="space-y-2.5">
+                <form onSubmit={handleSellGmail} className="p-2.5 sm:p-4 space-y-2 overflow-y-auto flex-1 bg-slate-50/50">
+                  <div className="space-y-2">
                     {/* Gmail Email & Password Row */}
-                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
                       {/* Gmail Email */}
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
-                          <Mail size={10} className="text-[#2E7D32]" />
+                      <div className="space-y-0.5">
+                        <label className="text-[8.5px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                          <Mail size={9} className="text-[#2E7D32]" />
                           Gmail Address
                         </label>
                         <div className="relative group">
-                          <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={14} />
+                          <Mail className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={12} />
                           <input 
                             type="text" 
                             required
@@ -12826,19 +12222,19 @@ export default function App() {
                             placeholder="Email address"
                             value={sellForm.email}
                             onChange={(e) => setSellForm({ ...sellForm, email: e.target.value })}
-                            className="w-full pl-8 pr-2 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-xs"
+                            className="w-full pl-7 pr-2 py-1.5 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-[11px]"
                           />
                         </div>
                       </div>
 
                       {/* Password */}
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
-                          <Lock size={10} className="text-[#2E7D32]" />
+                      <div className="space-y-0.5">
+                        <label className="text-[8.5px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                          <Lock size={9} className="text-[#2E7D32]" />
                           Password
                         </label>
                         <div className="relative group">
-                          <Lock className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={14} />
+                          <Lock className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={12} />
                           <input 
                             type="text" 
                             required
@@ -12846,105 +12242,105 @@ export default function App() {
                             placeholder="Gmail password"
                             value={sellForm.password}
                             onChange={(e) => setSellForm({ ...sellForm, password: e.target.value })}
-                            className="w-full pl-8 pr-2 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-xs"
+                            className="w-full pl-7 pr-2 py-1.5 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-[11px]"
                           />
                         </div>
                       </div>
                     </div>
 
                     {/* Recovery Email & 2FA / Backup Code Row */}
-                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
                       {/* Recovery Email */}
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center justify-between gap-1">
+                      <div className="space-y-0.5">
+                        <label className="text-[8.5px] font-black text-slate-500 uppercase tracking-widest flex items-center justify-between gap-1">
                           <span className="flex items-center gap-1">
-                            <Mail size={10} className="text-[#2E7D32]" />
+                            <Mail size={9} className="text-[#2E7D32]" />
                             Recovery Email
                           </span>
-                          <span className="text-[7px] bg-slate-100 text-slate-500 px-1 rounded uppercase font-black">Opt</span>
+                          <span className="text-[6.5px] bg-slate-100 text-slate-500 px-0.5 rounded uppercase font-black">Opt</span>
                         </label>
                         <div className="relative group">
-                          <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={14} />
+                          <Mail className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={12} />
                           <input 
                             type="text" 
                             autoComplete="off"
                             placeholder="Recovery email"
                             value={sellForm.recoveryEmail}
                             onChange={(e) => setSellForm({ ...sellForm, recoveryEmail: e.target.value })}
-                            className="w-full pl-8 pr-2 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-xs"
+                            className="w-full pl-7 pr-2 py-1.5 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-[11px]"
                           />
                         </div>
                       </div>
 
                       {/* 2FA Authenticator */}
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center justify-between gap-1">
+                      <div className="space-y-0.5">
+                        <label className="text-[8.5px] font-black text-slate-500 uppercase tracking-widest flex items-center justify-between gap-1">
                           <span className="flex items-center gap-1">
-                            <ShieldCheck size={10} className="text-[#2E7D32]" />
+                            <ShieldCheck size={9} className="text-[#2E7D32]" />
                             2FA / Backup Code
                           </span>
-                          <span className="text-[7px] bg-slate-100 text-slate-500 px-1 rounded uppercase font-black">Opt</span>
+                          <span className="text-[6.5px] bg-slate-100 text-slate-500 px-0.5 rounded uppercase font-black">Opt</span>
                         </label>
                         <div className="relative group">
-                          <ShieldCheck className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={14} />
+                          <ShieldCheck className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={12} />
                           <input 
                             type="text" 
                             autoComplete="off"
                             placeholder="8-digit backup codes"
                             value={sellForm.twoFactor}
                             onChange={(e) => setSellForm({ ...sellForm, twoFactor: e.target.value })}
-                            className="w-full pl-8 pr-2 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-xs"
+                            className="w-full pl-7 pr-2 py-1.5 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-[11px]"
                           />
                         </div>
                       </div>
                     </div>
 
                     {/* bKash & Nagad Row */}
-                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
-                          <Phone size={10} className="text-[#2E7D32]" />
+                    <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+                      <div className="space-y-0.5">
+                        <label className="text-[8.5px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                          <Phone size={9} className="text-[#2E7D32]" />
                           bKash Number
                         </label>
                         <div className="relative group">
-                          <Phone className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={14} />
+                          <Phone className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={12} />
                           <input 
                             type="text" 
                             autoComplete="off"
                             placeholder="01XXXXXXXXX"
                             value={sellForm.bkashNumber}
                             onChange={(e) => setSellForm({ ...sellForm, bkashNumber: e.target.value })}
-                            className="w-full pl-8 pr-2 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-xs"
+                            className="w-full pl-7 pr-2 py-1.5 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-[11px]"
                           />
                         </div>
                       </div>
 
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
-                          <Phone size={10} className="text-[#2E7D32]" />
+                      <div className="space-y-0.5">
+                        <label className="text-[8.5px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                          <Phone size={9} className="text-[#2E7D32]" />
                           Nagad Number
                         </label>
                         <div className="relative group">
-                          <Phone className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={14} />
+                          <Phone className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={12} />
                           <input 
                             type="text" 
                             autoComplete="off"
                             placeholder="01XXXXXXXXX"
                             value={sellForm.nagadNumber}
                             onChange={(e) => setSellForm({ ...sellForm, nagadNumber: e.target.value })}
-                            className="w-full pl-8 pr-2 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-xs"
+                            className="w-full pl-7 pr-2 py-1.5 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-[11px]"
                           />
                         </div>
                       </div>
                     </div>
-                    <p className="text-[8px] text-slate-400 font-medium pl-1 mt-0.5 leading-tight">
+                    <p className="text-[7.5px] text-slate-400 font-medium pl-1 mt-0.5 leading-tight">
                       * পেমেন্ট পাওয়ার জন্য বিকাশ অথবা নগদ নম্বরের মধ্যে অন্তত যেকোনো একটি প্রদান করুন। (Provide bKash or Nagad for payout)
                     </p>
 
                     {/* Type & Price Row */}
-                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1">Type</label>
+                    <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+                      <div className="space-y-0.5">
+                        <label className="text-[8.5px] font-black text-slate-500 uppercase tracking-widest pl-1">Type</label>
                         <select 
                           value={sellForm.type}
                           onChange={(e) => {
@@ -12952,35 +12348,35 @@ export default function App() {
                             const newPrice = gmailPrices[newType]?.seller || '0';
                             setSellForm({ ...sellForm, type: newType, price: newPrice });
                           }}
-                          className="w-full px-2 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#2E7D32] transition-all font-bold text-[11px]"
+                          className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white focus:outline-none focus:border-[#2E7D32] transition-all font-bold text-[11px]"
                         >
                           {Object.keys(gmailPrices).map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1">Price (৳)</label>
+                      <div className="space-y-0.5">
+                        <label className="text-[8.5px] font-black text-slate-500 uppercase tracking-widest pl-1">Price (৳)</label>
                         <input 
                           type="number" 
                           required
                           value={sellForm.price}
                           readOnly={Object.keys(gmailPrices).includes(sellForm.type)}
-                          className={`w-full px-2 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-[#2E7D32] transition-all font-bold text-[11px] ${Object.keys(gmailPrices).includes(sellForm.type) ? 'bg-slate-100 text-slate-500' : 'bg-white'}`}
+                          className={`w-full px-2 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:border-[#2E7D32] transition-all font-bold text-[11px] ${Object.keys(gmailPrices).includes(sellForm.type) ? 'bg-slate-100 text-slate-500' : 'bg-white'}`}
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="pt-2">
+                  <div className="pt-1.5">
                     <button 
                       disabled={isSubmitting}
                       type="submit"
-                      className="w-full bg-[#2E7D32] text-white font-black py-2.5 sm:py-3 rounded-xl shadow-lg shadow-green-900/10 hover:shadow-green-900/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest disabled:opacity-50"
+                      className="w-full bg-[#2E7D32] text-white font-black py-2 rounded-xl shadow-lg shadow-green-900/10 hover:shadow-green-900/20 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 text-[9.5px] uppercase tracking-widest disabled:opacity-50"
                     >
                       {isSubmitting ? (
-                        <RefreshCw size={14} className="animate-spin" />
+                        <RefreshCw size={13} className="animate-spin" />
                       ) : (
                         <>
-                          <CheckCircle size={14} />
+                          <CheckCircle size={13} />
                           {sellListingToEdit ? 'Update & Re-sell' : 'Submit Listing'}
                         </>
                       )}
