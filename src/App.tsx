@@ -2374,6 +2374,7 @@ export default function App() {
     recoveryEmail: '',
     twoFactor: '',
     bkashNumber: '',
+    nagadNumber: '',
     description: '',
     isBulk: false,
     bulkData: ''
@@ -3289,6 +3290,11 @@ export default function App() {
       return;
     }
 
+    if (!sellForm.bkashNumber.trim() && !sellForm.nagadNumber.trim()) {
+      alert('অনুগ্রহ করে বিকাশ অথবা নগদ নাম্বার প্রদান করুন (Please provide at least a bKash or Nagad number)');
+      return;
+    }
+
     // Comprehensive regex validation for Gmail
     const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/i;
     if (!emailRegex.test(cleanEmail)) {
@@ -3338,6 +3344,7 @@ export default function App() {
           type: sellForm.type,
           price: parseFloat(sellForm.price),
           bkashNumber: sellForm.bkashNumber,
+          nagadNumber: sellForm.nagadNumber,
           description: sellForm.description || '',
           status: finalStatus,
           createdAt: serverTimestamp(),
@@ -3352,6 +3359,7 @@ export default function App() {
           type: sellForm.type,
           price: parseFloat(sellForm.price),
           bkashNumber: sellForm.bkashNumber,
+          nagadNumber: sellForm.nagadNumber,
           description: sellForm.description || '',
           status: finalStatus,
           updatedAt: serverTimestamp(),
@@ -4616,6 +4624,7 @@ export default function App() {
             gmailAccount: listingData.gmailAccount,
             sellerId: listingData.sellerId || 'admin',
             sellerBkash: listingData.bkashNumber || '',
+            sellerNagad: listingData.nagadNumber || '',
             price: dynamicPrice,
             purchasedAt: serverTimestamp(),
             status: 'Success',
@@ -4769,6 +4778,7 @@ export default function App() {
           gmailAccount: listing.gmailAccount,
           sellerId: listing.sellerId || 'admin',
           sellerBkash: listing.bkashNumber || '',
+          sellerNagad: listing.nagadNumber || '',
           price: currentPrice,
           description: listing.description || '',
           status: 'SUCCESS',
@@ -5482,6 +5492,7 @@ export default function App() {
       recoveryEmail: '',
       twoFactor: '',
       bkashNumber: '',
+      nagadNumber: '',
       status: 'Available',
       description: ''
     });
@@ -5504,6 +5515,7 @@ export default function App() {
           price: parseFloat(editListingForm.price),
           status: finalStatus,
           bkashNumber: editListingForm.bkashNumber || '',
+          nagadNumber: editListingForm.nagadNumber || '',
           description: editListingForm.description || '',
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -5525,6 +5537,7 @@ export default function App() {
           price: parseFloat(editListingForm.price),
           status: finalStatus,
           bkashNumber: editListingForm.bkashNumber || '',
+          nagadNumber: editListingForm.nagadNumber || '',
           description: editListingForm.description || '',
           updatedAt: serverTimestamp()
         });
@@ -10146,6 +10159,11 @@ export default function App() {
                                     <span>Seller bKash:</span> <span className="underline decoration-orange-200 break-all select-all">{order.sellerBkash}</span>
                                   </p>
                                 )}
+                                {order.sellerNagad && (
+                                  <p className="text-[10px] text-[#ed1c24] font-black uppercase tracking-widest mt-1 flex flex-wrap gap-x-1 items-center">
+                                    <span>Seller Nagad:</span> <span className="underline decoration-red-250 break-all select-all">{order.sellerNagad}</span>
+                                  </p>
+                                )}
                                 {/* Admin view for credentials in orders */}
                                 <div className="mt-3 p-3 bg-slate-900 rounded-xl text-white font-mono text-[10px] space-y-1">
                                    <p><span className="text-white/40">GMAIL:</span> {order.credentials?.email}</p>
@@ -10315,6 +10333,12 @@ export default function App() {
                                 <span className="font-mono tracking-normal normal-case text-slate-700 bg-orange-50 px-2 py-0.5 rounded-lg border border-orange-100 font-extrabold select-all break-all">{item.bkashNumber}</span>
                               </p>
                             )}
+                            {item.nagadNumber && (
+                              <p className="text-[10px] text-red-650 font-black uppercase tracking-widest flex items-center gap-1 flex-wrap shrink-0">
+                                <span>Nagad:</span>
+                                <span className="font-mono tracking-normal normal-case text-slate-700 bg-red-50 px-2 py-0.5 rounded-lg border border-red-100 font-extrabold select-all break-all">{item.nagadNumber}</span>
+                              </p>
+                            )}
                             {item.description && (
                               <p className="text-[10px] text-red-500 font-bold tracking-widest uppercase">
                                 Desc: <span className="text-slate-600 italic normal-case">{item.description}</span>
@@ -10356,6 +10380,7 @@ export default function App() {
                                   recoveryEmail: creds.recoveryEmail || '',
                                   twoFactor: creds.twoFactor || '',
                                   bkashNumber: item.bkashNumber || '',
+                                  nagadNumber: item.nagadNumber || '',
                                   status: item.status,
                                   description: item.description || '',
                                   isBulk: false,
@@ -10679,14 +10704,25 @@ export default function App() {
                             />
                           </div>
 
-                          <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">bKash Number (Seller)</label>
-                            <input 
-                              value={editListingForm.bkashNumber}
-                              onChange={(e) => setEditListingForm({...editListingForm, bkashNumber: e.target.value})}
-                              className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:border-[#2E7D32] transition-all"
-                              placeholder="01XXXXXXXXX"
-                            />
+                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">bKash Number (Seller)</label>
+                              <input 
+                                value={editListingForm.bkashNumber}
+                                onChange={(e) => setEditListingForm({...editListingForm, bkashNumber: e.target.value})}
+                                className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:border-[#2E7D32] transition-all"
+                                placeholder="01XXXXXXXXX"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Nagad Number (Seller)</label>
+                              <input 
+                                value={editListingForm.nagadNumber}
+                                onChange={(e) => setEditListingForm({...editListingForm, nagadNumber: e.target.value})}
+                                className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:border-[#2E7D32] transition-all"
+                                placeholder="01XXXXXXXXX"
+                              />
+                            </div>
                           </div>
 
                           <div className="h-px bg-slate-100 my-2" />
@@ -12745,10 +12781,10 @@ export default function App() {
                 initial={{ opacity: 0, y: 50, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 50, scale: 0.95 }}
-                className="relative w-full max-w-md bg-white rounded-2xl md:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh] z-[120]"
+                className="relative w-full max-w-lg bg-white rounded-2xl md:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[95vh] z-[120]"
               >
-                <div className="bg-gradient-to-br from-[#1B5E20] to-[#2E7D32] p-4 sm:p-6 text-white relative shrink-0">
-                  <div className="flex justify-between items-center mb-1">
+                <div className="bg-gradient-to-br from-[#1B5E20] to-[#2E7D32] p-3 sm:p-5 text-white relative shrink-0">
+                  <div className="flex justify-between items-center mb-0.5">
                     <h3 className="font-display text-lg sm:text-xl md:text-2xl font-black tracking-tight">{sellListingToEdit ? 'Edit & Resell' : 'Sell Gmail'}</h3>
                     <button onClick={() => { 
                       setShowSellModal(false); 
@@ -12765,120 +12801,149 @@ export default function App() {
                         description: ''
                       });
                     }} className="p-1.5 hover:bg-white/20 rounded-full transition-all active:scale-95">
-                      <X size={20} />
+                      <X size={18} />
                     </button>
                   </div>
-                  <p className="text-white/80 text-[10px] md:text-xs font-medium">{sellListingToEdit ? 'Update your Gmail details to resolve dispute.' : 'Please provide accurate details.'}</p>
+                  <p className="text-white/80 text-[10px] font-medium">{sellListingToEdit ? 'Update your Gmail details to resolve dispute.' : 'Please provide accurate details.'}</p>
                 </div>
 
-                <form onSubmit={handleSellGmail} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 bg-slate-50/50">
-                  <div className="space-y-3">
-                    {/* Gmail Email */}
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                        <Mail size={10} className="text-[#2E7D32]" />
-                        Gmail Address
-                      </label>
-                      <div className="relative group">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={16} />
-                        <input 
-                          type="text" 
-                          required
-                          autoComplete="off"
-                          placeholder="Enter Gmail"
-                          value={sellForm.email}
-                          onChange={(e) => setSellForm({ ...sellForm, email: e.target.value })}
-                          className="w-full pl-10 pr-3 py-2.5 sm:py-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-xs"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Password */}
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                        <Lock size={10} className="text-[#2E7D32]" />
-                        Password
-                      </label>
-                      <div className="relative group">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={16} />
-                        <input 
-                          type="text" 
-                          required
-                          autoComplete="off"
-                          placeholder="Correct Password"
-                          value={sellForm.password}
-                          onChange={(e) => setSellForm({ ...sellForm, password: e.target.value })}
-                          className="w-full pl-10 pr-3 py-2.5 sm:py-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-xs"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Recovery Email */}
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center justify-between gap-1.5">
-                        <span className="flex items-center gap-1.5">
+                <form onSubmit={handleSellGmail} className="p-3 sm:p-5 space-y-3 overflow-y-auto flex-1 bg-slate-50/50">
+                  <div className="space-y-2.5">
+                    {/* Gmail Email & Password Row */}
+                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                      {/* Gmail Email */}
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
                           <Mail size={10} className="text-[#2E7D32]" />
-                          Recovery Email (ঐচ্ছিক / Optional)
-                        </span>
-                        <span className="text-[8px] bg-slate-100 text-slate-500 px-1 rounded uppercase">If any</span>
-                      </label>
-                      <div className="relative group">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={16} />
-                        <input 
-                          type="text" 
-                          autoComplete="off"
-                          placeholder="Recovery Email (যদি থাকে)"
-                          value={sellForm.recoveryEmail}
-                          onChange={(e) => setSellForm({ ...sellForm, recoveryEmail: e.target.value })}
-                          className="w-full pl-10 pr-3 py-2.5 sm:py-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-xs"
-                        />
+                          Gmail Address
+                        </label>
+                        <div className="relative group">
+                          <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={14} />
+                          <input 
+                            type="text" 
+                            required
+                            autoComplete="off"
+                            placeholder="Email address"
+                            value={sellForm.email}
+                            onChange={(e) => setSellForm({ ...sellForm, email: e.target.value })}
+                            className="w-full pl-8 pr-2 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Password */}
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                          <Lock size={10} className="text-[#2E7D32]" />
+                          Password
+                        </label>
+                        <div className="relative group">
+                          <Lock className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={14} />
+                          <input 
+                            type="text" 
+                            required
+                            autoComplete="off"
+                            placeholder="Gmail password"
+                            value={sellForm.password}
+                            onChange={(e) => setSellForm({ ...sellForm, password: e.target.value })}
+                            className="w-full pl-8 pr-2 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-xs"
+                          />
+                        </div>
                       </div>
                     </div>
 
-                    {/* 2FA Authenticator */}
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center justify-between gap-1.5">
-                        <span className="flex items-center gap-1.5">
-                          <ShieldCheck size={10} className="text-[#2E7D32]" />
-                          2FA / Backup Code (ঐচ্ছিক / Optional)
-                        </span>
-                        <span className="text-[8px] bg-slate-100 text-slate-500 px-1 rounded uppercase">If any</span>
-                      </label>
-                      <div className="relative group">
-                        <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={16} />
-                        <input 
-                          type="text" 
-                          autoComplete="off"
-                          placeholder="8-digit backup codes (যদি থাকে)"
-                          value={sellForm.twoFactor}
-                          onChange={(e) => setSellForm({ ...sellForm, twoFactor: e.target.value })}
-                          className="w-full pl-10 pr-3 py-2.5 sm:py-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-xs"
-                        />
+                    {/* Recovery Email & 2FA / Backup Code Row */}
+                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                      {/* Recovery Email */}
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center justify-between gap-1">
+                          <span className="flex items-center gap-1">
+                            <Mail size={10} className="text-[#2E7D32]" />
+                            Recovery Email
+                          </span>
+                          <span className="text-[7px] bg-slate-100 text-slate-500 px-1 rounded uppercase font-black">Opt</span>
+                        </label>
+                        <div className="relative group">
+                          <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={14} />
+                          <input 
+                            type="text" 
+                            autoComplete="off"
+                            placeholder="Recovery email"
+                            value={sellForm.recoveryEmail}
+                            onChange={(e) => setSellForm({ ...sellForm, recoveryEmail: e.target.value })}
+                            className="w-full pl-8 pr-2 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      {/* 2FA Authenticator */}
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center justify-between gap-1">
+                          <span className="flex items-center gap-1">
+                            <ShieldCheck size={10} className="text-[#2E7D32]" />
+                            2FA / Backup Code
+                          </span>
+                          <span className="text-[7px] bg-slate-100 text-slate-500 px-1 rounded uppercase font-black">Opt</span>
+                        </label>
+                        <div className="relative group">
+                          <ShieldCheck className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={14} />
+                          <input 
+                            type="text" 
+                            autoComplete="off"
+                            placeholder="8-digit backup codes"
+                            value={sellForm.twoFactor}
+                            onChange={(e) => setSellForm({ ...sellForm, twoFactor: e.target.value })}
+                            className="w-full pl-8 pr-2 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-xs"
+                          />
+                        </div>
                       </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                        <Phone size={10} className="text-[#2E7D32]" />
-                        bKash Number
-                      </label>
-                      <div className="relative group">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={16} />
-                        <input 
-                          type="text" 
-                          required
-                          autoComplete="off"
-                          placeholder="01XXXXXXXXX"
-                          value={sellForm.bkashNumber}
-                          onChange={(e) => setSellForm({ ...sellForm, bkashNumber: e.target.value })}
-                          className="w-full pl-10 pr-3 py-2.5 sm:py-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-xs"
-                        />
+                    {/* bKash & Nagad Row */}
+                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                          <Phone size={10} className="text-[#2E7D32]" />
+                          bKash Number
+                        </label>
+                        <div className="relative group">
+                          <Phone className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={14} />
+                          <input 
+                            type="text" 
+                            autoComplete="off"
+                            placeholder="01XXXXXXXXX"
+                            value={sellForm.bkashNumber}
+                            onChange={(e) => setSellForm({ ...sellForm, bkashNumber: e.target.value })}
+                            className="w-full pl-8 pr-2 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                          <Phone size={10} className="text-[#2E7D32]" />
+                          Nagad Number
+                        </label>
+                        <div className="relative group">
+                          <Phone className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={14} />
+                          <input 
+                            type="text" 
+                            autoComplete="off"
+                            placeholder="01XXXXXXXXX"
+                            value={sellForm.nagadNumber}
+                            onChange={(e) => setSellForm({ ...sellForm, nagadNumber: e.target.value })}
+                            className="w-full pl-8 pr-2 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/10 focus:border-[#2E7D32] transition-all font-bold text-xs"
+                          />
+                        </div>
                       </div>
                     </div>
+                    <p className="text-[8px] text-slate-400 font-medium pl-1 mt-0.5 leading-tight">
+                      * পেমেন্ট পাওয়ার জন্য বিকাশ অথবা নগদ নম্বরের মধ্যে অন্তত যেকোনো একটি প্রদান করুন। (Provide bKash or Nagad for payout)
+                    </p>
 
                     {/* Type & Price Row */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
+                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                      <div className="space-y-1">
                         <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1">Type</label>
                         <select 
                           value={sellForm.type}
@@ -12887,19 +12952,19 @@ export default function App() {
                             const newPrice = gmailPrices[newType]?.seller || '0';
                             setSellForm({ ...sellForm, type: newType, price: newPrice });
                           }}
-                          className="w-full px-2 sm:px-3 py-2.5 sm:py-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#2E7D32] transition-all font-bold text-[11px]"
+                          className="w-full px-2 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-[#2E7D32] transition-all font-bold text-[11px]"
                         >
                           {Object.keys(gmailPrices).map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                       </div>
-                      <div className="space-y-1.5">
+                      <div className="space-y-1">
                         <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1">Price (৳)</label>
                         <input 
                           type="number" 
                           required
                           value={sellForm.price}
                           readOnly={Object.keys(gmailPrices).includes(sellForm.type)}
-                          className={`w-full px-2 sm:px-3 py-2.5 sm:py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-[#2E7D32] transition-all font-bold text-[11px] ${Object.keys(gmailPrices).includes(sellForm.type) ? 'bg-slate-100 text-slate-500' : 'bg-white'}`}
+                          className={`w-full px-2 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-[#2E7D32] transition-all font-bold text-[11px] ${Object.keys(gmailPrices).includes(sellForm.type) ? 'bg-slate-100 text-slate-500' : 'bg-white'}`}
                         />
                       </div>
                     </div>
@@ -12909,13 +12974,13 @@ export default function App() {
                     <button 
                       disabled={isSubmitting}
                       type="submit"
-                      className="w-full bg-[#2E7D32] text-white font-black py-3 sm:py-3.5 rounded-xl shadow-lg shadow-green-900/10 hover:shadow-green-900/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest disabled:opacity-50"
+                      className="w-full bg-[#2E7D32] text-white font-black py-2.5 sm:py-3 rounded-xl shadow-lg shadow-green-900/10 hover:shadow-green-900/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest disabled:opacity-50"
                     >
                       {isSubmitting ? (
-                        <RefreshCw size={16} className="animate-spin" />
+                        <RefreshCw size={14} className="animate-spin" />
                       ) : (
                         <>
-                          <CheckCircle size={16} />
+                          <CheckCircle size={14} />
                           {sellListingToEdit ? 'Update & Re-sell' : 'Submit Listing'}
                         </>
                       )}
