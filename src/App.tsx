@@ -2364,6 +2364,27 @@ export default function App() {
     }).slice(0, 10);
   }, [userPayments, userWithdrawals]);
   const [listingFilter, setListingFilter] = useState('All');
+  const filteredSellerListings = React.useMemo(() => {
+    return sellerListings.filter(l => {
+      // Tab filter
+      if (listingFilter !== 'All') {
+        if (l.status !== listingFilter) return false;
+      }
+      // Search query filter
+      if (sellerSearchQuery.trim() !== '') {
+        const q = sellerSearchQuery.toLowerCase();
+        const email = (l.maskedEmail || l.gmailAccount || '').toLowerCase();
+        const type = (l.type || '').toLowerCase();
+        const desc = (l.description || '').toLowerCase();
+        const id = (l.id || '').toLowerCase();
+        if (!email.includes(q) && !type.includes(q) && !desc.includes(q) && !id.includes(q)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [sellerListings, listingFilter, sellerSearchQuery]);
+
   const [editingListing, setEditingListing] = useState<any>(null);
   const [editListingForm, setEditListingForm] = useState({
     gmailAccount: '',
@@ -10870,6 +10891,149 @@ export default function App() {
                       className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl font-bold focus:outline-none focus:border-[#2E7D32] text-xs text-slate-700 transition-all"
                     />
                   </div>
+                </div>
+
+                {/* Seller Listings list */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between px-2">
+                    <h3 className="font-display text-xs font-black uppercase tracking-widest text-slate-400">
+                      আমার জিমেইলসমূহ ({filteredSellerListings.length})
+                    </h3>
+                    {listingFilter !== 'All' && (
+                      <span className="text-[10px] bg-[#2E7D32]/10 text-[#2E7D32] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        Filter: {listingFilter === 'SellRequest' ? 'Pending' : listingFilter}
+                      </span>
+                    )}
+                  </div>
+
+                  {filteredSellerListings.length === 0 ? (
+                    <div className="bg-white rounded-[2rem] border border-slate-100 p-12 text-center shadow-sm">
+                      <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Mail size={18} className="text-slate-400" />
+                      </div>
+                      <p className="text-slate-400 font-bold text-xs uppercase tracking-widest leading-relaxed">
+                        কোনো জিমেইল খুঁজে পাওয়া যায়নি।
+                      </p>
+                      <p className="text-slate-400/80 text-[10px] font-medium mt-1">
+                        নতুন জিমেইল বিক্রি করতে উপরে "Sell Gmail Account" বাটনে ক্লিক করুন।
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-3">
+                      {filteredSellerListings.map((item, i) => {
+                        // Determine status styling
+                        let statusColor = "text-amber-600 bg-amber-50 border-amber-100";
+                        let statusLabel = "Pending (রিভিউ হচ্ছে)";
+                        
+                        if (item.status === 'Available') {
+                          statusColor = "text-green-600 bg-green-50 border-green-100";
+                          statusLabel = "Available (বিক্রির জন্য প্রস্তুত)";
+                        } else if (item.status === 'Approved') {
+                          statusColor = "text-emerald-600 bg-emerald-50 border-emerald-100";
+                          statusLabel = "Approved (অনুমোদিত)";
+                        } else if (item.status === 'Dispute') {
+                          statusColor = "text-red-600 bg-red-50 border-red-100 animate-pulse";
+                          statusLabel = "Dispute (তথ্য ভুল)";
+                        } else if (item.status === 'Sold') {
+                          statusColor = "text-blue-600 bg-blue-50 border-blue-100";
+                          statusLabel = "Sold (বিক্রি হয়েছে)";
+                        }
+
+                        return (
+                          <motion.div
+                            key={item.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: Math.min(i * 0.02, 0.2) }}
+                            className={`bg-white rounded-2xl border p-4 shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col gap-3 ${
+                              item.status === 'Dispute' ? 'border-red-200 bg-red-50/10' : 'border-slate-100'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                                  item.status === 'Dispute' ? 'bg-red-50 text-red-600' : 'bg-slate-50 text-slate-500'
+                                }`}>
+                                  <Mail size={16} />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                                    <h4 className="font-display text-xs font-black text-slate-800 truncate" title={item.realGmail || item.gmailAccount}>
+                                      {item.realGmail || item.gmailAccount}
+                                    </h4>
+                                    <div className={`px-2 py-0.5 rounded-full border text-[8px] font-black uppercase tracking-wider ${statusColor}`}>
+                                      {statusLabel}
+                                    </div>
+                                  </div>
+                                  <p className="text-[10px] font-black text-blue-600 uppercase tracking-tight">
+                                    {item.type || 'Fresh New'}
+                                  </p>
+                                  {item.description && (
+                                    <p className="text-[10px] text-slate-500 font-medium leading-tight mt-1 line-clamp-2">
+                                      {item.description}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="text-right shrink-0">
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">মূল্য / Payout</span>
+                                <p className="text-base font-black text-slate-900">৳{item.price || '0'}</p>
+                              </div>
+                            </div>
+
+                            {/* Dispute / Issue message box */}
+                            {item.status === 'Dispute' && (
+                              <div className="bg-red-50/80 border border-red-100 rounded-xl p-3 flex flex-col gap-2">
+                                <p className="text-[10px] font-bold text-red-700 leading-normal">
+                                  ⚠️ বায়ার বা এডমিন জানিয়েছেন আপনার এই জিমেইলটির তথ্য ভুল (পাসওয়ার্ড, রিকভারি বা টু-ফ্যাক্টর কাজ করছে না)। অনুগ্রহ করে সঠিক তথ্য দিয়ে এখনই আপডেট করুন।
+                                </p>
+                                {item.buyerDisputeReason && (
+                                  <p className="text-[9.5px] font-medium text-red-600 bg-white/60 p-2 rounded-lg border border-red-100/50">
+                                    <span className="font-bold">কারণ:</span> {item.buyerDisputeReason}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Action Row */}
+                            <div className="flex items-center justify-between border-t border-slate-50 pt-3 mt-1">
+                              <span className="text-[9px] font-mono text-slate-400">ID: {item.id.substring(0, 8)}...</span>
+                              <div className="flex gap-2">
+                                {/* Dispute or Pending can be edited */}
+                                {(item.status === 'Dispute' || item.status === 'SellRequest' || item.status === 'Available') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openSellerEditModal(item.id)}
+                                    className={`px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer ${
+                                      item.status === 'Dispute'
+                                        ? 'bg-red-600 hover:bg-red-700 text-white shadow-sm shadow-red-900/10'
+                                        : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-100'
+                                    }`}
+                                  >
+                                    <Edit size={10} />
+                                    {item.status === 'Dispute' ? 'তথ্য ঠিক করুন' : 'Edit Details'}
+                                  </button>
+                                )}
+
+                                {/* Show date info */}
+                                {item.createdAt && (
+                                  <span className="text-[9px] text-slate-400 flex items-center gap-1">
+                                    <Clock size={10} />
+                                    {new Date(item.createdAt.seconds * 1000).toLocaleDateString('bn-BD', {
+                                      day: 'numeric',
+                                      month: 'short',
+                                      year: '2-digit'
+                                    })}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
                 </motion.div>
               )}
