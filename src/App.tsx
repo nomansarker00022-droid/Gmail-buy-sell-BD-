@@ -3323,8 +3323,7 @@ export default function App() {
       return;
     }
 
-    // Close modal immediately
-    setShowSellModal(false);
+    // Set submitting state but do not close modal yet to preserve input in case of failure
     setIsSubmitting(true);
     setError(null);
 
@@ -3374,17 +3373,23 @@ export default function App() {
         listingId = listingRef.id;
       } else {
         // 2. Update existing listing
-        await updateDoc(doc(db, listingPath, sellListingToEdit), {
-          gmailAccount: maskedEmail,
-          emailHash: hashEmail(cleanEmail), // Storing 1-to-1 hash of the raw email
-          type: sellForm.type,
-          price: parseFloat(sellForm.price),
-          bkashNumber: sellForm.bkashNumber,
-          nagadNumber: sellForm.nagadNumber,
-          description: sellForm.description || '',
-          status: finalStatus,
-          updatedAt: serverTimestamp(),
-        });
+        try {
+          await updateDoc(doc(db, listingPath, sellListingToEdit), {
+            gmailAccount: maskedEmail,
+            emailHash: hashEmail(cleanEmail), // Storing 1-to-1 hash of the raw email
+            type: sellForm.type,
+            price: parseFloat(sellForm.price),
+            bkashNumber: sellForm.bkashNumber,
+            nagadNumber: sellForm.nagadNumber,
+            description: sellForm.description || '',
+            status: finalStatus,
+            buyerDisputeReason: null, // Clear any dispute reason on resubmit
+            updatedAt: serverTimestamp(),
+          });
+        } catch (err: any) {
+          console.error("Listing Parent Update Error:", err);
+          handleFirestoreError(err, OperationType.UPDATE, `${listingPath}/${sellListingToEdit}`);
+        }
       }
 
       // 3. Update Private Credentials
@@ -3428,6 +3433,7 @@ export default function App() {
 
       if (!sellListingToEdit) handleReferralReward(); // Award referral bonus on first sale request or sale
       
+      // Clear form, reset editing state, and close modal only after successful completion
       setSellForm({ 
         email: '', 
         password: '', 
@@ -3440,7 +3446,10 @@ export default function App() {
         description: ''
       });
       setSellListingToEdit(null);
+      setShowSellModal(false);
     } catch (err: any) {
+      console.error("Sell Gmail Error:", err);
+      alert('ত্রুটি ঘটেছে: ' + err.message);
       setError(err.message);
     } finally {
       setIsSubmitting(false);
@@ -3467,7 +3476,7 @@ export default function App() {
       const credData = credSnap.exists() ? credSnap.data() : {};
 
       setSellForm({
-        email: listingData.realGmail || listingData.gmailAccount,
+        email: credData.email || listingData.realGmail || listingData.gmailAccount,
         password: credData.password || '',
         recoveryEmail: credData.recoveryEmail || credData.recovery || '',
         twoFactor: credData.twoFactor || '',
@@ -10979,6 +10988,13 @@ export default function App() {
                               <div className="text-right shrink-0">
                                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">মূল্য / Payout</span>
                                 <p className="text-base font-black text-slate-900">৳{item.price || '0'}</p>
+                                {(item.paymentStatus === 'Paid' || item.payoutTrxId) && (
+                                  <div className="mt-1">
+                                    <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase tracking-wider inline-block">
+                                      Paid
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             </div>
 

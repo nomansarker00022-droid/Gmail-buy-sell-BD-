@@ -112,12 +112,14 @@ service cloud.firestore {
              (!('sellerId' in data) || (data.sellerId == null || data.sellerId is string)) &&
              (!('sellerNumericId' in data) || (data.sellerNumericId == null || data.sellerNumericId is string)) &&
              (!('bkashNumber' in data) || (data.bkashNumber == null || data.bkashNumber is string)) &&
+             (!('nagadNumber' in data) || (data.nagadNumber == null || data.nagadNumber is string)) &&
              (!('description' in data) || (data.description == null || (data.description is string && data.description.size() <= 4000))) &&
              (!('soldTo' in data) || (data.soldTo == null || data.soldTo is string)) &&
              (!('soldPrice' in data) || (data.soldPrice == null || data.soldPrice is number)) &&
              (!('paymentStatus' in data) || (data.paymentStatus == null || data.paymentStatus is string)) &&
              (!('payoutTrxId' in data) || (data.payoutTrxId == null || data.payoutTrxId is string)) &&
              (!('emailHash' in data) || (data.emailHash == null || data.emailHash is string)) &&
+             (!('buyerDisputeReason' in data) || (data.buyerDisputeReason == null || data.buyerDisputeReason is string)) &&
              (!('createdAt' in data) || (data.createdAt == null || data.createdAt is timestamp)) &&
              (!('updatedAt' in data) || (data.updatedAt == null || data.updatedAt is timestamp));
     }
@@ -308,7 +310,7 @@ service cloud.firestore {
         isAdmin() || 
         // Seller can update their own listing before it's sold
         (isOwner(existing().sellerId) && 
-          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'price', 'gmailAccount', 'type', 'description', 'bkashNumber'])) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'price', 'gmailAccount', 'type', 'description', 'bkashNumber', 'nagadNumber', 'emailHash', 'buyerDisputeReason'])) ||
         // Buyer flow: User marks it as Pending (Available -> Pending)
         (existing().status == 'Available' && 
           incoming().status == 'Pending' && 
