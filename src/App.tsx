@@ -19,6 +19,7 @@ import {
   AlertTriangle, ExternalLink, ShieldAlert, Flame, Coins, MoreVertical, ArrowUpRight,
 } from 'lucide-react';
 import emailjs from '@emailjs/browser';
+import { GoogleSheetsPanel } from './components/GoogleSheetsPanel';
 import { initializeAdSecurity, subscribeToAdSecurity, AdSecurityState } from './lib/adSecurity';
 import { 
   signInWithEmailAndPassword, 
@@ -2408,6 +2409,13 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
+  // Password reset via OTP states
+  const [forgotOtpStep, setForgotOtpStep] = useState(false);
+  const [forgotSentOtp, setForgotSentOtp] = useState('');
+  const [forgotUserOtp, setForgotUserOtp] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
+
   // Helper to format error messages
   const getDisplayError = (errorStr: string | null): string | null => {
     if (!errorStr) return null;
@@ -2486,6 +2494,64 @@ export default function App() {
   const [adminUserSearchQuery, setAdminUserSearchQuery] = useState('');
   const [adminSearchedAccount, setAdminSearchedAccount] = useState<any>(null);
 
+  const handleBulkImportFromSheets = async (importedListings: any[]) => {
+    let successCount = 0;
+    let failedCount = 0;
+    
+    for (const item of importedListings) {
+      try {
+        const cleanEmail = item.email.trim().toLowerCase();
+        const cleanPassword = item.password.trim();
+        const maskedEmail = getMaskedGmail(cleanEmail);
+        const emailHashVal = hashEmail(cleanEmail);
+        
+        // 1. Check duplicate
+        const dupQuery = query(collection(db, 'listings'), where('emailHash', '==', emailHashVal));
+        const dupSnap = await getDocs(dupQuery);
+        const activeDuplicates = dupSnap.docs.filter(d => 
+          ['Available', 'Pending', 'Approved', 'Sold', 'SellRequest'].includes(d.data().status)
+        );
+        
+        if (activeDuplicates.length > 0) {
+          console.log(`Skipping duplicate account: ${cleanEmail}`);
+          failedCount++;
+          continue;
+        }
+        
+        // 2. Create Public Listing
+        const listingRef = await addDoc(collection(db, 'listings'), {
+          sellerId: user ? user.uid : 'admin_import',
+          sellerNumericId: userProfile?.numericId || 'System',
+          gmailAccount: maskedEmail,
+          emailHash: emailHashVal,
+          type: item.type || 'Full Fresh New',
+          price: parseFloat(item.price) || 16,
+          bkashNumber: item.bkashNumber || '',
+          nagadNumber: item.nagadNumber || '',
+          description: item.description || 'Google Sheets Bulk Import',
+          status: 'Available', // Automatically available for admin bulk import
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+        
+        // 3. Save Private Credentials
+        await setDoc(doc(db, `listings/${listingRef.id}/private`, 'credentials'), {
+          email: cleanEmail,
+          password: cleanPassword,
+          recoveryEmail: (item.recoveryEmail || '').trim().toLowerCase(),
+          twoFactor: (item.twoFactor || '').trim()
+        });
+        
+        successCount++;
+      } catch (err) {
+        console.error('Failed to import listing item:', item, err);
+        failedCount++;
+      }
+    }
+    
+    return { successCount, failedCount };
+  };
+
   const handleAdminUserLookup = async () => {
     if (!isAdmin || !adminUserSearchQuery) return;
     setIsVerifying(true);
@@ -2551,6 +2617,13 @@ export default function App() {
     setShowSellModal(false);
     setShowPaymentModal({ show: false, price: 0 });
     setEditingListing(null);
+
+    // Reset forgot password states
+    setForgotOtpStep(false);
+    setForgotSentOtp('');
+    setForgotUserOtp('');
+    setForgotNewPassword('');
+    setForgotConfirmPassword('');
   }, [view]);
 
   // Back Button / Browser History Navigation Support
@@ -3056,7 +3129,6 @@ export default function App() {
         setError('ইমেইল/পাসওয়ার্ড লগইন মেথডটি Firebase কন্সোলে বন্ধ করা আছে। দয়া করে Authentication > Sign-in method থেকে Email/Password চালু করুন।');
       } else if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.message?.includes('invalid-credential')) {
         // This might be a new user, show OTP step
-        const loginCheckAuth = auth;
         // Generate OTP
         const code = Math.floor(1000 + Math.random() * 9000).toString();
         setSentOtp(code);
@@ -3068,6 +3140,42 @@ export default function App() {
       }
     } finally {
       if (!otpStep) setLoading(false);
+    }
+  };
+
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      setError('দয়া করে আপনার ইমেইল এড্রেসটি লিখুন।');
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    try {
+      console.log('Sending reset email to:', email);
+      const actionCodeSettings = {
+        // Automatically uses the current domain for the reset landing page
+        url: `${window.location.origin}/?mode=resetPassword`,
+        handleCodeInApp: true,
+      };
+      await sendPasswordResetEmail(auth, email, actionCodeSettings);
+      alert('পাসওয়ার্ড রিসেট করার ইমেইল পাঠানো হয়েছে! \n\nদয়া করে আপনার ইনবক্স অথবা স্প্যাম (Spam) ফোল্ডার চেক করুন। লিংকে ক্লিক করলে আপনি সরাসরি আমাদের অ্যাপেই পাসওয়ার্ড পরিবর্তনের অপশন পাবেন।');
+      setView('login');
+    } catch (err: any) {
+      console.error('Password reset error:', err);
+      // Firebase specific error handling
+      if (err.code === 'auth/user-not-found' || err.message?.includes('user-not-found')) {
+        setError('এই ইমেইলটি নিবন্ধিত নয়। দয়া করে সঠিক ইমেইল দিন অথবা নতুন একাউন্ট খুলুন।');
+      } else if (err.code === 'auth/invalid-email' || err.message?.includes('invalid-email')) {
+        setError('অকার্যকর ইমেইল এড্রেস। দয়া করে সঠিক ইমেইল দিন।');
+      } else if (err.code === 'auth/unauthorized-domain' || err.message?.includes('unauthorized-domain')) {
+        setError('Unauthorized Domain! আপনার ডোমেইনটি Firebase-এ Authorized Domains হিসেবে যুক্ত নেই।');
+      } else {
+        setError(err.message || 'পাসওয়ার্ড রিসেট করতে সমস্যা হয়েছে।');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -3199,42 +3307,6 @@ export default function App() {
         setError(err.message || 'Registration error');
       }
       setOtpStep(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleForgot = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) {
-      setError('দয়া করে আপনার ইমেইল এড্রেসটি লিখুন।');
-      return;
-    }
-    
-    setLoading(true);
-    setError(null);
-    try {
-      console.log('Sending reset email to:', email);
-      const actionCodeSettings = {
-        // Automatically uses the current domain for the reset landing page
-        url: `${window.location.origin}/?mode=resetPassword`,
-        handleCodeInApp: true,
-      };
-      await sendPasswordResetEmail(auth, email, actionCodeSettings);
-      alert('পাসওয়ার্ড রিসেট করার ইমেইল পাঠানো হয়েছে! \n\nদয়া করে আপনার ইনবক্স অথবা স্প্যাম (Spam) ফোল্ডার চেক করুন। লিংকে ক্লিক করলে আপনি সরাসরি আমাদের অ্যাপেই পাসওয়ার্ড পরিবর্তনের অপশন পাবেন।');
-      setView('login');
-    } catch (err: any) {
-      console.error('Password reset error:', err);
-      // Firebase specific error handling
-      if (err.code === 'auth/user-not-found' || err.message?.includes('user-not-found')) {
-        setError('এই ইমেইলটি নিবন্ধিত নয়। দয়া করে সঠিক ইমেইল দিন অথবা নতুন একাউন্ট খুলুন।');
-      } else if (err.code === 'auth/invalid-email' || err.message?.includes('invalid-email')) {
-        setError('অকার্যকর ইমেইল এড্রেস। দয়া করে সঠিক ইমেইল দিন।');
-      } else if (err.code === 'auth/unauthorized-domain' || err.message?.includes('unauthorized-domain')) {
-        setError('Unauthorized Domain! আপনার ডোমেইনটি Firebase-এ Authorized Domains হিসেবে যুক্ত নেই।');
-      } else {
-        setError(err.message || 'পাসওয়ার্ড রিসেট করতে সমস্যা হয়েছে।');
-      }
     } finally {
       setLoading(false);
     }
@@ -4278,12 +4350,13 @@ export default function App() {
 
     const qRoom = query(
       collection(db, 'direct_chats'),
-      where('roomId', '==', activeChatRoom.id),
-      limit(150)
+      where('participants', 'array-contains', user.uid),
+      limit(300)
     );
 
     const unsubscribeRoom = onSnapshot(qRoom, (snapshot) => {
-      const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as any)
+        .filter((m: any) => m.roomId === activeChatRoom.id);
       // Perform chronological sorting client-side to avoid Composite Index requirement
       const sortedMsgs = msgs.sort((a: any, b: any) => {
         const aSecs = a.createdAt?.seconds || 0;
@@ -4460,6 +4533,7 @@ export default function App() {
           senderName: userProfile?.displayName || user.displayName || user.email?.split('@')[0] || 'ব্যবহারকারী',
           receiverId: destId || 'admin',
           receiverName: destName || 'গ্রাহক',
+          participants: [user.uid, destId || 'admin'],
           listingId: activeChatRoom.listingId || '',
           listingTitle: activeChatRoom.listingTitle || '',
           listingCategory: activeChatRoom.listingCategory || 'Facebook Account',
@@ -4481,6 +4555,7 @@ export default function App() {
         senderName: userProfile?.displayName || user.displayName || user.email?.split('@')[0] || 'ব্যবহারকারী',
         receiverId: destId || 'admin',
         receiverName: destName || 'গ্রাহক',
+        participants: [user.uid, destId || 'admin'],
         listingId: activeChatRoom.listingId || '',
         listingTitle: activeChatRoom.listingTitle || '',
         listingCategory: activeChatRoom.listingCategory || 'Facebook Account',
@@ -4527,6 +4602,7 @@ export default function App() {
           senderName: userProfile?.displayName || user.displayName || user.email?.split('@')[0] || 'ব্যবহারকারী',
           receiverId: destId || 'admin',
           receiverName: destName || 'গ্রাহক',
+          participants: [user.uid, destId || 'admin'],
           listingId: activeChatRoom.listingId || '',
           listingTitle: activeChatRoom.listingTitle || '',
           listingCategory: activeChatRoom.listingCategory || 'Facebook Account',
@@ -9515,6 +9591,14 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Google Sheets Integration & Bulk Management */}
+                  <div className="mb-6">
+                    <GoogleSheetsPanel 
+                      listings={allListings} 
+                      onBulkImport={handleBulkImportFromSheets}
+                    />
+                  </div>
+
                   {/* Deprecated Adsterra and Google AdSense consoles removed to keep only Monetag active */}
 
                 {/* Monetag Revenue Hub & Monetization Console */}
@@ -13304,15 +13388,6 @@ export default function App() {
                   )}
                 </button>
               </form>
-
-              <div className="text-center">
-                <button 
-                  onClick={() => setView('login')}
-                  className="text-sm font-bold text-[#2E7D32] hover:underline"
-                >
-                  লগইন এ ফিরে যান
-                </button>
-              </div>
             </div>
           )}
         </motion.div>

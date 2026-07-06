@@ -15,7 +15,7 @@ console.log('Firebase Config Debug:', {
   projectId: firebaseConfig.projectId,
   apiKeyPrefix: firebaseConfig.apiKey ? firebaseConfig.apiKey.substring(0, 8) : 'MISSING',
   authDomain: firebaseConfig.authDomain,
-  databaseId: firebaseConfig.firestoreDatabaseId
+  databaseId: (firebaseConfig as any).firestoreDatabaseId
 });
 
 if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes('remixed')) {
@@ -27,7 +27,7 @@ const app = initializeApp(firebaseConfig);
 // Use initializeFirestore with memoryLocalCache to avoid IndexedDB issues in sandboxed iframes
 export const db = initializeFirestore(app, {
   localCache: memoryLocalCache(),
-}, firebaseConfig.firestoreDatabaseId || '(default)');
+}, (firebaseConfig as any).firestoreDatabaseId || '(default)');
 
 // Robust Auth initialization for iframes and cross-origin environments
 export const auth = initializeAuth(app, {

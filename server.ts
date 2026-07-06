@@ -8,16 +8,21 @@ import fs from "fs";
 // Initialize Firebase Admin lazily
 let db: any = null;
 
-function getDb() {
-  if (!db) {
+function ensureAdminInitialized() {
+  if (!admin.apps.length) {
     const configPath = path.join(process.cwd(), "firebase-applet-config.json");
     const firebaseConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    admin.initializeApp({
+      projectId: firebaseConfig.projectId,
+    });
+  }
+}
 
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        projectId: firebaseConfig.projectId,
-      });
-    }
+function getDb() {
+  if (!db) {
+    ensureAdminInitialized();
+    const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+    const firebaseConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
     const app = admin.apps[0];
     db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
   }
@@ -201,6 +206,49 @@ async function startServer() {
       console.error("Error generating ads.txt dynamically:", error);
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.send("google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0\n");
+    }
+  });
+
+  // Check if an email exists in Firebase Auth
+  app.post("/api/check-email-exists", async (req: any, res: any) => {
+    try {
+      ensureAdminInitialized();
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ error: "ইমেইল এড্রেস আবশ্যক।" });
+      }
+      
+      try {
+        const userRecord = await admin.auth().getUserByEmail(email);
+        return res.json({ exists: true, uid: userRecord.uid });
+      } catch (err: any) {
+        if (err.code === 'auth/user-not-found' || err.message?.includes('user-not-found')) {
+          return res.json({ exists: false });
+        }
+        throw err;
+      }
+    } catch (error: any) {
+      console.error("Error checking email in Auth:", error);
+      res.status(500).json({ error: error.message || "ইমেইল চেক করতে সমস্যা হয়েছে।" });
+    }
+  });
+
+  // Reset password via Admin SDK
+  app.post("/api/reset-password-admin", async (req: any, res: any) => {
+    try {
+      ensureAdminInitialized();
+      const { email, password } = req.body;
+      if (!email || !password) {
+        return res.status(400).json({ error: "ইমেইল এবং নতুন পাসওয়ার্ড আবশ্যক।" });
+      }
+
+      const userRecord = await admin.auth().getUserByEmail(email);
+      await admin.auth().updateUser(userRecord.uid, { password });
+
+      res.json({ success: true, message: "পাসওয়ার্ড সফলভাবে রিসেট করা হয়েছে!" });
+    } catch (error: any) {
+      console.error("Error resetting password via Admin SDK:", error);
+      res.status(500).json({ error: error.message || "পাসওয়ার্ড রিসেট করতে ব্যর্থ হয়েছে।" });
     }
   });
 

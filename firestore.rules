@@ -214,7 +214,8 @@ service cloud.firestore {
              (!('listingId' in data) || data.listingId is string) &&
              (!('listingTitle' in data) || (data.listingTitle is string && data.listingTitle.size() <= 200)) &&
              data.text is string && data.text.size() <= 5000 &&
-             (!('imageUrl' in data) || data.imageUrl == null || (data.imageUrl is string && data.imageUrl.size() <= 2000000));
+             (!('imageUrl' in data) || data.imageUrl == null || (data.imageUrl is string && data.imageUrl.size() <= 2000000)) &&
+             (!('participants' in data) || (data.participants is list));
     }
 
     // --- Collections ---
@@ -235,23 +236,17 @@ service cloud.firestore {
     match /profiles/{userId} {
       allow read: if isSignedIn();
       allow create: if isOwner(userId) && isValidProfile(incoming()) && (
-        !('role' in incoming()) || incoming().role == 'user'
-      ) && (
-        !('balance' in incoming()) || incoming().balance == 0
-      ) && (
-        !('totalSpent' in incoming()) || incoming().totalSpent == 0
-      ) && (
-        !('totalEarned' in incoming()) || incoming().totalEarned == 0
-      ) && (
-        !('earningsBalance' in incoming()) || incoming().earningsBalance == 0
-      ) && (
-        !('totalSales' in incoming()) || incoming().totalSales == 0
-      ) && (
-        !('totalOrders' in incoming()) || incoming().totalOrders == 0
-      ) && (
-        !('successfulReferrals' in incoming()) || incoming().successfulReferrals == 0
-      ) && (
-        !('adsWatchedToday' in incoming()) || incoming().adsWatchedToday == 0
+        isSystemAdmin() || (
+          (!('role' in incoming()) || incoming().role == 'user') &&
+          (!('balance' in incoming()) || incoming().balance == 0) &&
+          (!('totalSpent' in incoming()) || incoming().totalSpent == 0) &&
+          (!('totalEarned' in incoming()) || incoming().totalEarned == 0) &&
+          (!('earningsBalance' in incoming()) || incoming().earningsBalance == 0) &&
+          (!('totalSales' in incoming()) || incoming().totalSales == 0) &&
+          (!('totalOrders' in incoming()) || incoming().totalOrders == 0) &&
+          (!('successfulReferrals' in incoming()) || incoming().successfulReferrals == 0) &&
+          (!('adsWatchedToday' in incoming()) || incoming().adsWatchedToday == 0)
+        )
       );
       
       allow update: if isSignedIn() && (
@@ -268,7 +263,7 @@ service cloud.firestore {
           incoming().diff(existing()).affectedKeys().hasOnly([
             'displayName', 'photoURL', 'phone', 'bkashNumber', 'nagadNumber',
             'firstName', 'lastName', 'age', 'address', 'hasSeenWelcome',
-            'updatedAt', 'referredBy'
+            'updatedAt', 'referredBy', 'hasTransacted'
           ]) ||
           // Action: Claim ad earnings reward which increments earningsBalance, totalEarned, and sets adsWatchedToday/lastAdWatchedDate
           incoming().diff(existing()).affectedKeys().hasOnly([
@@ -409,8 +404,18 @@ service cloud.firestore {
 
     // Direct Chats / Peer-to-Peer messages
     match /direct_chats/{messageId} {
-      allow list: if isSignedIn() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid || isAdmin());
-      allow get: if isSignedIn() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (
+        resource.data.senderId == request.auth.uid || 
+        resource.data.receiverId == request.auth.uid || 
+        ('participants' in resource.data && request.auth.uid in resource.data.participants) ||
+        isAdmin()
+      );
+      allow get: if isSignedIn() && (
+        resource.data.senderId == request.auth.uid || 
+        resource.data.receiverId == request.auth.uid || 
+        ('participants' in resource.data && request.auth.uid in resource.data.participants) ||
+        isAdmin()
+      );
       allow create: if isSignedIn() && isValidDirectChat(incoming()) && (incoming().createdAt == request.time);
       allow update: if false; // Messages are immutable after sending
       allow delete: if isAdmin();
