@@ -1360,6 +1360,21 @@ export default function App() {
   };
 
   const handleDepositTrigger = () => {
+    const hasAnyDeposit = userPayments && userPayments.some((p: any) => p.listingId === 'deposit' || p.isDeposit || p.type === 'deposit');
+    if (hasAnyDeposit) {
+      setView('transactions');
+      setTimeout(() => {
+        const historyEl = document.getElementById('recent-history-section');
+        if (historyEl) {
+          // Highlight the section briefly without scrolling
+          historyEl.classList.add('ring-2', 'ring-emerald-500/50');
+          setTimeout(() => {
+            historyEl.classList.remove('ring-2', 'ring-emerald-500/50');
+          }, 2000);
+        }
+      }, 150);
+      return;
+    }
     setShowPaymentModal({ show: true, price: 100, listingId: 'deposit' });
   };
   const [showInstructions, setShowInstructions] = useState(false);
@@ -1705,6 +1720,7 @@ export default function App() {
       setIsClaimingAd(false);
     }
   };
+
   const handleDailyCheckIn = async () => {
     if (!user) {
       alert("অনুগ্রহ করে ডেইলি বোনাস নিতে প্রথমে লগইন করুন!");
@@ -1718,7 +1734,7 @@ export default function App() {
     try {
       try {
         await updateDoc(doc(db, 'profiles', user.uid), {
-          earningsBalance: increment(1.00),
+          balance: increment(1.00),
           totalEarned: increment(1.00),
           lastCheckInDate: todayStr
         });
@@ -1727,7 +1743,7 @@ export default function App() {
         const cacheKey = `cache_profile_${user.uid}`;
         const cached = localStorage.getItem(cacheKey);
         let localProfileData = cached ? JSON.parse(cached) : { ...userProfile };
-        localProfileData.earningsBalance = (localProfileData.earningsBalance || 0) + 1.00;
+        localProfileData.balance = (localProfileData.balance || 0) + 1.00;
         localProfileData.totalEarned = (localProfileData.totalEarned || 0) + 1.00;
         localProfileData.lastCheckInDate = todayStr;
         localStorage.setItem(cacheKey, JSON.stringify(localProfileData));
@@ -1736,7 +1752,7 @@ export default function App() {
       setUserProfile((prev: any) => {
         const newVal = {
           ...prev,
-          earningsBalance: (prev?.earningsBalance || 0) + 1.00,
+          balance: (prev?.balance || 0) + 1.00,
           totalEarned: (prev?.totalEarned || 0) + 1.00,
           lastCheckInDate: todayStr
         };
@@ -1771,7 +1787,7 @@ export default function App() {
       try {
         try {
           await updateDoc(doc(db, 'profiles', user.uid), {
-            earningsBalance: increment(1.00),
+            balance: increment(1.00),
             totalEarned: increment(1.00),
             hasJoinedTelegram: true
           });
@@ -1780,7 +1796,7 @@ export default function App() {
           const cacheKey = `cache_profile_${user.uid}`;
           const cached = localStorage.getItem(cacheKey);
           let localProfileData = cached ? JSON.parse(cached) : { ...userProfile };
-          localProfileData.earningsBalance = (localProfileData.earningsBalance || 0) + 1.00;
+          localProfileData.balance = (localProfileData.balance || 0) + 1.00;
           localProfileData.totalEarned = (localProfileData.totalEarned || 0) + 1.00;
           localProfileData.hasJoinedTelegram = true;
           localStorage.setItem(cacheKey, JSON.stringify(localProfileData));
@@ -1789,7 +1805,7 @@ export default function App() {
         setUserProfile((prev: any) => {
           const newVal = {
             ...prev,
-            earningsBalance: (prev?.earningsBalance || 0) + 1.00,
+            balance: (prev?.balance || 0) + 1.00,
             totalEarned: (prev?.totalEarned || 0) + 1.00,
             hasJoinedTelegram: true
           };
@@ -1824,7 +1840,7 @@ export default function App() {
       try {
         try {
           await updateDoc(doc(db, 'profiles', user.uid), {
-            earningsBalance: increment(1.50),
+            balance: increment(1.50),
             totalEarned: increment(1.50),
             hasSubscribedYoutube: true
           });
@@ -1833,7 +1849,7 @@ export default function App() {
           const cacheKey = `cache_profile_${user.uid}`;
           const cached = localStorage.getItem(cacheKey);
           let localProfileData = cached ? JSON.parse(cached) : { ...userProfile };
-          localProfileData.earningsBalance = (localProfileData.earningsBalance || 0) + 1.50;
+          localProfileData.balance = (localProfileData.balance || 0) + 1.50;
           localProfileData.totalEarned = (localProfileData.totalEarned || 0) + 1.50;
           localProfileData.hasSubscribedYoutube = true;
           localStorage.setItem(cacheKey, JSON.stringify(localProfileData));
@@ -1842,7 +1858,7 @@ export default function App() {
         setUserProfile((prev: any) => {
           const newVal = {
             ...prev,
-            earningsBalance: (prev?.earningsBalance || 0) + 1.50,
+            balance: (prev?.balance || 0) + 1.50,
             totalEarned: (prev?.totalEarned || 0) + 1.50,
             hasSubscribedYoutube: true
           };
@@ -1850,8 +1866,6 @@ export default function App() {
           localStorage.setItem(cacheKey, JSON.stringify(newVal));
           return newVal;
         });
-
-        alert("🎉 অভিনন্দন! ইউটিউব সাবস্ক্রাইব বোনাস ৳১.৫০ আপনার ওয়ালেটে যোগ হয়েছে।");
       } catch (err: any) {
         console.error("Youtube subscribe error:", err);
       }
@@ -3359,7 +3373,7 @@ export default function App() {
         const referrerRef = doc(db, 'profiles', referrerId);
         
         await updateDoc(referrerRef, {
-          earningsBalance: increment(5),
+          balance: increment(5),
           successfulReferrals: increment(1)
         });
 
@@ -3898,7 +3912,7 @@ export default function App() {
         if (listingData.sellerId && listingData.sellerId !== 'admin') {
           const sellerRef = doc(db, 'profiles', listingData.sellerId);
           transaction.update(sellerRef, {
-            earningsBalance: increment(sellerEarning),
+            balance: increment(sellerEarning),
             totalSales: increment(1),
             totalEarned: increment(sellerEarning),
             updatedAt: serverTimestamp()
@@ -4252,14 +4266,6 @@ export default function App() {
       try { setMarketListings(JSON.parse(cachedMarket)); } catch (e) {}
     }
 
-    // Load user purchases and payments from cache first
-    if (user) {
-      const cachedPurch = localStorage.getItem(`cache_my_purchases_${user.uid}`);
-      const cachedPay = localStorage.getItem(`cache_user_payments_${user.uid}`);
-      if (cachedPurch) { try { setMyPurchases(JSON.parse(cachedPurch)); } catch(e) {} }
-      if (cachedPay) { try { setUserPayments(JSON.parse(cachedPay)); } catch(e) {} }
-    }
-
     // Real-time Market Listings Listener
     const qMarket = query(
       collection(db, 'listings'),
@@ -4281,58 +4287,68 @@ export default function App() {
       }
     });
 
-    let unsubscribePurchases: () => void = () => {};
-    let unsubscribePayments: () => void = () => {};
-    let unsubscribeUserWithdrawals: () => void = () => {};
-
-    if (user) {
-      const qPurchases = query(collection(db, 'purchases'), where('userId', '==', user.uid), orderBy('purchasedAt', 'desc'), limit(50));
-      unsubscribePurchases = onSnapshot(qPurchases, (snapshot) => {
-        const purchases = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setMyPurchases(purchases);
-        localStorage.setItem(`cache_my_purchases_${user.uid}`, JSON.stringify(purchases));
-      }, (err) => {
-        handleListenerError('Purchases', err);
-        const cached = localStorage.getItem(`cache_my_purchases_${user.uid}`);
-        if (cached) {
-          try { setMyPurchases(JSON.parse(cached)); } catch(e) {}
-        }
-      });
-
-      const qPayments = query(collection(db, 'payments'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(50));
-      unsubscribePayments = onSnapshot(qPayments, (snapshot) => {
-        const payments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setUserPayments(payments);
-        localStorage.setItem(`cache_user_payments_${user.uid}`, JSON.stringify(payments));
-      }, (err) => {
-        handleListenerError('Payments', err);
-        const cached = localStorage.getItem(`cache_user_payments_${user.uid}`);
-        if (cached) {
-          try { setUserPayments(JSON.parse(cached)); } catch(e) {}
-        }
-      });
-
-      const qUserWithdrawals = query(collection(db, 'withdrawals'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(50));
-      unsubscribeUserWithdrawals = onSnapshot(qUserWithdrawals, (snapshot) => {
-        const withdrawals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setUserWithdrawals(withdrawals);
-        localStorage.setItem(`cache_user_withdrawals_${user.uid}`, JSON.stringify(withdrawals));
-      }, (err) => {
-        handleListenerError('UserWithdrawals', err);
-        const cached = localStorage.getItem(`cache_user_withdrawals_${user.uid}`);
-        if (cached) {
-          try { setUserWithdrawals(JSON.parse(cached)); } catch(e) {}
-        }
-      });
-    }
-
     return () => {
       unsubscribeMarket();
+    };
+  }, [view, quotaExceeded]);
+
+  // Real-time User-specific Data (Purchases, Payments, Withdrawals) always active when logged in
+  useEffect(() => {
+    if (!user) return;
+
+    // Load user purchases and payments from cache first
+    const cachedPurch = localStorage.getItem(`cache_my_purchases_${user.uid}`);
+    const cachedPay = localStorage.getItem(`cache_user_payments_${user.uid}`);
+    const cachedWithdrawals = localStorage.getItem(`cache_user_withdrawals_${user.uid}`);
+    if (cachedPurch) { try { setMyPurchases(JSON.parse(cachedPurch)); } catch(e) {} }
+    if (cachedPay) { try { setUserPayments(JSON.parse(cachedPay)); } catch(e) {} }
+    if (cachedWithdrawals) { try { setUserWithdrawals(JSON.parse(cachedWithdrawals)); } catch(e) {} }
+
+    const qPurchases = query(collection(db, 'purchases'), where('userId', '==', user.uid), orderBy('purchasedAt', 'desc'), limit(50));
+    const unsubscribePurchases = onSnapshot(qPurchases, (snapshot) => {
+      const purchases = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setMyPurchases(purchases);
+      localStorage.setItem(`cache_my_purchases_${user.uid}`, JSON.stringify(purchases));
+    }, (err) => {
+      handleListenerError('Purchases', err);
+      const cached = localStorage.getItem(`cache_my_purchases_${user.uid}`);
+      if (cached) {
+        try { setMyPurchases(JSON.parse(cached)); } catch(e) {}
+      }
+    });
+
+    const qPayments = query(collection(db, 'payments'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(50));
+    const unsubscribePayments = onSnapshot(qPayments, (snapshot) => {
+      const payments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setUserPayments(payments);
+      localStorage.setItem(`cache_user_payments_${user.uid}`, JSON.stringify(payments));
+    }, (err) => {
+      handleListenerError('Payments', err);
+      const cached = localStorage.getItem(`cache_user_payments_${user.uid}`);
+      if (cached) {
+        try { setUserPayments(JSON.parse(cached)); } catch(e) {}
+      }
+    });
+
+    const qUserWithdrawals = query(collection(db, 'withdrawals'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(50));
+    const unsubscribeUserWithdrawals = onSnapshot(qUserWithdrawals, (snapshot) => {
+      const withdrawals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setUserWithdrawals(withdrawals);
+      localStorage.setItem(`cache_user_withdrawals_${user.uid}`, JSON.stringify(withdrawals));
+    }, (err) => {
+      handleListenerError('UserWithdrawals', err);
+      const cached = localStorage.getItem(`cache_user_withdrawals_${user.uid}`);
+      if (cached) {
+        try { setUserWithdrawals(JSON.parse(cached)); } catch(e) {}
+      }
+    });
+
+    return () => {
       unsubscribePurchases();
       unsubscribePayments();
       unsubscribeUserWithdrawals();
     };
-  }, [user, view, quotaExceeded]);
+  }, [user]);
 
   // 1. Subscribe to active chat room messages - Enriched with caching
   useEffect(() => {
@@ -4742,7 +4758,7 @@ export default function App() {
           if (listingData.sellerId && listingData.sellerId !== 'admin') {
             const sellerRef = doc(db, 'profiles', listingData.sellerId);
             transaction.update(sellerRef, {
-              earningsBalance: increment(Number(listingData.price)),
+              balance: increment(Number(listingData.price)),
               totalSales: increment(1),
               totalEarned: increment(Number(listingData.price)),
               updatedAt: serverTimestamp()
@@ -4897,7 +4913,7 @@ export default function App() {
         if (listing.sellerId && listing.sellerId !== 'admin') {
           const sellerRef = doc(db, 'profiles', listing.sellerId);
           transaction.update(sellerRef, {
-            earningsBalance: increment(Number(listing.price)),
+            balance: increment(Number(listing.price)),
             totalSales: increment(1),
             totalEarned: increment(Number(listing.price)),
             updatedAt: serverTimestamp()
@@ -5138,14 +5154,19 @@ export default function App() {
       setIsBulkBuyMode(false);
 
       if (isDeposit) {
-        setIsDepositCompleted(true);
+        setShowPaymentModal({ show: false, price: 0 });
+        setIsPaymentSent(false);
+        setCurrentPaymentId(null);
+        setView('transactions');
         setTimeout(() => {
-          setIsDepositCompleted(false);
-          setShowPaymentModal({ show: false, price: 0 });
-          setIsPaymentSent(false);
-          setCurrentPaymentId(null);
-          setView('transactions');
-        }, 3200);
+          const historyEl = document.getElementById('recent-history-section');
+          if (historyEl) {
+            historyEl.classList.add('ring-2', 'ring-emerald-500/50');
+            setTimeout(() => {
+              historyEl.classList.remove('ring-2', 'ring-emerald-500/50');
+            }, 2000);
+          }
+        }, 150);
         return;
       }
 
@@ -5417,7 +5438,7 @@ export default function App() {
             if (lData.sellerId && lData.sellerId !== 'admin') {
               const sellerRef = doc(db, 'profiles', lData.sellerId);
               transaction.update(sellerRef, {
-                earningsBalance: increment(Number(lData.price)),
+                balance: increment(Number(lData.price)),
                 totalSales: increment(1),
                 totalEarned: increment(Number(lData.price)),
                 updatedAt: serverTimestamp()
@@ -7361,6 +7382,7 @@ export default function App() {
                       onClick={() => {
                         const availableIds = filteredMarketListings.map(l => l.id);
                         const allSelected = availableIds.every(id => selectedListings.includes(id));
+                        setIsBulkBuyMode(true);
                         if (allSelected) {
                           setSelectedListings(selectedListings.filter(id => !availableIds.includes(id)));
                         } else {
@@ -7370,7 +7392,7 @@ export default function App() {
                       className="flex-1 px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-slate-50 transition-all active:scale-95"
                     >
                       <CheckSquare size={12} strokeWidth={2.5} className="text-red-600" />
-                      {filteredMarketListings.every(l => selectedListings.includes(l.id)) ? 'Deselect' : 'Select All'}
+                      {filteredMarketListings.length > 0 && filteredMarketListings.every(l => selectedListings.includes(l.id)) ? 'Deselect All' : 'Select All'}
                     </button>
                     <button 
                       onClick={() => {
@@ -7383,6 +7405,16 @@ export default function App() {
                       {isBulkBuyMode ? 'Cancel' : 'Bulk'}
                     </button>
                   </div>
+
+                  {isBulkBuyMode && (
+                    <div className="bg-red-50 border border-red-100 rounded-xl p-2.5 text-left text-[9.5px] font-bold text-red-600 leading-normal flex items-start gap-1.5 animate-in fade-in duration-300">
+                      <div className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5 animate-pulse shrink-0" />
+                      <span>
+                        <strong>বাল্ক মোড চালু আছে:</strong> নিচের জিমেইলগুলোতে ক্লিক করে আপনার পছন্দমতো সিলেক্ট করুন অথবা <strong>Select All</strong> ক্লিক করে সবগুলো একসাথে সিলেক্ট করে নিচের বাটন থেকে এক সাথে কিনুন!
+                      </span>
+                    </div>
+                  )}
+
                   {selectedListings.length > 0 && (
                     <div className="flex gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
                       <button 
@@ -7812,20 +7844,27 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* Transaction Statistics */}
-                  <div className="grid grid-cols-2 gap-4">
-                     <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Sales</p>
-                        <p className="text-2xl font-black text-slate-800">{sellerListings.filter(l => l.status === 'Sold').length}</p>
+
+
+                  {/* Transaction History Section */}
+                  <div className="flex items-center justify-between mt-6 bg-slate-50/80 border border-slate-100 rounded-3xl p-4 shadow-sm">
+                     <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Deposit:</span>
+                        <button
+                          type="button"
+                          onClick={() => setShowPaymentModal({ show: true, price: 100, listingId: 'deposit' })}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-sm font-sans"
+                        >
+                          <Plus size={12} strokeWidth={2.5} /> Deposit Now
+                        </button>
                      </div>
-                     <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Earned</p>
-                        <p className="text-2xl font-black text-green-600">৳{userProfile?.totalEarned?.toFixed(0) || '0'}</p>
+                     <div className="flex flex-col items-end">
+                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Deposit Balance</span>
+                        <span className="text-sm font-black text-[#2E7D32]">৳{userProfile?.balance?.toFixed(2) || '0.00'}</span>
                      </div>
                   </div>
 
-                  {/* Transaction History Section */}
-                  <div className="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-sm mt-6">
+                  <div id="recent-history-section" className="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-sm mt-4 transition-all duration-500">
                     <div className="p-6 border-b border-slate-50 flex items-center justify-between">
                        <h3 className="font-black text-slate-800 text-xs uppercase tracking-widest flex items-center gap-2">
                           <Clock size={14} className="text-red-600" />
@@ -8914,7 +8953,27 @@ export default function App() {
                             <span className="text-slate-900 font-black text-[12px]">Total</span>
                             <span className="font-black text-[#2D8A4E] text-sm md:text-base">BDT {fbConfirmingItem.price || 4.40}</span>
                           </div>
+
+                          <div className="border-t border-slate-200/50" />
+
+                          {/* Available Deposit Balance */}
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-600 font-bold flex items-center gap-1">
+                              <Wallet size={12} className="text-[#2D8A4E]" />
+                              Your Balance:
+                            </span>
+                            <span className={`font-black ${userProfile && userProfile.balance >= (fbConfirmingItem.price || 4.40) ? 'text-[#2D8A4E]' : 'text-rose-500'}`}>
+                              ৳{userProfile?.balance?.toFixed(2) || '0.00'}
+                            </span>
+                          </div>
                         </div>
+
+                        {userProfile && userProfile.balance < (fbConfirmingItem.price || 4.40) && (
+                          <div className="mt-3 bg-red-50 border border-red-100 px-3 py-2 rounded-xl text-left text-[9px] font-bold text-rose-600 leading-normal flex items-start gap-1">
+                            <AlertCircle size={12} className="shrink-0 mt-0.5 text-rose-500 animate-pulse" />
+                            <span>আপনার ডেপোজিট ব্যালেন্স পর্যাপ্ত নয়! দয়া করে আগে রিচার্জ/ডেপোজিট করুন।</span>
+                          </div>
+                        )}
 
                         <p className="text-[10.5px] font-bold text-slate-400 text-left mt-3.5 leading-relaxed">
                           Balance থেকে কেটে নেওয়া হবে। ২৪ ঘণ্টার মধ্যে সমস্যা report করতে পারবেন।
@@ -11071,7 +11130,13 @@ export default function App() {
 
                               <div className="text-right shrink-0">
                                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">মূল্য / Payout</span>
-                                <p className="text-base font-black text-slate-900">৳{item.price || '0'}</p>
+                                {(() => {
+                                  const priceObj = gmailPrices[item.type];
+                                  const displayPrice = priceObj?.seller ? parseFloat(priceObj.seller) : item.price;
+                                  return (
+                                    <p className="text-base font-black text-slate-900">৳{displayPrice || '0'}</p>
+                                  );
+                                })()}
                                 {(item.paymentStatus === 'Paid' || item.payoutTrxId) && (
                                   <div className="mt-1">
                                     <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase tracking-wider inline-block">
@@ -11265,6 +11330,39 @@ export default function App() {
                           className="space-y-3"
                         >
                           {showPaymentModal.listingId !== 'deposit' && (
+                            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-left space-y-2">
+                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block pl-0.5">Order Summary</span>
+                              
+                              <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 font-sans">
+                                <span>আইটেম মূল্য (Total Price):</span>
+                                <span className="text-slate-900 font-extrabold">৳{showPaymentModal.price.toFixed(2)}</span>
+                              </div>
+                              
+                              <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 border-t border-slate-200/40 pt-2 font-sans">
+                                <span className="flex items-center gap-1 text-slate-600">
+                                  <Wallet size={12} className="text-blue-500" />
+                                  আপনার ডেপোজিট ব্যালেন্স:
+                                </span>
+                                <span className={`font-black ${userProfile && userProfile.balance >= showPaymentModal.price ? 'text-emerald-600' : 'text-rose-500'}`}>
+                                  ৳{userProfile?.balance?.toFixed(2) || '0.00'}
+                                </span>
+                              </div>
+
+                              {userProfile && userProfile.balance >= showPaymentModal.price ? (
+                                <div className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-xl border border-emerald-100/50 flex items-center gap-1">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                  জিমেইল কিনতে আপনার ব্যালেন্স পর্যাপ্ত আছে।
+                                </div>
+                              ) : (
+                                <div className="text-[9px] font-bold text-rose-600 bg-rose-50 px-2 py-1 rounded-xl border border-rose-100/50 flex items-center gap-1">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></div>
+                                  আপনার ডেপোজিট ব্যালেন্স কম আছে।
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {showPaymentModal.listingId !== 'deposit' && (
                             <div className="space-y-2">
                               {userProfile && userProfile.balance >= showPaymentModal.price ? (
                                 <button
@@ -11289,7 +11387,7 @@ export default function App() {
                                   ) : (
                                     <>
                                       <CheckCircle size={14} />
-                                      Wallet Balance দিয়ে কিনুন
+                                      Wallet Balance দিয়ে কিনুন (মূল্য: ৳{showPaymentModal.price.toFixed(2)})
                                     </>
                                   )}
                                 </button>
@@ -11298,15 +11396,30 @@ export default function App() {
                                   <p className="text-[9.5px] font-bold text-amber-850 leading-normal flex items-start gap-1.5 font-sans">
                                     <AlertCircle size={12} className="shrink-0 mt-0.5 text-amber-600 animate-pulse" />
                                     <span>
-                                      আপনার ওয়ালেট ব্যালেন্স পর্যাপ্ত নয়! জিমেইল কিনতে চাইলে দয়া করে আগে ব্যালেন্স ডেপোজিট করুন।
+                                      আপনার ওয়ালেট ব্যালেন্স পর্যাপ্ত নয়! (আপনার ব্যালেন্স: ৳{userProfile?.balance?.toFixed(2) || '0.00'}, প্রয়োজনীয় মূল্য: ৳{showPaymentModal.price.toFixed(2)})। জিমেইল কিনতে চাইলে দয়া করে আগে ব্যালেন্স ডেপোজিট করুন।
                                     </span>
                                   </p>
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      setView('profile');
-                                      setShowDepositArea(true);
-                                      setShowPaymentModal({ show: true, price: 100, listingId: 'deposit' });
+                                      const hasAnyDeposit = userPayments && userPayments.some((p: any) => p.listingId === 'deposit' || p.isDeposit || p.type === 'deposit');
+                                      if (hasAnyDeposit) {
+                                        setShowPaymentModal({ show: false, price: 0 });
+                                        setView('transactions');
+                                        setTimeout(() => {
+                                          const historyEl = document.getElementById('recent-history-section');
+                                          if (historyEl) {
+                                            historyEl.classList.add('ring-2', 'ring-emerald-500/50');
+                                            setTimeout(() => {
+                                              historyEl.classList.remove('ring-2', 'ring-emerald-500/50');
+                                            }, 2000);
+                                          }
+                                        }, 150);
+                                      } else {
+                                        setView('profile');
+                                        setShowDepositArea(true);
+                                        setShowPaymentModal({ show: true, price: 100, listingId: 'deposit' });
+                                      }
                                     }}
                                     className="w-full bg-red-650 hover:bg-red-750 text-white py-2 rounded-xl text-[9.5px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md font-sans"
                                   >
@@ -11828,7 +11941,7 @@ export default function App() {
                             <div>
                               <h3 className="font-extrabold text-slate-800 text-base leading-tight">Withdrawal Console</h3>
                               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
-                                {withdrawMode === 'referral' ? 'Referral Balance' : 'Sales Balance'}
+                                {withdrawMode === 'referral' ? 'Referral Balance' : 'Ads Earnings Balance'}
                               </p>
                             </div>
                           </div>
@@ -11929,17 +12042,17 @@ export default function App() {
 
                                  await updateDoc(doc(db, 'profiles', user!.uid), {
                                    successfulReferrals: 0,
-                                   earningsBalance: increment(-amount)
+                                   balance: increment(-amount)
                                  });
                                  
                                  setUserProfile((prev: any) => ({ 
                                    ...prev, 
                                    successfulReferrals: 0,
-                                   earningsBalance: (prev.earningsBalance || 0) - amount
+                                   balance: (prev.balance || 0) - amount
                                  }));
                                } else {
                                  if ((userProfile?.earningsBalance || 0) < amount) {
-                                   alert('আপনার সেল ব্যালেন্স পর্যাপ্ত নয়!');
+                                   alert('আপনার বিজ্ঞাপন আয় ব্যালেন্স পর্যাপ্ত নয়!');
                                    return;
                                  }
 
