@@ -1501,7 +1501,7 @@ export default function App() {
     return merged.sort((a, b) => (b.totalSpent || 0) - (a.totalSpent || 0));
   };
   const [totalUsersCount, setTotalUsersCount] = useState(0);
-  const [noticeText, setNoticeText] = useState("Used জিমেইল মিনিমাম ২পিস সেল-করতে হবে🔘sell দেওয়ার পর পাসওয়ার্ড**পরিবর্তন করলে payment পাবেন না🔘 পেমেন্ট পেতে দেরি হলে সরাসরি customer সার্ভিস যোগাযোগ করুন-8801410731308।২৪ ঘন্টা পর পেমেন্ট auto payment verify হবে🎧 24/7 Support");
+  const [noticeText, setNoticeText] = useState("Used জিমেইল মিনিমাম ২পিস সেল-করতে হবে🔘sell দেওয়ার পর পাসওয়ার্ড**পরিবর্তন করলে payment পাবেন না🔘 পেমেন্ট পেতে দেরি হলে সরাসরি customer সার্ভিস যোগাযোগ করুন-8801857902383।২৪ ঘন্টা পর পেমেন্ট auto payment verify হবে🎧 24/7 Support");
   const [pendingNotice, setPendingNotice] = useState("");
   const [homeBgColor, setHomeBgColor] = useState("#ffffff");
   const [pendingHomeBgColor, setPendingHomeBgColor] = useState("#ffffff");
@@ -1734,7 +1734,7 @@ export default function App() {
     try {
       try {
         await updateDoc(doc(db, 'profiles', user.uid), {
-          balance: increment(1.00),
+          earningsBalance: increment(1.00),
           totalEarned: increment(1.00),
           lastCheckInDate: todayStr
         });
@@ -1743,7 +1743,7 @@ export default function App() {
         const cacheKey = `cache_profile_${user.uid}`;
         const cached = localStorage.getItem(cacheKey);
         let localProfileData = cached ? JSON.parse(cached) : { ...userProfile };
-        localProfileData.balance = (localProfileData.balance || 0) + 1.00;
+        localProfileData.earningsBalance = (localProfileData.earningsBalance || 0) + 1.00;
         localProfileData.totalEarned = (localProfileData.totalEarned || 0) + 1.00;
         localProfileData.lastCheckInDate = todayStr;
         localStorage.setItem(cacheKey, JSON.stringify(localProfileData));
@@ -1752,7 +1752,7 @@ export default function App() {
       setUserProfile((prev: any) => {
         const newVal = {
           ...prev,
-          balance: (prev?.balance || 0) + 1.00,
+          earningsBalance: (prev?.earningsBalance || 0) + 1.00,
           totalEarned: (prev?.totalEarned || 0) + 1.00,
           lastCheckInDate: todayStr
         };
@@ -1787,7 +1787,7 @@ export default function App() {
       try {
         try {
           await updateDoc(doc(db, 'profiles', user.uid), {
-            balance: increment(1.00),
+            earningsBalance: increment(1.00),
             totalEarned: increment(1.00),
             hasJoinedTelegram: true
           });
@@ -1796,7 +1796,7 @@ export default function App() {
           const cacheKey = `cache_profile_${user.uid}`;
           const cached = localStorage.getItem(cacheKey);
           let localProfileData = cached ? JSON.parse(cached) : { ...userProfile };
-          localProfileData.balance = (localProfileData.balance || 0) + 1.00;
+          localProfileData.earningsBalance = (localProfileData.earningsBalance || 0) + 1.00;
           localProfileData.totalEarned = (localProfileData.totalEarned || 0) + 1.00;
           localProfileData.hasJoinedTelegram = true;
           localStorage.setItem(cacheKey, JSON.stringify(localProfileData));
@@ -1805,7 +1805,7 @@ export default function App() {
         setUserProfile((prev: any) => {
           const newVal = {
             ...prev,
-            balance: (prev?.balance || 0) + 1.00,
+            earningsBalance: (prev?.earningsBalance || 0) + 1.00,
             totalEarned: (prev?.totalEarned || 0) + 1.00,
             hasJoinedTelegram: true
           };
@@ -1840,7 +1840,7 @@ export default function App() {
       try {
         try {
           await updateDoc(doc(db, 'profiles', user.uid), {
-            balance: increment(1.50),
+            earningsBalance: increment(1.50),
             totalEarned: increment(1.50),
             hasSubscribedYoutube: true
           });
@@ -1849,7 +1849,7 @@ export default function App() {
           const cacheKey = `cache_profile_${user.uid}`;
           const cached = localStorage.getItem(cacheKey);
           let localProfileData = cached ? JSON.parse(cached) : { ...userProfile };
-          localProfileData.balance = (localProfileData.balance || 0) + 1.50;
+          localProfileData.earningsBalance = (localProfileData.earningsBalance || 0) + 1.50;
           localProfileData.totalEarned = (localProfileData.totalEarned || 0) + 1.50;
           localProfileData.hasSubscribedYoutube = true;
           localStorage.setItem(cacheKey, JSON.stringify(localProfileData));
@@ -1858,7 +1858,7 @@ export default function App() {
         setUserProfile((prev: any) => {
           const newVal = {
             ...prev,
-            balance: (prev?.balance || 0) + 1.50,
+            earningsBalance: (prev?.earningsBalance || 0) + 1.50,
             totalEarned: (prev?.totalEarned || 0) + 1.50,
             hasSubscribedYoutube: true
           };
@@ -2157,19 +2157,9 @@ export default function App() {
     return () => unsubscribe();
   }, [user]);
 
+  // Safe helper to log notifications internally. CallMeBot background API calls are disabled to prevent WhatsApp account suspension by Meta filters.
   const sendWhatsApp = async (text: string) => {
-    const adminPhone = "+8801410731308"; 
-    const apiKey = "jSq722CSG1oe"; 
-    
-    if (adminPhone && apiKey) {
-      const phoneEncoded = window.encodeURIComponent(adminPhone);
-      const textEncoded = window.encodeURIComponent(text);
-      try {
-        fetch(`https://api.callmebot.com/whatsapp.php?phone=${phoneEncoded}&text=${textEncoded}&apikey=${apiKey}`, { mode: 'no-cors' });
-      } catch (err) {
-        console.error("WhatsApp failed:", err);
-      }
-    }
+    console.log("Safe notification logged:", text);
   };
 
   useEffect(() => {
@@ -3373,7 +3363,6 @@ export default function App() {
         const referrerRef = doc(db, 'profiles', referrerId);
         
         await updateDoc(referrerRef, {
-          balance: increment(5),
           successfulReferrals: increment(1)
         });
 
@@ -3912,7 +3901,6 @@ export default function App() {
         if (listingData.sellerId && listingData.sellerId !== 'admin') {
           const sellerRef = doc(db, 'profiles', listingData.sellerId);
           transaction.update(sellerRef, {
-            balance: increment(sellerEarning),
             totalSales: increment(1),
             totalEarned: increment(sellerEarning),
             updatedAt: serverTimestamp()
@@ -4758,7 +4746,6 @@ export default function App() {
           if (listingData.sellerId && listingData.sellerId !== 'admin') {
             const sellerRef = doc(db, 'profiles', listingData.sellerId);
             transaction.update(sellerRef, {
-              balance: increment(Number(listingData.price)),
               totalSales: increment(1),
               totalEarned: increment(Number(listingData.price)),
               updatedAt: serverTimestamp()
@@ -4913,7 +4900,6 @@ export default function App() {
         if (listing.sellerId && listing.sellerId !== 'admin') {
           const sellerRef = doc(db, 'profiles', listing.sellerId);
           transaction.update(sellerRef, {
-            balance: increment(Number(listing.price)),
             totalSales: increment(1),
             totalEarned: increment(Number(listing.price)),
             updatedAt: serverTimestamp()
@@ -5438,7 +5424,6 @@ export default function App() {
             if (lData.sellerId && lData.sellerId !== 'admin') {
               const sellerRef = doc(db, 'profiles', lData.sellerId);
               transaction.update(sellerRef, {
-                balance: increment(Number(lData.price)),
                 totalSales: increment(1),
                 totalEarned: increment(Number(lData.price)),
                 updatedAt: serverTimestamp()
@@ -7271,7 +7256,7 @@ export default function App() {
 
                     {/* Live Support */}
                     <a 
-                      href="https://wa.me/8801410731308"
+                      href="https://wa.me/8801857902383"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="bg-white rounded-xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)] p-3.5 flex flex-col justify-between transition-all hover:shadow-md hover:border-emerald-200 cursor-pointer active:scale-98 group hover:bg-emerald-50/10 text-left"
@@ -11499,13 +11484,13 @@ export default function App() {
                                     <span className="pt-0.5">SEND MONEY (Personal - {paymentForm.method.toUpperCase()})</span>
                                   </div>
                                   <p className="text-lg font-black text-slate-800 tracking-tight lg:text-xl select-all font-mono">
-                                    {paymentForm.method === 'bkash' ? '01857902383' : '01410731308'}
+                                    {paymentForm.method === 'bkash' ? '01857902383' : '01857902383'}
                                   </p>
                                 </div>
                                 <button 
                                   type="button"
                                   onClick={() => {
-                                    const num = paymentForm.method === 'bkash' ? '01857902383' : '01410731308';
+                                    const num = paymentForm.method === 'bkash' ? '01857902383' : '01857902383';
                                     navigator.clipboard.writeText(num);
                                     alert("Number copied!");
                                   }}
@@ -12041,14 +12026,12 @@ export default function App() {
                                  });
 
                                  await updateDoc(doc(db, 'profiles', user!.uid), {
-                                   successfulReferrals: 0,
-                                   balance: increment(-amount)
+                                   successfulReferrals: 0
                                  });
                                  
                                  setUserProfile((prev: any) => ({ 
                                    ...prev, 
-                                   successfulReferrals: 0,
-                                   balance: (prev.balance || 0) - amount
+                                   successfulReferrals: 0
                                  }));
                                } else {
                                  if ((userProfile?.earningsBalance || 0) < amount) {
@@ -12383,21 +12366,42 @@ export default function App() {
             </>
           )}
         </AnimatePresence>
-        <a 
-          id="site-chat-button"
-          href="https://wa.me/8801410731308"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="fixed bottom-24 right-6 w-14 h-14 bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-full shadow-[0_16px_48px_-12px_rgba(37,211,102,0.5)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-40 group cursor-pointer"
-          title="Contact Support on WhatsApp"
-        >
-          <svg 
-            className="w-8 h-8 fill-current" 
-            viewBox="0 0 24 24"
+        {/* Floating Action Buttons */}
+        <div className="fixed bottom-20 right-5 sm:bottom-24 sm:right-6 flex flex-col gap-3 z-40 items-center">
+          {/* WhatsApp Button */}
+          <a 
+            id="site-chat-button"
+            href="https://wa.me/8801857902383"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-13 h-13 sm:w-14 sm:h-14 bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-full shadow-[0_16px_48px_-12px_rgba(37,211,102,0.5)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all group cursor-pointer"
+            title="Contact Support on WhatsApp"
           >
-            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.963C16.578 1.98 14.115 1.053 11.5 1.053c-5.442 0-9.868 4.371-9.872 9.799-.001 1.761.464 3.481 1.347 4.981l-.972 3.548 3.65-.955zm11.163-5.263c-.302-.15-1.78-.876-2.053-.974-.273-.098-.472-.147-.671.15-.197.297-.767.974-.94 1.169-.173.195-.347.218-.648.069-.302-.15-1.272-.469-2.423-1.493-.895-.796-1.5-1.78-1.275-2.17.223-.389.023-.601-.176-.797-.18-.177-.347-.405-.52-.607-.173-.203-.23-.347-.13-.548.1-.2.05-.376-.025-.525-.075-.15-.671-1.616-.92-2.215-.242-.582-.488-.504-.671-.513-.173-.008-.372-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.78-.727 2.03-1.429.25-.701.25-1.3.173-1.43-.075-.129-.273-.203-.574-.353z" />
-          </svg>
-        </a>
+            <svg 
+              className="w-7 h-7 sm:w-8 sm:h-8 fill-current" 
+              viewBox="0 0 24 24"
+            >
+              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.963C16.578 1.98 14.115 1.053 11.5 1.053c-5.442 0-9.868 4.371-9.872 9.799-.001 1.761.464 3.481 1.347 4.981l-.972 3.548 3.65-.955zm11.163-5.263c-.302-.15-1.78-.876-2.053-.974-.273-.098-.472-.147-.671.15-.197.297-.767.974-.94 1.169-.173.195-.347.218-.648.069-.302-.15-1.272-.469-2.423-1.493-.895-.796-1.5-1.78-1.275-2.17.223-.389.023-.601-.176-.797-.18-.177-.347-.405-.52-.607-.173-.203-.23-.347-.13-.548.1-.2.05-.376-.025-.525-.075-.15-.671-1.616-.92-2.215-.242-.582-.488-.504-.671-.513-.173-.008-.372-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.78-.727 2.03-1.429.25-.701.25-1.3.173-1.43-.075-.129-.273-.203-.574-.353z" />
+            </svg>
+          </a>
+
+          {/* Messenger Button */}
+          <a 
+            id="site-messenger-button"
+            href="https://m.me/ebashraful.eamin"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-13 h-13 sm:w-14 sm:h-14 bg-gradient-to-tr from-[#006AFF] via-[#0084FF] to-[#A855F7] hover:opacity-95 text-white rounded-full shadow-[0_16px_48px_-12px_rgba(0,106,255,0.5)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all group cursor-pointer"
+            title="Chat with EB AshraFul on Messenger"
+          >
+            <svg 
+              className="w-7 h-7 sm:w-8 sm:h-8 fill-current" 
+              viewBox="0 0 24 24"
+            >
+              <path d="M12 2C6.477 2 2 6.145 2 11.258c0 2.91 1.455 5.51 3.733 7.18-.195.968-.707 2.37-1.6 3.398 0 0 1.806.208 3.755-.838A10.378 10.378 0 0012 20.516c5.523 0 10-4.145 10-9.258S17.523 2 12 2zm1.06 12.336l-2.613-2.784-5.1 2.784 5.61-5.952 2.613 2.784 5.1-2.784-5.61 5.952z"/>
+            </svg>
+          </a>
+        </div>
 
         {/* Mobile Footer Navigation */}
         <AnimatePresence>
@@ -12887,9 +12891,10 @@ export default function App() {
               { 
                 title: 'Support', 
                 links: [
-                  { label: '+8801410731308', href: 'https://wa.me/8801410731308' },
-                  { label: 'Live Support', href: 'https://wa.me/8801410731308' },
-                  { label: 'Contact Us', href: 'tel:01857902383' }
+                  { label: '+8801857902383', href: 'https://wa.me/8801857902383' },
+                  { label: 'Live Support (WhatsApp)', href: 'https://wa.me/8801857902383' },
+                  { label: 'Messenger Chat (@ebashraful.eamin)', href: 'https://m.me/ebashraful.eamin' },
+                  { label: 'Contact Us', href: 'tel:01410731308' }
                 ] 
               },
               { 
@@ -12942,7 +12947,7 @@ export default function App() {
             </div>
             <div className="flex flex-wrap items-center justify-center gap-6 text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] pt-4 font-sans">
                 <a 
-                  href="https://wa.me/8801410731308" 
+                  href="https://wa.me/8801857902383" 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="flex items-center gap-2 hover:text-[#2E7D32] transition-colors"
@@ -12971,7 +12976,7 @@ export default function App() {
           </div>
           
           <a 
-            href="https://wa.me/8801410731308" 
+            href="https://wa.me/8801857902383" 
             target="_blank" 
             rel="noopener noreferrer" 
             className="block group bg-emerald-50/5 hover:bg-emerald-50/20 border border-emerald-500/20 hover:border-emerald-500/40 p-4 rounded-2xl transition-all shadow-xs"
@@ -13250,7 +13255,7 @@ export default function App() {
               {/* System Footer */}
               <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] pt-4">
                 <a 
-                  href="https://wa.me/8801410731308" 
+                  href="https://wa.me/8801857902383" 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="flex items-center gap-2 hover:text-[#2E7D32] transition-colors"

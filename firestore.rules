@@ -132,6 +132,7 @@ service cloud.firestore {
              (!('twoFactor' in data) || (data.twoFactor is string));
     }
 
+    // Facebook Listings validator
     function isValidFacebookListing(data) {
       return data.category is string && data.category.size() <= 200 &&
              data.phone is string && data.phone.size() <= 100 &&
@@ -223,7 +224,7 @@ service cloud.firestore {
     // Registries for uniqueness
     match /used_trx_ids/{trxId} {
       allow get: if isSignedIn() && isValidId(trxId);
-      allow create: if isSignedIn() && isValidTrxRegistration(incoming());
+      allow create: if isSignedIn() && isValidId(trxId) && isValidTrxRegistration(incoming());
     }
 
     // Settings
@@ -234,8 +235,10 @@ service cloud.firestore {
 
     // Profiles
     match /profiles/{userId} {
-      allow read: if isSignedIn();
-      allow create: if isOwner(userId) && isValidProfile(incoming()) && (
+      allow get: if isSignedIn() && isValidId(userId);
+      allow list: if isAdmin();
+      
+      allow create: if isOwner(userId) && isValidId(userId) && isValidProfile(incoming()) && (
         isSystemAdmin() || (
           (!('role' in incoming()) || incoming().role == 'user') &&
           (!('balance' in incoming()) || incoming().balance == 0) &&
@@ -245,39 +248,56 @@ service cloud.firestore {
           (!('totalSales' in incoming()) || incoming().totalSales == 0) &&
           (!('totalOrders' in incoming()) || incoming().totalOrders == 0) &&
           (!('successfulReferrals' in incoming()) || incoming().successfulReferrals == 0) &&
-          (!('adsWatchedToday' in incoming()) || incoming().adsWatchedToday == 0)
+          (!('adsWatchedToday' in incoming()) || incoming().adsWatchedToday == 0) &&
+          (incoming().createdAt == request.time)
         )
       );
       
-      allow update: if isSignedIn() && (
+      allow update: if isSignedIn() && isValidId(userId) && (
         isAdmin() || 
-        // Relational Update: Buyer/Seller stats transfer during purchase (from Admin / Backend transaction)
-        // We trust these specific keys because they are only updated in transactions
-        (incoming().diff(existing()).affectedKeys().hasOnly([
-          'totalSales', 'totalEarned', 'earningsBalance', 'updatedAt', 'balance', 'totalOrders', 
-          'totalSpent', 'successfulReferrals', 'hasTransacted', 'hasDeposited'
-        ])) ||
-        // Owner updates own profile (Self care)
-        (isOwner(userId) && isValidProfile(incoming()) && (
-          // Basic fields update - Standard Users CANNOT update role, balance, or stats
-          incoming().diff(existing()).affectedKeys().hasOnly([
-            'displayName', 'photoURL', 'phone', 'bkashNumber', 'nagadNumber',
-            'firstName', 'lastName', 'age', 'address', 'hasSeenWelcome',
-            'updatedAt', 'referredBy', 'hasTransacted'
-          ]) ||
-          // Action: Claim ad earnings reward which increments earningsBalance, totalEarned, and sets adsWatchedToday/lastAdWatchedDate
-          incoming().diff(existing()).affectedKeys().hasOnly([
-            'earningsBalance', 'totalEarned', 'adsWatchedToday', 'lastAdWatchedDate'
-          ])
-        ))
+        (
+          // Ensure immortal fields don't change
+          incoming().createdAt == existing().createdAt &&
+          (!('uid' in incoming()) || incoming().uid == existing().uid) &&
+          (!('email' in incoming()) || incoming().email == existing().email) &&
+          (!('numericId' in incoming()) || incoming().numericId == existing().numericId) &&
+          (!('role' in incoming()) || incoming().role == existing().role) &&
+          // Check that updatedAt is request.time
+          (!('updatedAt' in incoming()) || incoming().updatedAt == request.time) &&
+          
+          (
+            // Relational Update: Buyer/Seller stats transfer during purchase (from Admin / Backend transaction)
+            // We trust these specific keys because they are only updated in transactions
+            (incoming().diff(existing()).affectedKeys().hasOnly([
+              'totalSales', 'totalEarned', 'earningsBalance', 'updatedAt', 'balance', 'totalOrders', 
+              'totalSpent', 'successfulReferrals', 'hasTransacted', 'hasDeposited'
+            ])) ||
+            // Owner updates own profile (Self care)
+            (isOwner(userId) && isValidProfile(incoming()) && (
+              // Basic fields update - Standard Users CANNOT update role, balance, or stats
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'displayName', 'photoURL', 'phone', 'bkashNumber', 'nagadNumber',
+                'firstName', 'lastName', 'age', 'address', 'hasSeenWelcome',
+                'updatedAt', 'referredBy', 'hasTransacted'
+              ]) ||
+              // Action: Claim ad earnings reward which increments earningsBalance, totalEarned, and sets adsWatchedToday/lastAdWatchedDate
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'earningsBalance', 'totalEarned', 'adsWatchedToday', 'lastAdWatchedDate'
+              ])
+            ))
+          )
+        )
       );
     }
 
     // Withdrawals
     match /withdrawals/{withdrawalId} {
       allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isSignedIn() && isValidWithdrawal(incoming());
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin()) && isValidId(withdrawalId);
+      allow create: if isSignedIn() && isValidId(withdrawalId) && isValidWithdrawal(incoming()) && 
+                    incoming().userId == request.auth.uid && 
+                    incoming().status == 'pending' &&
+                    incoming().createdAt == request.time;
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
@@ -285,8 +305,11 @@ service cloud.firestore {
     // Reports
     match /reports/{reportId} {
       allow list: if isSignedIn() && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid || isAdmin());
-      allow get: if isSignedIn() && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid || isAdmin());
-      allow create: if isSignedIn() && isValidReport(incoming());
+      allow get: if isSignedIn() && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid || isAdmin()) && isValidId(reportId);
+      allow create: if isSignedIn() && isValidId(reportId) && isValidReport(incoming()) &&
+                    incoming().buyerId == request.auth.uid &&
+                    incoming().status == 'pending' &&
+                    incoming().createdAt == request.time;
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
@@ -296,25 +319,37 @@ service cloud.firestore {
       allow list: if true;
       allow get: if true; 
 
-      allow create: if isSignedIn() && (
+      allow create: if isSignedIn() && isValidId(listingId) && (
         (isAdmin() && isValidListing(incoming())) ||
         (!isAdmin() && isValidListing(incoming()) && incoming().status == 'SellRequest' && incoming().sellerId == request.auth.uid)
       );
 
-      allow update: if isSignedIn() && isValidListing(incoming()) && (
+      allow update: if isSignedIn() && isValidId(listingId) && isValidListing(incoming()) && (
         isAdmin() || 
-        // Seller can update their own listing before it's sold
-        (isOwner(existing().sellerId) && 
-          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'price', 'gmailAccount', 'type', 'description', 'bkashNumber', 'nagadNumber', 'emailHash', 'buyerDisputeReason'])) ||
-        // Buyer flow: User marks it as Pending (Available -> Pending)
-        (existing().status == 'Available' && 
-          incoming().status == 'Pending' && 
-          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])) ||
-        // Buyer flow: User marks it as Sold to themselves (Available -> Sold)
-        (existing().status == 'Available' && 
-          incoming().status == 'Sold' && 
-          incoming().soldTo == request.auth.uid &&
-          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'soldTo', 'updatedAt', 'soldPrice', 'paymentStatus']))
+        (
+          // Terminal State Locking: if the listing is already in a terminal state, standard user cannot update it
+          !(existing().status in ['Sold', 'Deleted', 'Rejected', 'Refunded']) &&
+          
+          // Ensure immortal fields don't change
+          (!('sellerId' in incoming()) || incoming().sellerId == existing().sellerId) &&
+          (!('createdAt' in incoming()) || incoming().createdAt == existing().createdAt) &&
+          (!('updatedAt' in incoming()) || incoming().updatedAt == request.time) &&
+          
+          (
+            // Seller can update their own listing before it's sold
+            (isOwner(existing().sellerId) && 
+              incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'price', 'gmailAccount', 'type', 'description', 'bkashNumber', 'nagadNumber', 'emailHash', 'buyerDisputeReason'])) ||
+            // Buyer flow: User marks it as Pending (Available -> Pending)
+            (existing().status == 'Available' && 
+              incoming().status == 'Pending' && 
+              incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])) ||
+            // Buyer flow: User marks it as Sold to themselves (Available -> Sold)
+            (existing().status == 'Available' && 
+              incoming().status == 'Sold' && 
+              incoming().soldTo == request.auth.uid &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['status', 'soldTo', 'updatedAt', 'soldPrice', 'paymentStatus']))
+          )
+        )
       );
       
       allow delete: if isAdmin();
@@ -344,23 +379,33 @@ service cloud.firestore {
         resource.data.sellerId == request.auth.uid || 
         resource.data.soldTo == request.auth.uid || 
         isAdmin()
-      ));
-      allow create: if isSignedIn() && isValidFacebookListing(incoming()) && (
+      )) && isValidId(listingId);
+      allow create: if isSignedIn() && isValidId(listingId) && isValidFacebookListing(incoming()) && (
         isAdmin() ||
         (incoming().sellerId == request.auth.uid && incoming().status == 'Live')
       ) && (incoming().createdAt == request.time);
-      allow update: if isSignedIn() && isValidFacebookListing(incoming()) && (
+      allow update: if isSignedIn() && isValidId(listingId) && isValidFacebookListing(incoming()) && (
         isAdmin() ||
-        // Action: Seller updates their listing credentials or details
-        (resource.data.sellerId == request.auth.uid && 
-          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'phone', 'password', 'twoFA']) &&
-          incoming().sellerId == existing().sellerId) ||
-        // Action: Buyer/Market checkout flow
-        (existing().status == 'Live' && 
-          incoming().status == 'Sold' && 
-          incoming().soldTo == request.auth.uid &&
-          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'soldTo', 'soldPrice', 'soldAt']) &&
-          incoming().sellerId == existing().sellerId)
+        (
+          // Terminal State Locking
+          !(existing().status in ['Sold', 'Dispute']) &&
+          
+          // Ensure immortal fields don't change
+          (!('sellerId' in incoming()) || incoming().sellerId == existing().sellerId) &&
+          (!('createdAt' in incoming()) || incoming().createdAt == existing().createdAt) &&
+          (!('updatedAt' in incoming()) || incoming().updatedAt == request.time) &&
+          
+          (
+            // Action: Seller updates their listing credentials or details
+            (existing().sellerId == request.auth.uid && 
+              incoming().diff(existing()).affectedKeys().hasOnly(['status', 'phone', 'password', 'twoFA', 'title', 'description', 'price', 'imageUrl', 'isLiveMarket'])) ||
+            // Action: Buyer/Market checkout flow
+            (existing().status == 'Live' && 
+              incoming().status == 'Sold' && 
+              incoming().soldTo == request.auth.uid &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['status', 'soldTo', 'soldPrice', 'soldAt']))
+          )
+        )
       );
       allow delete: if isSignedIn() && (resource.data.sellerId == request.auth.uid || isAdmin());
     }
@@ -368,17 +413,24 @@ service cloud.firestore {
     // Purchases
     match /purchases/{purchaseId} {
       allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isSignedIn() && isValidPurchase(incoming()) && purchaseId == (request.auth.uid + '_' + incoming().listingId);
-      allow update: if isAdmin() || (isSignedIn() && isOwner(existing().userId) && incoming().diff(existing()).affectedKeys().hasOnly(['credentials', 'status']));
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin()) && isValidId(purchaseId);
+      allow create: if isSignedIn() && isValidId(purchaseId) && isValidPurchase(incoming()) && 
+                    purchaseId == (request.auth.uid + '_' + incoming().listingId) &&
+                    incoming().purchasedAt == request.time &&
+                    incoming().userId == request.auth.uid;
+      allow update: if isAdmin() || (isSignedIn() && isOwner(existing().userId) && 
+                    incoming().diff(existing()).affectedKeys().hasOnly(['credentials', 'status']));
       allow delete: if isAdmin();
     }
 
     // Payments
     match /payments/{paymentId} {
       allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isSignedIn() && isValidPayment(incoming());
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin()) && isValidId(paymentId);
+      allow create: if isSignedIn() && isValidId(paymentId) && isValidPayment(incoming()) &&
+                    incoming().userId == request.auth.uid &&
+                    incoming().status == 'pending' &&
+                    incoming().createdAt == request.time;
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
@@ -386,19 +438,23 @@ service cloud.firestore {
     // Notifications
     match /notifications/{notificationId} {
       allow list: if isSignedIn() && (resource.data.toUserId == request.auth.uid || isAdmin());
-      allow get: if isSignedIn() && (resource.data.toUserId == request.auth.uid || isAdmin());
-      allow create: if isSignedIn() && isValidNotification(incoming());
-      allow update: if isSignedIn() && (
+      allow get: if isSignedIn() && (resource.data.toUserId == request.auth.uid || isAdmin()) && isValidId(notificationId);
+      allow create: if isSignedIn() && isValidId(notificationId) && isValidNotification(incoming()) &&
+                    (incoming().fromUserId == request.auth.uid || incoming().fromUserId == 'system') &&
+                    incoming().createdAt == request.time;
+      allow update: if isSignedIn() && isValidId(notificationId) && (
         isAdmin() || 
         (resource.data.toUserId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['read']))
       );
-      allow delete: if isSignedIn() && (resource.data.toUserId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (resource.data.toUserId == request.auth.uid || isAdmin()) && isValidId(notificationId);
     }
 
     // Reviews
     match /reviews/{reviewId} {
       allow read: if true;
-      allow create: if isSignedIn() && isValidReview(incoming());
+      allow create: if isSignedIn() && isValidId(reviewId) && isValidReview(incoming()) &&
+                    incoming().userId == request.auth.uid &&
+                    incoming().createdAt == request.time;
       allow update, delete: if isAdmin();
     }
 
@@ -415,8 +471,10 @@ service cloud.firestore {
         resource.data.receiverId == request.auth.uid || 
         ('participants' in resource.data && request.auth.uid in resource.data.participants) ||
         isAdmin()
-      );
-      allow create: if isSignedIn() && isValidDirectChat(incoming()) && (incoming().createdAt == request.time);
+      ) && isValidId(messageId);
+      allow create: if isSignedIn() && isValidId(messageId) && isValidDirectChat(incoming()) && 
+                    incoming().senderId == request.auth.uid &&
+                    incoming().createdAt == request.time;
       allow update: if false; // Messages are immutable after sending
       allow delete: if isAdmin();
     }
