@@ -1547,6 +1547,17 @@ export default function App() {
     return () => clearInterval(interval);
   }, [adClickedTime, adWatchStatus]);
 
+  // Keep browser top bar theme-color metadata set to blue (#1D4ED8) at all times
+  useEffect(() => {
+    let metaTag = document.querySelector('meta[name="theme-color"]');
+    if (!metaTag) {
+      metaTag = document.createElement('meta');
+      metaTag.setAttribute('name', 'theme-color');
+      document.head.appendChild(metaTag);
+    }
+    metaTag.setAttribute('content', '#1D4ED8');
+  }, []);
+
   useEffect(() => {
     setAdsEarnError(null);
     setAdsEarnSuccess(null);
@@ -5784,10 +5795,10 @@ export default function App() {
           setNoticeText(data.text);
           setPendingNotice(data.text);
           localStorage.setItem('cache_notice', data.text);
-          // Keep homeBgColor, navBgColor, headerBgColor locked to #ffffff
+          // Keep homeBgColor, navBgColor, and headerBgColor clean white
           setHomeBgColor("#ffffff");
           setNavBgColor("#ffffff");
-          setHeaderBgColor("#ffffff");
+          setHeaderBgColor(data.headerBgColor || "#ffffff");
 
           if (data.mainBoxColor) {
             const finalCol = data.mainBoxColor === "#000d26" ? "#054335" : data.mainBoxColor;
@@ -6387,19 +6398,21 @@ export default function App() {
 
           {/* Consistent Top Header Bar */}
           <header 
-            className="sticky top-0 backdrop-blur-md border-b border-slate-100 py-2 sm:py-3.5 px-2.5 sm:px-4 flex items-center justify-between z-50 select-none shadow-[0_1px_10px_rgba(0,0,0,0.015)]"
-            style={{ backgroundColor: headerBgColor }}
+            className="sticky top-0 backdrop-blur-md border-b border-slate-100 py-2 sm:py-3.5 px-2.5 sm:px-4 flex items-center justify-between z-50 select-none shadow-3xs bg-white"
+            style={{ backgroundColor: headerBgColor || "#ffffff" }}
           >
             <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 min-w-0">
-              <div className="flex items-center gap-1 sm:gap-2 shrink-0 min-w-0">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 bg-[#4F46E5]/10 border border-[#4F46E5]/20 rounded-xl flex items-center justify-center text-[#4F46E5] shadow-3xs shrink-0">
-                  <Mail size={14} className="sm:w-[16px] sm:h-[16px]" strokeWidth={2.5} />
+              <div className="flex items-center gap-2 shrink-0 min-w-0">
+                <div className="w-8.5 h-8.5 sm:w-9.5 sm:h-9.5 bg-[#4F46E5]/10 border border-[#4F46E5]/20 rounded-xl flex items-center justify-center text-[#4F46E5] shadow-2xs shrink-0">
+                  <Mail size={18} className="sm:w-[19px] sm:h-[19px] text-[#4F46E5]" strokeWidth={2.8} />
                 </div>
-                <div className="text-left leading-none shrink-0 min-w-0">
-                  <h1 className="font-sans text-[11px] min-[360px]:text-[12px] sm:text-[13.5px] font-black text-slate-900 tracking-tight leading-none whitespace-nowrap">
-                    TopMail Sell <span className="text-[#4F46E5]">BD</span>
+                <div className="text-left leading-tight shrink-0 min-w-0">
+                  <h1 className="font-sans text-[13px] min-[360px]:text-[14.5px] sm:text-[16px] font-black tracking-tight leading-none whitespace-nowrap flex items-center gap-1 text-slate-900">
+                    <span className="text-[#4F46E5] font-black">TopMail</span>
+                    <span className="text-slate-900 font-black">Sell</span>
+                    <span className="bg-[#4F46E5]/10 text-[#4F46E5] border border-[#4F46E5]/20 text-[10px] sm:text-[11px] font-black px-1.5 py-0.5 rounded-md leading-none">BD</span>
                   </h1>
-                  <p className="text-[6.5px] min-[360px]:text-[7px] sm:text-[7.5px] font-black tracking-widest text-[#64748B] uppercase mt-0.5 sm:mt-1 leading-none whitespace-nowrap">
+                  <p className="text-[8px] min-[360px]:text-[8.5px] sm:text-[9px] font-black tracking-widest text-[#64748B] uppercase mt-1 leading-none whitespace-nowrap">
                      TRUSTED MARKETPLACE
                   </p>
                 </div>
@@ -6420,16 +6433,16 @@ export default function App() {
                     title="Traffic Security Shield Active: Monetag bypassed/secured" 
                     className="flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-700 px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[9px] font-bold cursor-pointer hover:bg-amber-100 transition-colors active:scale-95"
                   >
-                    <ShieldAlert size={11} className="text-amber-650 animate-bounce" strokeWidth={2.5} />
+                    <ShieldAlert size={11} className="text-amber-600 animate-bounce" strokeWidth={2.5} />
                     <span className="text-[8.5px] font-black uppercase tracking-wider text-amber-700">SHIELD ACTIVE</span>
                   </button>
                 ) : (
                   <div 
                     title="System Secure: Monetag protection active"
-                    className="flex items-center gap-1 bg-emerald-50 border border-emerald-100 text-emerald-850 px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[9px] font-bold"
+                    className="flex items-center gap-1 bg-emerald-50 border border-emerald-100 text-emerald-800 px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[9px] font-bold"
                   >
                     <ShieldCheck size={11} className="text-emerald-600" strokeWidth={2.5} />
-                    <span className="hidden md:inline text-[8.5px] font-black uppercase tracking-wider text-emerald-600">SECURE TRAFFIC</span>
+                    <span className="hidden md:inline text-[8.5px] font-black uppercase tracking-wider text-emerald-700">SECURE TRAFFIC</span>
                   </div>
                 )}
               </div>
@@ -6437,9 +6450,9 @@ export default function App() {
               {/* Wallet Button */}
               <button 
                 onClick={handleDepositTrigger}
-                className="bg-amber-50 hover:bg-amber-100 border border-amber-200/60 px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl font-bold flex items-center gap-1 text-[9px] min-[360px]:text-[10px] sm:text-xs text-amber-700 tracking-wider shadow-3xs cursor-pointer active:scale-95 transition-all shrink-0 whitespace-nowrap animation-pulse"
+                className="bg-amber-50 hover:bg-amber-100 border border-amber-200/80 px-2 sm:px-2.5 py-1.5 rounded-xl font-black flex items-center gap-1 text-[10px] min-[360px]:text-[10.5px] sm:text-xs text-amber-800 tracking-wider shadow-2xs cursor-pointer active:scale-95 transition-all shrink-0 whitespace-nowrap"
               >
-                <Wallet size={11} className="text-amber-600 sm:w-[12px] sm:h-[12px] shrink-0" strokeWidth={2.5} />
+                <Wallet size={12} className="text-amber-700 sm:w-[13px] sm:h-[13px] shrink-0" strokeWidth={2.5} />
                 <span className="font-black whitespace-nowrap">৳ {userProfile?.balance !== undefined ? userProfile.balance.toFixed(0) : '0'}</span>
               </button>
 
@@ -6447,11 +6460,12 @@ export default function App() {
               <div id="notifications-dropdown" className="relative shrink-0">
                 <button 
                   onClick={() => { setIsNotificationsOpen(!isNotificationsOpen); }}
-                  className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl relative transition-all active:scale-90 cursor-pointer shrink-0 ${isNotificationsOpen ? 'bg-red-50 text-red-600' : 'bg-slate-50 hover:bg-slate-100 text-slate-650 hover:text-red-600'}`}
+                  className={`w-8.5 h-8.5 sm:w-9.5 sm:h-9.5 flex items-center justify-center rounded-xl relative transition-all active:scale-90 cursor-pointer shrink-0 ${isNotificationsOpen ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/80'}`}
+                  title="Notifications"
                 >
-                  <Bell size={15} className="sm:w-[17px] sm:h-[17px]" strokeWidth={2.2} />
+                  <Bell size={16} className="sm:w-[18px] sm:h-[18px]" strokeWidth={2.2} />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-600 text-white font-black text-[7px] sm:text-[8px] w-4 h-4 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                    <span className="absolute -top-1 -right-1 bg-red-600 text-white font-black text-[8px] sm:text-[8.5px] w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-white shadow-md">
                       {unreadCount}
                     </span>
                   )}
@@ -6609,9 +6623,14 @@ export default function App() {
               <div id="three-dot-menu" className="relative shrink-0">
                 <button 
                   onClick={() => setIsHeaderDropdownOpen(!isHeaderDropdownOpen)}
-                  className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-650 hover:text-red-600 relative transition-all active:scale-90 cursor-pointer shrink-0"
+                  className={`w-8.5 h-8.5 sm:w-9.5 sm:h-9.5 flex items-center justify-center rounded-xl relative transition-all active:scale-95 cursor-pointer shrink-0 ${
+                    isHeaderDropdownOpen 
+                      ? 'bg-indigo-600 text-white border border-indigo-500 shadow-md shadow-indigo-500/30 ring-2 ring-indigo-200' 
+                      : 'bg-white hover:bg-indigo-50 text-slate-800 hover:text-indigo-600 border border-slate-200 hover:border-indigo-200 shadow-2xs'
+                  }`}
+                  title="Menu"
                 >
-                  <MoreVertical size={15} className="sm:w-[17px] sm:h-[17px]" strokeWidth={2.2} />
+                  <Menu size={18} className={`sm:w-[19px] sm:h-[19px] transition-transform duration-200 ${isHeaderDropdownOpen ? 'rotate-90' : ''}`} strokeWidth={2.6} />
                 </button>
                 
                 <AnimatePresence>
