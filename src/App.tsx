@@ -11660,13 +11660,13 @@ export default function App() {
                                     <span className="pt-0.5">SEND MONEY (Personal - {paymentForm.method.toUpperCase()})</span>
                                   </div>
                                   <p className="text-lg font-black text-slate-800 tracking-tight lg:text-xl select-all font-mono">
-                                    {paymentForm.method === 'bkash' ? '01857902383' : '01857902383'}
+                                    {paymentForm.method === 'bkash' ? '01857902383' : '01410731308'}
                                   </p>
                                 </div>
                                 <button 
                                   type="button"
                                   onClick={() => {
-                                    const num = paymentForm.method === 'bkash' ? '01857902383' : '01857902383';
+                                    const num = paymentForm.method === 'bkash' ? '01857902383' : '01410731308';
                                     navigator.clipboard.writeText(num);
                                     alert("Number copied!");
                                   }}
