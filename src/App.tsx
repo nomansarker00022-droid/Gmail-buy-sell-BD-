@@ -6963,7 +6963,164 @@ export default function App() {
                   </button>
                 </div>
 
+                {/* Community Group & Channel Direct Join Links (Above Adsterra) */}
+                <div className="flex flex-col gap-2.5 my-4">
+                  {/* 1. Support 24/7 */}
+                  <a
+                    href="https://t.me/topmail_sell"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-3 sm:p-3.5 bg-gradient-to-r from-amber-500/15 to-orange-500/10 hover:from-amber-500/25 hover:to-orange-500/20 border border-amber-500/30 rounded-2xl shadow-sm transition-all duration-300 active:scale-[0.98] group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(245,158,11,0.3)] group-hover:scale-105 transition-transform">
+                        <svg className="w-6 h-6 sm:w-6.5 sm:h-6.5 fill-current" viewBox="0 0 24 24">
+                          <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                        </svg>
+                      </div>
+                      <div className="text-left min-w-0">
+                        <h4 className="text-xs sm:text-sm font-black text-slate-800 tracking-tight flex items-center gap-1.5">
+                          Support 24/7
+                          <span className="bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase">Live Chat</span>
+                        </h4>
+                        <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">যেকোনো সমস্যা ও সাপোর্টের জন্য সরাসরি যোগাযোগ করুন</p>
+                      </div>
+                    </div>
+                    <div className="bg-amber-500 text-white p-2 rounded-xl shrink-0 shadow-xs group-hover:translate-x-0.5 transition-transform">
+                      <ArrowRight size={16} strokeWidth={2.8} />
+                    </div>
+                  </a>
 
+                  {/* 2. Admin Messenger */}
+                  <a
+                    href="https://m.me/ebashraful.eamin"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-3 sm:p-3.5 bg-gradient-to-r from-[#006AFF]/15 to-[#A855F7]/10 hover:from-[#006AFF]/25 hover:to-[#A855F7]/20 border border-[#006AFF]/30 rounded-2xl shadow-sm transition-all duration-300 active:scale-[0.98] group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-[#006AFF] via-[#0084FF] to-[#A855F7] text-white flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(0,106,255,0.3)] group-hover:scale-105 transition-transform">
+                        <svg className="w-6 h-6 sm:w-6.5 sm:h-6.5 fill-current" viewBox="0 0 24 24">
+                          <path d="M12 2C6.477 2 2 6.145 2 11.258c0 2.91 1.455 5.51 3.733 7.18-.195.968-.707 2.37-1.6 3.398 0 0 1.806.208 3.755-.838A10.378 10.378 0 0012 20.516c5.523 0 10-4.145 10-9.258S17.523 2 12 2zm1.06 12.336l-2.613-2.784-5.1 2.784 5.61-5.952 2.613 2.784 5.1-2.784-5.61 5.952z"/>
+                        </svg>
+                      </div>
+                      <div className="text-left min-w-0">
+                        <h4 className="text-xs sm:text-sm font-black text-slate-800 tracking-tight flex items-center gap-1.5">
+                          Admin Messenger
+                          <span className="bg-[#0084FF] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase">Live Chat</span>
+                        </h4>
+                        <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">এডমিনের সাথে মেসেঞ্জারে সরাসরি কথা বলুন</p>
+                      </div>
+                    </div>
+                    <div className="bg-[#0084FF] text-white p-2 rounded-xl shrink-0 shadow-xs group-hover:translate-x-0.5 transition-transform">
+                      <ArrowRight size={16} strokeWidth={2.8} />
+                    </div>
+                  </a>
+
+                  {/* 3. Telegram group */}
+                  <a
+                    href="https://t.me/topmailsell"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-3 sm:p-3.5 bg-gradient-to-r from-[#0088cc]/15 to-[#0088cc]/5 hover:from-[#0088cc]/25 hover:to-[#0088cc]/15 border border-[#0088cc]/30 rounded-2xl shadow-sm transition-all duration-300 active:scale-[0.98] group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#0088cc] text-white flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(0,136,204,0.3)] group-hover:scale-105 transition-transform">
+                        <svg className="w-6 h-6 sm:w-6.5 sm:h-6.5 fill-current" viewBox="0 0 24 24">
+                          <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                        </svg>
+                      </div>
+                      <div className="text-left min-w-0">
+                        <h4 className="text-xs sm:text-sm font-black text-slate-800 tracking-tight flex items-center gap-1.5">
+                          Telegram group
+                          <span className="bg-[#0088cc] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase">Join Group</span>
+                        </h4>
+                        <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">আমাদের টেলিগ্রাম গ্রুপে যুক্ত হয়ে সবার সাথে কথা বলুন</p>
+                      </div>
+                    </div>
+                    <div className="bg-[#0088cc] text-white p-2 rounded-xl shrink-0 shadow-xs group-hover:translate-x-0.5 transition-transform">
+                      <ArrowRight size={16} strokeWidth={2.8} />
+                    </div>
+                  </a>
+
+                  {/* 4. Telegram Channel */}
+                  <a
+                    href="https://t.me/topmailsellbd"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-3 sm:p-3.5 bg-gradient-to-r from-[#229ED9]/15 to-[#0088cc]/10 hover:from-[#229ED9]/25 hover:to-[#0088cc]/20 border border-[#229ED9]/30 rounded-2xl shadow-sm transition-all duration-300 active:scale-[0.98] group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-[#0088cc] to-[#229ED9] text-white flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(34,158,217,0.3)] group-hover:scale-105 transition-transform">
+                        <svg className="w-6 h-6 sm:w-6.5 sm:h-6.5 fill-current" viewBox="0 0 24 24">
+                          <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                        </svg>
+                      </div>
+                      <div className="text-left min-w-0">
+                        <h4 className="text-xs sm:text-sm font-black text-slate-800 tracking-tight flex items-center gap-1.5">
+                          Telegram Channel
+                          <span className="bg-[#229ED9] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase">Join Channel</span>
+                        </h4>
+                        <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">অফিশিয়াল টেলিগ্রাম চ্যানেলে সরাসরি যুক্ত হোন</p>
+                      </div>
+                    </div>
+                    <div className="bg-[#229ED9] text-white p-2 rounded-xl shrink-0 shadow-xs group-hover:translate-x-0.5 transition-transform">
+                      <ArrowRight size={16} strokeWidth={2.8} />
+                    </div>
+                  </a>
+
+                  {/* 5. WhatsApp group */}
+                  <a
+                    href="https://chat.whatsapp.com/LCp0X4D6cMY4l4yT22Uj6Q?s=cl&p=a&ilr=0"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-3 sm:p-3.5 bg-gradient-to-r from-[#25D366]/15 to-[#20ba5a]/10 hover:from-[#25D366]/25 hover:to-[#20ba5a]/20 border border-[#25D366]/30 rounded-2xl shadow-sm transition-all duration-300 active:scale-[0.98] group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(37,211,102,0.3)] group-hover:scale-105 transition-transform">
+                        <svg className="w-6 h-6 sm:w-6.5 sm:h-6.5 fill-current" viewBox="0 0 24 24">
+                          <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.963C16.578 1.98 14.115 1.053 11.5 1.053c-5.442 0-9.868 4.371-9.872 9.799-.001 1.761.464 3.481 1.347 4.981l-.972 3.548 3.65-.955zm11.163-5.263c-.302-.15-1.78-.876-2.053-.974-.273-.098-.472-.147-.671.15-.197.297-.767.974-.94 1.169-.173.195-.347.218-.648.069-.302-.15-1.272-.469-2.423-1.493-.895-.796-1.5-1.78-1.275-2.17.223-.389.023-.601-.176-.797-.18-.177-.347-.405-.52-.607-.173-.203-.23-.347-.13-.548.1-.2.05-.376-.025-.525-.075-.15-.671-1.616-.92-2.215-.242-.582-.488-.504-.671-.513-.173-.008-.372-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.78-.727 2.03-1.429.25-.701.25-1.3.173-1.43-.075-.129-.273-.203-.574-.353z" />
+                        </svg>
+                      </div>
+                      <div className="text-left min-w-0">
+                        <h4 className="text-xs sm:text-sm font-black text-slate-800 tracking-tight flex items-center gap-1.5">
+                          WhatsApp group
+                          <span className="bg-[#25D366] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase">Join Now</span>
+                        </h4>
+                        <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">অফিশিয়াল হোয়াটসঅ্যাপ গ্রুপে সরাসরি যুক্ত হন</p>
+                      </div>
+                    </div>
+                    <div className="bg-[#25D366] text-white p-2 rounded-xl shrink-0 shadow-xs group-hover:translate-x-0.5 transition-transform">
+                      <ArrowRight size={16} strokeWidth={2.8} />
+                    </div>
+                  </a>
+
+                  {/* 6. Facebook group */}
+                  <a
+                    href="https://www.facebook.com/share/g/1GGkiNRdZd/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-3 sm:p-3.5 bg-gradient-to-r from-[#1877F2]/15 to-[#0084FF]/10 hover:from-[#1877F2]/25 hover:to-[#0084FF]/20 border border-[#1877F2]/30 rounded-2xl shadow-sm transition-all duration-300 active:scale-[0.98] group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#1877F2] text-white flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(24,119,242,0.3)] group-hover:scale-105 transition-transform">
+                        <svg className="w-6 h-6 sm:w-6.5 sm:h-6.5 fill-current" viewBox="0 0 24 24">
+                          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                        </svg>
+                      </div>
+                      <div className="text-left min-w-0">
+                        <h4 className="text-xs sm:text-sm font-black text-slate-800 tracking-tight flex items-center gap-1.5">
+                          Facebook group
+                          <span className="bg-[#1877F2] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase">Join Group</span>
+                        </h4>
+                        <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">অফিশিয়াল ফেসবুক গ্রুপে সরাসরি যুক্ত হন</p>
+                      </div>
+                    </div>
+                    <div className="bg-[#1877F2] text-white p-2 rounded-xl shrink-0 shadow-xs group-hover:translate-x-0.5 transition-transform">
+                      <ArrowRight size={16} strokeWidth={2.8} />
+                    </div>
+                  </a>
+                </div>
 
                 {/* Adsterra/Google AdSense/Monetag Sponsor banner block */}
                 {adsterraEnabled || adsenseEnabled || monetagEnabled ? (
