@@ -25,8 +25,10 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes('remixed')) {
 const app = initializeApp(firebaseConfig);
 
 // Use initializeFirestore with memoryLocalCache to avoid IndexedDB issues in sandboxed iframes
+// and experimentalAutoDetectLongPolling for robust connectivity in proxy/iframe environments
 export const db = initializeFirestore(app, {
   localCache: memoryLocalCache(),
+  experimentalAutoDetectLongPolling: true,
 }, (firebaseConfig as any).firestoreDatabaseId || '(default)');
 
 // Robust Auth initialization for iframes and cross-origin environments
@@ -66,15 +68,18 @@ export interface FirestoreErrorInfo {
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const errorMessage = error instanceof Error ? error.message : String(error);
   
-  // Detect Quota Exceeded / Resource Exhausted errors quietly to prevent UI popups and banners
-  const isQuota = errorMessage.includes('Quota exceeded') || 
-                  errorMessage.includes('Quota limit exceeded') || 
-                  errorMessage.includes('Resource exhausted') ||
-                  errorMessage.includes('quota') ||
-                  errorMessage.includes('exhausted');
+  // Detect Quota Exceeded / Resource Exhausted / Connection Unavailable errors quietly to prevent UI popups and banners
+  const isQuotaOrNetwork = errorMessage.includes('Quota exceeded') || 
+                           errorMessage.includes('Quota limit exceeded') || 
+                           errorMessage.includes('Resource exhausted') ||
+                           errorMessage.includes('quota') ||
+                           errorMessage.includes('exhausted') ||
+                           errorMessage.includes('unavailable') ||
+                           errorMessage.includes('Could not reach Cloud Firestore backend') ||
+                           errorMessage.includes('offline');
                   
-  if (isQuota) {
-    console.info('Firestore Quota: Handled gracefully and suppressed to prevent disruption.');
+  if (isQuotaOrNetwork) {
+    console.info('Firestore Network/Quota: Handled gracefully and suppressed to prevent disruption.');
     return;
   }
 

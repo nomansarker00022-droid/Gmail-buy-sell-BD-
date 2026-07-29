@@ -15,7 +15,7 @@ import {
   MessageCircle, Crown, Filter, Layers, Clock, Calendar, Trophy, Users, Zap, Activity, Sparkles,
   ShoppingCart, Shield, Trash2, CheckCircle, Check, CheckSquare, Copy, Globe, Info, Tag,
   PlusSquare, Megaphone, Save, Share2, Camera, Facebook, Archive, Package, Download, Youtube, Upload, FileText, Volume2,
-  Palette,
+  Palette, Handshake,
   AlertTriangle, ExternalLink, ShieldAlert, Flame, Coins, MoreVertical, ArrowUpRight,
 } from 'lucide-react';
 import emailjs from '@emailjs/browser';
@@ -1789,8 +1789,8 @@ export default function App() {
       return;
     }
     
-    // Open Telegram Channel
-    window.open("https://t.getg.xyz/social_tg", "_blank");
+    // Open Telegram Channel safely
+    window.open("https://t.me/topmailsellbd", "_blank", "noopener,noreferrer");
     
     alert("অফিসিয়াল টেলিগ্রাম চ্যানেলে জয়েন করুন এবং ৫ সেকেন্ড পরে এই পেজে ফিরে ক্লেইম করুন!");
     
@@ -6833,7 +6833,7 @@ export default function App() {
                 <>
                   {/* Modern responsive hero segment */}
                   <section 
-                    className="relative -mx-4 -mt-4 rounded-none px-3 py-7 sm:p-7 text-white text-center flex flex-col items-center justify-center border-b border-emerald-950/20 shadow-lg select-none z-10 overflow-hidden"
+                    className="relative -mx-4 -mt-4 rounded-none px-3 pt-4 pb-2.5 sm:pt-5 sm:pb-3 text-white text-center flex flex-col items-center justify-center border-b border-emerald-950/20 shadow-lg select-none z-10 overflow-hidden"
                     style={{ 
                       backgroundColor: mainBoxColor,
                       backgroundImage: `
@@ -6850,50 +6850,60 @@ export default function App() {
                     </div>
 
                     {/* Brand Display heading */}
-                    <h1 className="text-4xl sm:text-5xl font-black tracking-tight leading-none text-white z-10 my-1 font-display">
+                    <h1 className="text-3xl sm:text-4xl font-black tracking-tight leading-none text-white z-10 my-0.5 font-display">
                       TopMail Sell BD
                     </h1>
 
-                    {/* Subheading Bengali with Glow */}
-                    <span className="text-lg sm:text-xl md:text-2xl font-black text-[#FFC72C] tracking-wide my-1.5 z-10 font-sans drop-shadow-[0_0_6px_rgba(255,199,44,0.3)]">
+                    {/* Subheading Bengali - High Clarity & Sharp Contrast */}
+                    <span className="text-3xl sm:text-4xl md:text-5xl font-black text-[#FFD700] tracking-normal my-2 z-10 font-sans drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">
                       সব কিছু এক জায়গায়
                     </span>
 
                     {/* Two Main Capsule Buttons stacked vertically and styled beautifully with high contrast */}
-                    <div className="flex flex-col gap-3 w-full max-w-[290px] xs:max-w-[340px] z-10 shrink-0 my-5">
-                      {/* Browse Services (White Button) */}
-                      <button 
-                        onClick={() => setView('gmail-market')}
+                    <div className="flex flex-col gap-2.5 w-full max-w-[280px] xs:max-w-[320px] z-10 shrink-0 my-3">
+                      {/* Support 24/7 (Live Chat) (White Button) */}
+                      <a 
+                        href="https://t.me/topmail_sell"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        referrerPolicy="no-referrer"
                         style={{ color: mainBoxColor }}
-                        className="bg-white hover:bg-white/95 active:scale-[0.98] py-3.5 px-6 rounded-full text-[13px] xs:text-[14px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_4px_14px_rgba(255,255,255,0.25)] hover:shadow-[0_6px_20px_rgba(255,255,255,0.35)] cursor-pointer"
+                        className="bg-white hover:bg-white/95 active:scale-[0.98] py-2.5 px-5 rounded-full text-[12px] xs:text-[13px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_4px_14px_rgba(255,255,255,0.25)] hover:shadow-[0_6px_20px_rgba(255,255,255,0.35)] cursor-pointer"
                       >
-                        <ShoppingCart size={16} style={{ color: mainBoxColor }} className="shrink-0" strokeWidth={2.5} />
-                        <span>Browse Services</span>
-                      </button>
+                        <svg className="w-4 h-4 shrink-0 fill-current" viewBox="0 0 24 24">
+                          <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                        </svg>
+                        <span>Support 24/7 (Live Chat)</span>
+                      </a>
 
-                      {/* Live Market (Yellow/Gold Button) */}
-                      <button 
-                        onClick={() => { setSelectedCategoryFilter('All'); setView('facebook-market'); }}
-                        className="bg-[#FFA000] hover:bg-[#FF8F00] active:scale-[0.98] text-[#054335] py-3.5 px-6 rounded-full text-[13px] xs:text-[14px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_4px_14px_rgba(255,199,44,0.35)] hover:shadow-[0_6px_20px_rgba(255,199,44,0.5)] cursor-pointer"
-                        style={{ color: mainBoxColor, backgroundColor: '#FFC72C' }}
+                      {/* Phone Contact Button */}
+                      <a 
+                        href="tel:01857902383"
+                        className="bg-[#FFC72C] hover:bg-[#ffb700] active:scale-[0.98] py-2.5 px-5 rounded-full text-[12px] xs:text-[13px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_4px_14px_rgba(255,199,44,0.35)] hover:shadow-[0_6px_20px_rgba(255,199,44,0.5)] cursor-pointer"
+                        style={{ color: mainBoxColor }}
                       >
-                        <Store size={16} style={{ color: mainBoxColor }} className="shrink-0" strokeWidth={2.5} />
-                        <span>Live Market</span>
-                      </button>
+                        <Phone size={15} style={{ color: mainBoxColor }} className="shrink-0" strokeWidth={2.5} />
+                        <span>01857902383</span>
+                      </a>
                     </div>
 
                     {/* Custom Translucent Escrow & Support Protection Board - Grid Integrated Info Row */}
-                    <div className="w-full z-10 mt-2 pt-4 border-t border-white/10 flex items-center justify-center gap-2 sm:gap-4 flex-nowrap text-white/95">
-                      <div className="flex items-center gap-1 text-[9px] xs:text-[11px] font-black font-sans shrink-0 whitespace-nowrap">
-                        <ShieldCheck className="text-[#00E5FF] drop-shadow-[0_0_5px_rgba(0,229,255,0.4)] shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.5} />
-                        <span>Escrow Instruction</span>
-                      </div>
+                    <div className="w-full z-10 mt-1 pt-2.5 border-t border-white/10 flex items-center justify-center gap-2 sm:gap-4 flex-nowrap text-white/95">
+                      <button
+                        type="button"
+                        onClick={() => setLegalModal('refund')}
+                        className="flex items-center gap-1 text-[9px] xs:text-[11px] font-black font-sans shrink-0 whitespace-nowrap cursor-pointer hover:text-[#00E5FF] transition-colors focus:outline-none group active:scale-95"
+                        title="Escrow Instruction & Policy"
+                      >
+                        <ShieldCheck className="text-[#00E5FF] drop-shadow-[0_0_5px_rgba(0,229,255,0.4)] shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:scale-110 transition-transform" strokeWidth={2.5} />
+                        <span className="hover:underline decoration-[#00E5FF] underline-offset-2">Escrow Instruction</span>
+                      </button>
                       
                       <span className="text-white/20 select-none">|</span>
                       
                       <div className="flex items-center gap-1 text-[9px] xs:text-[11px] font-black font-sans shrink-0 whitespace-nowrap">
                         <Zap className="text-[#FFC72C] fill-[#FFC72C] drop-shadow-[0_0_5px_rgba(255,199,44,0.4)] shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.5} />
-                        <span>bKash / Nagad</span>
+                        <span>bKash / Nagad / Rocket</span>
                       </div>
                       
                       <span className="text-white/20 select-none">|</span>
@@ -6965,33 +6975,7 @@ export default function App() {
 
                 {/* Community Group & Channel Direct Join Links (Above Adsterra) */}
                 <div className="flex flex-col gap-2.5 my-4">
-                  {/* 1. Support 24/7 */}
-                  <a
-                    href="https://t.me/topmail_sell"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between p-3 sm:p-3.5 bg-gradient-to-r from-amber-500/15 to-orange-500/10 hover:from-amber-500/25 hover:to-orange-500/20 border border-amber-500/30 rounded-2xl shadow-sm transition-all duration-300 active:scale-[0.98] group cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(245,158,11,0.3)] group-hover:scale-105 transition-transform">
-                        <svg className="w-6 h-6 sm:w-6.5 sm:h-6.5 fill-current" viewBox="0 0 24 24">
-                          <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
-                        </svg>
-                      </div>
-                      <div className="text-left min-w-0">
-                        <h4 className="text-xs sm:text-sm font-black text-slate-800 tracking-tight flex items-center gap-1.5">
-                          Support 24/7
-                          <span className="bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase">Live Chat</span>
-                        </h4>
-                        <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">যেকোনো সমস্যা ও সাপোর্টের জন্য সরাসরি যোগাযোগ করুন</p>
-                      </div>
-                    </div>
-                    <div className="bg-amber-500 text-white p-2 rounded-xl shrink-0 shadow-xs group-hover:translate-x-0.5 transition-transform">
-                      <ArrowRight size={16} strokeWidth={2.8} />
-                    </div>
-                  </a>
-
-                  {/* 2. Admin Messenger */}
+                  {/* 1. Admin Messenger */}
                   <a
                     href="https://m.me/ebashraful.eamin"
                     target="_blank"
@@ -7017,37 +7001,12 @@ export default function App() {
                     </div>
                   </a>
 
-                  {/* 3. Telegram group */}
-                  <a
-                    href="https://t.me/topmailsell"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between p-3 sm:p-3.5 bg-gradient-to-r from-[#0088cc]/15 to-[#0088cc]/5 hover:from-[#0088cc]/25 hover:to-[#0088cc]/15 border border-[#0088cc]/30 rounded-2xl shadow-sm transition-all duration-300 active:scale-[0.98] group cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#0088cc] text-white flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(0,136,204,0.3)] group-hover:scale-105 transition-transform">
-                        <svg className="w-6 h-6 sm:w-6.5 sm:h-6.5 fill-current" viewBox="0 0 24 24">
-                          <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
-                        </svg>
-                      </div>
-                      <div className="text-left min-w-0">
-                        <h4 className="text-xs sm:text-sm font-black text-slate-800 tracking-tight flex items-center gap-1.5">
-                          Telegram group
-                          <span className="bg-[#0088cc] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase">Join Group</span>
-                        </h4>
-                        <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">আমাদের টেলিগ্রাম গ্রুপে যুক্ত হয়ে সবার সাথে কথা বলুন</p>
-                      </div>
-                    </div>
-                    <div className="bg-[#0088cc] text-white p-2 rounded-xl shrink-0 shadow-xs group-hover:translate-x-0.5 transition-transform">
-                      <ArrowRight size={16} strokeWidth={2.8} />
-                    </div>
-                  </a>
-
-                  {/* 4. Telegram Channel */}
+                  {/* 3. Telegram Channel */}
                   <a
                     href="https://t.me/topmailsellbd"
                     target="_blank"
                     rel="noopener noreferrer"
+                    referrerPolicy="no-referrer"
                     className="flex items-center justify-between p-3 sm:p-3.5 bg-gradient-to-r from-[#229ED9]/15 to-[#0088cc]/10 hover:from-[#229ED9]/25 hover:to-[#0088cc]/20 border border-[#229ED9]/30 rounded-2xl shadow-sm transition-all duration-300 active:scale-[0.98] group cursor-pointer"
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -7069,33 +7028,7 @@ export default function App() {
                     </div>
                   </a>
 
-                  {/* 5. WhatsApp group */}
-                  <a
-                    href="https://chat.whatsapp.com/LCp0X4D6cMY4l4yT22Uj6Q?s=cl&p=a&ilr=0"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between p-3 sm:p-3.5 bg-gradient-to-r from-[#25D366]/15 to-[#20ba5a]/10 hover:from-[#25D366]/25 hover:to-[#20ba5a]/20 border border-[#25D366]/30 rounded-2xl shadow-sm transition-all duration-300 active:scale-[0.98] group cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(37,211,102,0.3)] group-hover:scale-105 transition-transform">
-                        <svg className="w-6 h-6 sm:w-6.5 sm:h-6.5 fill-current" viewBox="0 0 24 24">
-                          <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.963C16.578 1.98 14.115 1.053 11.5 1.053c-5.442 0-9.868 4.371-9.872 9.799-.001 1.761.464 3.481 1.347 4.981l-.972 3.548 3.65-.955zm11.163-5.263c-.302-.15-1.78-.876-2.053-.974-.273-.098-.472-.147-.671.15-.197.297-.767.974-.94 1.169-.173.195-.347.218-.648.069-.302-.15-1.272-.469-2.423-1.493-.895-.796-1.5-1.78-1.275-2.17.223-.389.023-.601-.176-.797-.18-.177-.347-.405-.52-.607-.173-.203-.23-.347-.13-.548.1-.2.05-.376-.025-.525-.075-.15-.671-1.616-.92-2.215-.242-.582-.488-.504-.671-.513-.173-.008-.372-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.78-.727 2.03-1.429.25-.701.25-1.3.173-1.43-.075-.129-.273-.203-.574-.353z" />
-                        </svg>
-                      </div>
-                      <div className="text-left min-w-0">
-                        <h4 className="text-xs sm:text-sm font-black text-slate-800 tracking-tight flex items-center gap-1.5">
-                          WhatsApp group
-                          <span className="bg-[#25D366] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase">Join Now</span>
-                        </h4>
-                        <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">অফিশিয়াল হোয়াটসঅ্যাপ গ্রুপে সরাসরি যুক্ত হন</p>
-                      </div>
-                    </div>
-                    <div className="bg-[#25D366] text-white p-2 rounded-xl shrink-0 shadow-xs group-hover:translate-x-0.5 transition-transform">
-                      <ArrowRight size={16} strokeWidth={2.8} />
-                    </div>
-                  </a>
-
-                  {/* 6. Facebook group */}
+                  {/* 5. Facebook group */}
                   <a
                     href="https://www.facebook.com/share/g/1GGkiNRdZd/"
                     target="_blank"
@@ -7448,6 +7381,71 @@ export default function App() {
                         <p className="text-[8px] font-bold text-slate-400 mt-0.5 leading-none">যেকোনো সাহায্য পেতে</p>
                       </div>
                     </a>
+                  </div>
+
+                  {/* Partnership Network Row */}
+                  <div className="mt-3 bg-white rounded-2xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)] p-3.5 text-left">
+                    <div className="flex items-center justify-between mb-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <Handshake size={14} className="text-blue-600" />
+                        <span className="text-[10px] sm:text-xs font-black text-slate-800 uppercase tracking-wider">Official Partnerships</span>
+                      </div>
+                      <span className="text-[8px] sm:text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100/60 uppercase tracking-wider">Verified Network</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-6 gap-2">
+                      {/* Google */}
+                      <div className="flex items-center justify-center gap-1.5 bg-slate-50/80 hover:bg-slate-100/80 border border-slate-200/60 rounded-xl px-2.5 py-2 transition-all group">
+                        <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        <span className="text-[10px] sm:text-[11px] font-black text-slate-700 group-hover:text-slate-900">Google</span>
+                      </div>
+
+                      {/* Meta */}
+                      <div className="flex items-center justify-center gap-1.5 bg-slate-50/80 hover:bg-slate-100/80 border border-slate-200/60 rounded-xl px-2.5 py-2 transition-all group">
+                        <svg className="w-4 h-4 shrink-0 text-[#0668E1]" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M16.82 5c-1.72 0-3.15.82-4.82 2.76C10.33 5.82 8.9 5 7.18 5 3.93 5 1.5 7.57 1.5 11c0 4.14 3.51 7.99 8.24 7.99 1.65 0 2.94-.52 4.26-2.01 1.32 1.49 2.61 2.01 4.26 2.01 4.73 0 8.24-3.85 8.24-7.99C22.5 7.57 20.07 5 16.82 5zm-9.64 12c-3.11 0-5.18-2.52-5.18-5.5 0-2.31 1.56-4 3.68-4 1.32 0 2.37.66 3.73 2.27L7.87 11.8c-.28.36-.6.58-.93.58-.33 0-.64-.2-.88-.54l-.4-.57a.75.75 0 0 0-1.23.86l.4.57c.5.7 1.22 1.13 2.11 1.13.92 0 1.68-.48 2.39-1.39l1.83-2.35c1.36-1.61 2.41-2.27 3.73-2.27 2.12 0 3.68 1.69 3.68 4 0 2.98-2.07 5.5-5.18 5.5-1.22 0-2.2-.41-3.32-1.63L12 13.88l-1.5 2.19C9.38 16.59 8.4 17 7.18 17z"/>
+                        </svg>
+                        <span className="text-[10px] sm:text-[11px] font-black text-slate-700 group-hover:text-slate-900">Meta</span>
+                      </div>
+
+                      {/* YouTube */}
+                      <div className="flex items-center justify-center gap-1.5 bg-slate-50/80 hover:bg-slate-100/80 border border-slate-200/60 rounded-xl px-2.5 py-2 transition-all group">
+                        <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                          <path fill="#FF0000" d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814z"/>
+                          <path fill="#FFFFFF" d="M9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                        </svg>
+                        <span className="text-[10px] sm:text-[11px] font-black text-slate-700 group-hover:text-slate-900">YouTube</span>
+                      </div>
+
+                      {/* Telegram */}
+                      <div className="flex items-center justify-center gap-1.5 bg-slate-50/80 hover:bg-slate-100/80 border border-slate-200/60 rounded-xl px-2.5 py-2 transition-all group">
+                        <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                          <path fill="#229ED9" d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.562 8.161c-.18 1.897-.962 6.502-1.359 8.627-.168.9-.5 1.201-.82 1.23-.697.064-1.226-.461-1.901-.903-1.056-.692-1.653-1.123-2.678-1.799-1.185-.781-.417-1.21.258-1.911.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.139-5.062 3.345-.479.329-.913.489-1.302.481-.428-.008-1.252-.241-1.865-.44-.752-.244-1.349-.374-1.297-.789.027-.216.324-.437.892-.663 3.498-1.524 5.831-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635.099-.002.321.023.465.14.121.098.155.232.171.326.016.094.037.308.02.484z"/>
+                        </svg>
+                        <span className="text-[10px] sm:text-[11px] font-black text-slate-700 group-hover:text-slate-900">Telegram</span>
+                      </div>
+
+                      {/* Twitter X */}
+                      <div className="flex items-center justify-center gap-1.5 bg-slate-50/80 hover:bg-slate-100/80 border border-slate-200/60 rounded-xl px-2.5 py-2 transition-all group">
+                        <svg className="w-3.5 h-3.5 shrink-0 text-slate-900" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                        </svg>
+                        <span className="text-[10px] sm:text-[11px] font-black text-slate-700 group-hover:text-slate-900">Twitter X</span>
+                      </div>
+
+                      {/* Monetag */}
+                      <div className="flex items-center justify-center gap-1.5 bg-slate-50/80 hover:bg-slate-100/80 border border-slate-200/60 rounded-xl px-2.5 py-2 transition-all group">
+                        <div className="w-4 h-4 rounded-md bg-[#2563EB] text-white flex items-center justify-center text-[9px] font-black tracking-tighter shrink-0 shadow-xs">
+                          M
+                        </div>
+                        <span className="text-[10px] sm:text-[11px] font-black text-slate-700 group-hover:text-slate-900">Monetag</span>
+                      </div>
+                    </div>
                   </div>
                 </section>
 
@@ -12542,42 +12540,7 @@ export default function App() {
             </>
           )}
         </AnimatePresence>
-        {/* Floating Action Buttons */}
-        <div className="fixed bottom-20 right-5 sm:bottom-24 sm:right-6 flex flex-col gap-3 z-40 items-center">
-          {/* WhatsApp Button */}
-          <a 
-            id="site-chat-button"
-            href="https://wa.me/8801857902383"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-13 h-13 sm:w-14 sm:h-14 bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-full shadow-[0_16px_48px_-12px_rgba(37,211,102,0.5)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all group cursor-pointer"
-            title="Contact Support on WhatsApp"
-          >
-            <svg 
-              className="w-7 h-7 sm:w-8 sm:h-8 fill-current" 
-              viewBox="0 0 24 24"
-            >
-              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.963C16.578 1.98 14.115 1.053 11.5 1.053c-5.442 0-9.868 4.371-9.872 9.799-.001 1.761.464 3.481 1.347 4.981l-.972 3.548 3.65-.955zm11.163-5.263c-.302-.15-1.78-.876-2.053-.974-.273-.098-.472-.147-.671.15-.197.297-.767.974-.94 1.169-.173.195-.347.218-.648.069-.302-.15-1.272-.469-2.423-1.493-.895-.796-1.5-1.78-1.275-2.17.223-.389.023-.601-.176-.797-.18-.177-.347-.405-.52-.607-.173-.203-.23-.347-.13-.548.1-.2.05-.376-.025-.525-.075-.15-.671-1.616-.92-2.215-.242-.582-.488-.504-.671-.513-.173-.008-.372-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.78-.727 2.03-1.429.25-.701.25-1.3.173-1.43-.075-.129-.273-.203-.574-.353z" />
-            </svg>
-          </a>
 
-          {/* Messenger Button */}
-          <a 
-            id="site-messenger-button"
-            href="https://m.me/ebashraful.eamin"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-13 h-13 sm:w-14 sm:h-14 bg-gradient-to-tr from-[#006AFF] via-[#0084FF] to-[#A855F7] hover:opacity-95 text-white rounded-full shadow-[0_16px_48px_-12px_rgba(0,106,255,0.5)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all group cursor-pointer"
-            title="Chat with EB AshraFul on Messenger"
-          >
-            <svg 
-              className="w-7 h-7 sm:w-8 sm:h-8 fill-current" 
-              viewBox="0 0 24 24"
-            >
-              <path d="M12 2C6.477 2 2 6.145 2 11.258c0 2.91 1.455 5.51 3.733 7.18-.195.968-.707 2.37-1.6 3.398 0 0 1.806.208 3.755-.838A10.378 10.378 0 0012 20.516c5.523 0 10-4.145 10-9.258S17.523 2 12 2zm1.06 12.336l-2.613-2.784-5.1 2.784 5.61-5.952 2.613 2.784 5.1-2.784-5.61 5.952z"/>
-            </svg>
-          </a>
-        </div>
 
         {/* Mobile Footer Navigation */}
         <AnimatePresence>
@@ -13067,10 +13030,7 @@ export default function App() {
               { 
                 title: 'Support', 
                 links: [
-                  { label: '+8801857902383', href: 'https://wa.me/8801857902383' },
-                  { label: 'Live Support (WhatsApp)', href: 'https://wa.me/8801857902383' },
-                  { label: 'Messenger Chat (@ebashraful.eamin)', href: 'https://m.me/ebashraful.eamin' },
-                  { label: 'Contact Us', href: 'tel:01410731308' }
+                  { label: 'Contact Us (01857902383)', href: 'tel:01857902383' }
                 ] 
               },
               { 
@@ -13123,9 +13083,7 @@ export default function App() {
             </div>
             <div className="flex flex-wrap items-center justify-center gap-6 text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] pt-4 font-sans">
                 <a 
-                  href="https://wa.me/8801857902383" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
+                  href="tel:01857902383" 
                   className="flex items-center gap-2 hover:text-[#2E7D32] transition-colors"
                 >
                   <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
@@ -13152,9 +13110,7 @@ export default function App() {
           </div>
           
           <a 
-            href="https://wa.me/8801857902383" 
-            target="_blank" 
-            rel="noopener noreferrer" 
+            href="tel:01857902383" 
             className="block group bg-emerald-50/5 hover:bg-emerald-50/20 border border-emerald-500/20 hover:border-emerald-500/40 p-4 rounded-2xl transition-all shadow-xs"
           >
             <div className="flex items-center gap-3">
@@ -13162,8 +13118,8 @@ export default function App() {
                 <Phone size={18} strokeWidth={2.5} />
               </div>
               <div className="text-left font-sans">
-                <span className="block text-[8px] font-black tracking-widest text-[#2D8A4E] uppercase">WhatsApp Service</span>
-                <span className="text-slate-950 text-xs font-bold leading-none block mt-1 hover:underline">01410-731308</span>
+                <span className="block text-[8px] font-black tracking-widest text-[#2D8A4E] uppercase">Phone Support</span>
+                <span className="text-slate-950 text-xs font-bold leading-none block mt-1 hover:underline">01857902383</span>
               </div>
             </div>
           </a>
