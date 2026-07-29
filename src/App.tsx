@@ -7364,23 +7364,20 @@ export default function App() {
                     </div>
 
                     {/* Live Support */}
-                    <a 
-                      href="https://wa.me/8801857902383"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-white rounded-xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)] p-3.5 flex flex-col justify-between transition-all hover:shadow-md hover:border-emerald-200 cursor-pointer active:scale-98 group hover:bg-emerald-50/10 text-left"
+                    <div 
+                      className="bg-white rounded-xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)] p-3.5 flex flex-col justify-between text-left"
                     >
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Live Support</span>
-                        <div className="w-6.5 h-6.5 bg-emerald-100/30 group-hover:bg-emerald-500 group-hover:text-white rounded-lg flex items-center justify-center text-emerald-600 transition-colors">
+                        <div className="w-6.5 h-6.5 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600">
                           <Headphones size={12} />
                         </div>
                       </div>
                       <div>
-                        <h4 className="font-display text-sm font-black text-emerald-600 tracking-tight group-hover:underline">২৪/৭ অনলাইন</h4>
+                        <h4 className="font-display text-sm font-black text-emerald-600 tracking-tight">২৪/৭ অনলাইন</h4>
                         <p className="text-[8px] font-bold text-slate-400 mt-0.5 leading-none">যেকোনো সাহায্য পেতে</p>
                       </div>
-                    </a>
+                    </div>
                   </div>
 
                   {/* Partnership Network Row */}
