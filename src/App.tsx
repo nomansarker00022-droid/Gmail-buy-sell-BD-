@@ -12518,7 +12518,7 @@ export default function App() {
                       </div>
                       <div className="space-y-2">
                         <h4 className="font-extrabold text-slate-800 text-base">৩. অপব্যবহার রিপোর্ট বা টেকডাউন নোটিশ (Abuse & Takedown Report)</h4>
-                        <p>যদি আপনার মনে হয় প্ল্যাটফর্মের কোনো লিস্টিং গুগলের পলিসি লঙ্ঘন করছে, অথবা কোনো বিক্রেতা বেআইনি কার্যকলাপে লিপ্ত, তবে সাথে সাথে আমাদের অ্যাডমিনকে রিপোর্ট করুন। আমরা ২৪ ঘণ্টার মধ্যে সেই লিস্টিং বা বিক্রেতাকে প্ল্যাটফর্ম থেকে ব্লক করে দেব। আপনি সরাসরি আমাদের <strong>support@topmail-sell-bd.vercel.app</strong> অথবা WhatsApp সাপোর্টের মাধ্যমে রিপোর্ট সাবমিট করতে পারেন।</p>
+                        <p>যদি আপনার মনে হয় প্ল্যাটফর্মের কোনো লিস্টিং গুগলের পলিসি লঙ্ঘন করছে, অথবা কোনো বিক্রেতা বেআইনি কার্যকলাপে লিপ্ত, তবে সাথে সাথে আমাদের অ্যাডমিনকে রিপোর্ট করুন। আমরা ২৪ ঘণ্টার মধ্যে সেই লিস্টিং বা বিক্রেতাকে প্ল্যাটফর্ম থেকে ব্লক করে দেব। আপনি সরাসরি আমাদের <strong>support@topmail-sell-bd.vercel.app</strong> অথবা টেলিগ্রাম সাপোর্টের মাধ্যমে রিপোর্ট সাবমিট করতে পারেন।</p>
                       </div>
                     </>
                   )}
@@ -13145,7 +13145,7 @@ export default function App() {
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider leading-none">Trade Safety Guide</span>
           </div>
           <p className="text-[11.5px] text-slate-600 leading-relaxed font-sans font-medium">
-            লেনদেন জালিয়াতি এড়াতে সর্বদা ওয়েবসাইট Escrow ব্যবহার করুন। Admin-কে সরাসরি WhatsApp/টেলিগ্রাম চুক্তির প্রমাণ প্রদান করতে পারেন।
+            লেনদেন জালিয়াতি এড়াতে সর্বদা ওয়েবসাইট Escrow ব্যবহার করুন। Admin-কে সরাসরি টেলিগ্রাম চুক্তির প্রমাণ প্রদান করতে পারেন।
           </p>
           <div className="bg-red-500/5 border border-red-500/15 p-3 rounded-2xl flex items-start gap-2.5">
             <AlertTriangle size={14} className="text-red-500 shrink-0 mt-0.5" />
@@ -13384,7 +13384,7 @@ export default function App() {
               {/* System Footer */}
               <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] pt-4">
                 <a 
-                  href="https://wa.me/8801857902383" 
+                  href="https://t.me/topmailsellbd" 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="flex items-center gap-2 hover:text-[#2E7D32] transition-colors"
