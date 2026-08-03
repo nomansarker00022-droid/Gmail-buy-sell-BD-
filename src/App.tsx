@@ -5059,8 +5059,8 @@ export default function App() {
     let depositPrice = showPaymentModal.price;
     if (isDeposit) {
       const depAmt = Number(paymentForm.senderNumber);
-      if (isNaN(depAmt) || depAmt < 10) {
-        setPaymentError('মিনিমাম Deposit ১০ টাকা হতে হবে!');
+      if (isNaN(depAmt) || depAmt < 50) {
+        setPaymentError('মিনিমাম ডিপোজিট 50.TK হতে হবে!');
         setTimeout(() => setPaymentError(null), 3500);
         return;
       }
@@ -11652,23 +11652,29 @@ export default function App() {
                                         className="w-full h-full object-contain"
                                       />
                                     </div>
-                                    <span className="pt-0.5">SEND MONEY (Personal - {paymentForm.method.toUpperCase()})</span>
+                                    <span className="pt-0.5">SEND MONEY ({paymentForm.method.toUpperCase()})</span>
                                   </div>
                                   <p className="text-lg font-black text-slate-800 tracking-tight lg:text-xl select-all font-mono">
                                     {paymentForm.method === 'bkash' ? '01857902383' : '01410731308'}
                                   </p>
                                 </div>
-                                <button 
-                                  type="button"
-                                  onClick={() => {
-                                    const num = paymentForm.method === 'bkash' ? '01857902383' : '01410731308';
-                                    navigator.clipboard.writeText(num);
-                                    alert("Number copied!");
-                                  }}
-                                  className={`w-8 h-8 rounded-xl bg-white flex items-center justify-center ${paymentForm.method === 'bkash' ? 'text-pink-600' : 'text-red-650'} shadow-sm border hover:scale-110 transition-all active:scale-95`}
-                                >
-                                  <Copy size={13} />
-                                </button>
+                                <div className="flex flex-col items-end gap-1">
+                                  {/* ONLY ONE Single location for minimum deposit label as requested */}
+                                  <span className="text-[8.5px] font-black px-2 py-0.5 rounded-full border shadow-2xs text-emerald-600 bg-emerald-50 border-emerald-200">
+                                    মিনিমাম ডিপোজিট 50.TK
+                                  </span>
+                                  <button 
+                                    type="button"
+                                    onClick={() => {
+                                      const num = paymentForm.method === 'bkash' ? '01857902383' : '01410731308';
+                                      navigator.clipboard.writeText(num);
+                                      alert("Number copied!");
+                                    }}
+                                    className={`w-8 h-8 rounded-xl bg-white flex items-center justify-center ${paymentForm.method === 'bkash' ? 'text-pink-600' : 'text-red-650'} shadow-sm border hover:scale-110 transition-all active:scale-95`}
+                                  >
+                                    <Copy size={13} />
+                                  </button>
+                                </div>
                               </div>
                             </div>
                             
@@ -11703,7 +11709,7 @@ export default function App() {
                                             <p className="text-[9px] font-black uppercase tracking-widest">জরুরী নোটিশ</p>
                                          </div>
                                          <p className="text-[8.5px] font-bold leading-relaxed">
-                                            সঠিক TrxID দিন। ভুল আইডি দিলে আপনার পেমেন্ট রিজেক্ট হয়ে যাবে। পেমেন্টে কোনো সমস্যা হলে আমাদের সাথে সরাসরি চ্যাট বা সাপোর্ট বক্স এ যোগাযোগ করুন।
+                                            সঠিক TrxID দিন। ভুল আইডি দিলে আপনার পেমেন্ট রিজেক্ট হয়ে যাবে। পেমেন্টে কোনো সমস্যা হলে আমাদের সাথে সরাসরি সাপোর্ট বক্স এ যোগাযোগ করুন।
                                          </p>
                                       </div>
                                       <div className="space-y-1.5 pl-1">
@@ -11727,7 +11733,7 @@ export default function App() {
                               {/* Amount input */}
                               <div className="space-y-1 group">
                                 <label className={`text-[9.5px] font-black text-slate-400 uppercase tracking-widest ml-1 transition-colors ${paymentForm.method === 'bkash' ? 'group-focus-within:text-[#e2136e]' : 'group-focus-within:text-[#ed1c24]'}`}>
-                                  Amount
+                                  Amount লিখুন
                                 </label>
                                 <div className="relative">
                                   <div className={`absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400 transition-colors ${paymentForm.method === 'bkash' ? 'group-focus-within:text-[#e2136e]' : 'group-focus-within:text-[#ed1c24]'}`}>
@@ -11735,7 +11741,7 @@ export default function App() {
                                   </div>
                                   <input 
                                     type="text" 
-                                    placeholder="Type Amount"
+                                    placeholder={showPaymentModal.listingId === 'deposit' ? "Min 50.TK" : "Type Amount"}
                                     value={paymentForm.senderNumber}
                                     onChange={(e) => {
                                       const val = e.target.value;
