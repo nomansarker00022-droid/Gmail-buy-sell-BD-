@@ -11588,9 +11588,9 @@ export default function App() {
                           )}
 
                         {showPaymentModal.listingId === 'deposit' && (
-                          <div className="space-y-1 text-left bg-slate-50 p-2 rounded-2xl border border-slate-100 animate-in fade-in duration-300">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1 pl-1">Quick Select Amount</span>
-                            <div className="flex flex-wrap gap-1">
+                          <div className="space-y-1.5 text-left bg-slate-50/80 p-2.5 rounded-2xl border border-slate-200/60 shadow-2xs animate-in fade-in duration-300">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block pl-0.5">Quick Select Amount</span>
+                            <div className="flex flex-wrap gap-1.5">
                               {[50, 100, 200, 500, 1000].map((amt) => (
                                 <button
                                   key={amt}
@@ -11599,11 +11599,11 @@ export default function App() {
                                     setShowPaymentModal(prev => ({ ...prev, price: amt }));
                                     setPaymentForm(prev => ({ ...prev, senderNumber: String(amt) }));
                                   }}
-                                  className={`px-2.5 py-1.5 rounded-xl text-[10px] font-extrabold transition-all active:scale-95 border cursor-pointer ${showPaymentModal.price === amt 
-                                    ? (paymentForm.method === 'bkash' ? 'bg-[#e2136e] border-[#e2136e] text-white shadow-sm' : 'bg-[#ed1c24] border-[#ed1c24] text-white shadow-sm')
-                                    : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'}`}
+                                  className={`px-3 py-1.5 rounded-xl text-[10.5px] font-black transition-all active:scale-95 border cursor-pointer flex items-center gap-1 ${showPaymentModal.price === amt 
+                                    ? (paymentForm.method === 'bkash' ? 'bg-[#e2136e] border-[#e2136e] text-white shadow-md shadow-[#e2136e]/20' : 'bg-[#ed1c24] border-[#ed1c24] text-white shadow-md shadow-[#ed1c24]/20')
+                                    : 'bg-white hover:bg-slate-100/80 border-slate-200/80 text-slate-700 shadow-2xs'}`}
                                 >
-                                  ৳{amt}
+                                  <span>৳{amt}</span>
                                 </button>
                               ))}
                             </div>
@@ -11612,82 +11612,94 @@ export default function App() {
 
                         {/* Payment Selection Tab (Only for Deposits) */}
                         {showPaymentModal.listingId === 'deposit' && (
-                          <div className="flex gap-2 p-0.5 bg-slate-50 rounded-xl border border-slate-100">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPaymentForm(prev => ({ ...prev, method: 'bkash', trxId: '' }));
-                                setPaymentError(null);
-                              }}
-                              className={`flex-1 py-1.5 rounded-lg flex flex-col items-center justify-center gap-0.5 transition-all relative overflow-hidden group ${paymentForm.method === 'bkash' ? 'bg-[#e2136e] text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-50/50 border border-slate-100'}`}
-                            >
-                              <img src="https://www.logo.wine/a/logo/BKash/BKash-Logo.wine.svg" alt="bKash" className="h-4.5 w-auto object-contain z-10 filter brightness-110" />
-                              <span className="text-[7.5px] font-black uppercase tracking-wider z-10">bKash</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPaymentForm(prev => ({ ...prev, method: 'nagad', trxId: '' }));
-                                setPaymentError(null);
-                              }}
-                              className={`flex-1 py-1.5 rounded-lg flex flex-col items-center justify-center gap-0.5 transition-all relative overflow-hidden group ${paymentForm.method === 'nagad' ? 'bg-[#ed1c24] text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-50/50 border border-slate-100'}`}
-                            >
-                              <img src="https://www.logo.wine/a/logo/Nagad/Nagad-Logo.wine.svg" alt="Nagad" className="h-4.5 w-auto object-contain z-10 filter brightness-110" />
-                              <span className="text-[7.5px] font-black uppercase tracking-wider z-10">Nagad</span>
-                            </button>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between px-0.5">
+                              <span className="text-[9.5px] font-black text-slate-500 uppercase tracking-wider">পেমেন্ট মেথড সিলেক্ট করুন</span>
+                              <span className="text-[8.5px] font-black px-2.5 py-0.5 rounded-full border shadow-2xs text-emerald-600 bg-emerald-50 border-emerald-200">
+                                মিনিমাম ডিপোজিট 50.TK
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPaymentForm(prev => ({ ...prev, method: 'bkash', trxId: '' }));
+                                  setPaymentError(null);
+                                }}
+                                className={`p-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all relative overflow-hidden cursor-pointer border ${paymentForm.method === 'bkash' ? 'bg-gradient-to-b from-pink-50 to-pink-100/60 border-[#e2136e] shadow-md shadow-[#e2136e]/15 ring-2 ring-[#e2136e]/20' : 'bg-white hover:bg-slate-50 border-slate-200/80 text-slate-600 shadow-2xs'}`}
+                              >
+                                <div className="h-6 flex items-center justify-center">
+                                  <img src="https://www.logo.wine/a/logo/BKash/BKash-Logo.wine.svg" alt="bKash" className="h-6 w-auto object-contain filter brightness-105" />
+                                </div>
+                                <span className={`text-[10px] font-black uppercase tracking-wider ${paymentForm.method === 'bkash' ? 'text-[#e2136e]' : 'text-slate-600'}`}>bKash</span>
+                                {paymentForm.method === 'bkash' && (
+                                  <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#e2136e]" />
+                                )}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPaymentForm(prev => ({ ...prev, method: 'nagad', trxId: '' }));
+                                  setPaymentError(null);
+                                }}
+                                className={`p-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all relative overflow-hidden cursor-pointer border ${paymentForm.method === 'nagad' ? 'bg-gradient-to-b from-red-50 to-red-100/60 border-[#ed1c24] shadow-md shadow-[#ed1c24]/15 ring-2 ring-[#ed1c24]/20' : 'bg-white hover:bg-slate-50 border-slate-200/80 text-slate-600 shadow-2xs'}`}
+                              >
+                                <div className="h-6 flex items-center justify-center">
+                                  <img src="https://www.logo.wine/a/logo/Nagad/Nagad-Logo.wine.svg" alt="Nagad" className="h-6 w-auto object-contain filter brightness-105" />
+                                </div>
+                                <span className={`text-[10px] font-black uppercase tracking-wider ${paymentForm.method === 'nagad' ? 'text-[#ed1c24]' : 'text-slate-600'}`}>Nagad</span>
+                                {paymentForm.method === 'nagad' && (
+                                  <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#ed1c24]" />
+                                )}
+                              </button>
+                            </div>
                           </div>
                         )}
 
                         {showPaymentModal.listingId === 'deposit' && (
                           <>
-                            <div className={`p-2.5 rounded-2xl border relative overflow-hidden group transition-colors ${paymentForm.method === 'bkash' ? 'bg-pink-50 border-pink-100' : 'bg-red-50 border-red-100'}`}>
-                              <div className={`absolute top-0 right-0 w-16 h-16 ${paymentForm.method === 'bkash' ? 'bg-pink-100/50' : 'bg-red-100/50'} rounded-full -mr-8 -mt-8 group-hover:scale-110 transition-transform`}></div>
+                            {/* Realistic Official Account Card */}
+                            <div className={`p-3.5 rounded-2xl border relative overflow-hidden transition-all shadow-sm ${paymentForm.method === 'bkash' ? 'bg-gradient-to-br from-[#e2136e] via-[#c1105b] to-[#990a46] text-white border-pink-400/30' : 'bg-gradient-to-br from-[#ed1c24] via-[#c11218] to-[#960a0e] text-white border-red-400/30'}`}>
+                              <div className="absolute top-0 right-0 -mt-6 -mr-6 w-24 h-24 bg-white/10 rounded-full blur-lg pointer-events-none" />
                               <div className="relative z-10 flex items-center justify-between">
-                                <div className="space-y-0.5">
-                                  <div className={`text-[8px] ${paymentForm.method === 'bkash' ? 'text-pink-600' : 'text-red-600'} font-black uppercase tracking-widest flex items-center gap-1.5`}>
-                                    <div className="w-5 h-5 bg-white rounded-md flex items-center justify-center p-0.5 shadow-sm">
-                                      <img 
-                                        src={paymentForm.method === 'bkash' ? "https://www.logo.wine/a/logo/BKash/BKash-Logo.wine.svg" : "https://www.logo.wine/a/logo/Nagad/Nagad-Logo.wine.svg"} 
-                                        alt=""
-                                        className="w-full h-full object-contain"
-                                      />
-                                    </div>
-                                    <span className="pt-0.5">SEND MONEY ({paymentForm.method.toUpperCase()})</span>
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[8.5px] font-black uppercase tracking-widest bg-black/20 text-white px-2 py-0.5 rounded-md border border-white/20">
+                                      {paymentForm.method === 'bkash' ? 'bKash Personal' : 'Nagad Personal'}
+                                    </span>
+                                    <span className="text-[8.5px] font-bold text-white/80 uppercase">Send Money</span>
                                   </div>
-                                  <p className="text-lg font-black text-slate-800 tracking-tight lg:text-xl select-all font-mono">
+                                  <p className="text-xl font-black tracking-wider font-mono select-all pt-0.5">
                                     {paymentForm.method === 'bkash' ? '01857902383' : '01410731308'}
                                   </p>
                                 </div>
-                                <div className="flex flex-col items-end gap-1">
-                                  {/* ONLY ONE Single location for minimum deposit label as requested */}
-                                  <span className="text-[8.5px] font-black px-2 py-0.5 rounded-full border shadow-2xs text-emerald-600 bg-emerald-50 border-emerald-200">
-                                    মিনিমাম ডিপোজিট 50.TK
-                                  </span>
-                                  <button 
-                                    type="button"
-                                    onClick={() => {
-                                      const num = paymentForm.method === 'bkash' ? '01857902383' : '01410731308';
-                                      navigator.clipboard.writeText(num);
-                                      alert("Number copied!");
-                                    }}
-                                    className={`w-8 h-8 rounded-xl bg-white flex items-center justify-center ${paymentForm.method === 'bkash' ? 'text-pink-600' : 'text-red-650'} shadow-sm border hover:scale-110 transition-all active:scale-95`}
-                                  >
-                                    <Copy size={13} />
-                                  </button>
-                                </div>
+                                <button 
+                                  type="button"
+                                  onClick={() => {
+                                    const num = paymentForm.method === 'bkash' ? '01857902383' : '01410731308';
+                                    navigator.clipboard.writeText(num);
+                                    alert("Number copied!");
+                                  }}
+                                  className="px-3 py-1.5 rounded-xl bg-white text-slate-900 font-extrabold text-[10.5px] hover:bg-white/95 transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer shrink-0"
+                                >
+                                  <Copy size={12} className={paymentForm.method === 'bkash' ? 'text-[#e2136e]' : 'text-[#ed1c24]'} />
+                                  <span>Copy</span>
+                                </button>
                               </div>
                             </div>
                             
                             {/* Collapsible Rules & Instructions Card */}
-                            <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+                            <div className="border border-slate-200/70 rounded-2xl overflow-hidden shadow-2xs bg-white">
                               <button
                                 type="button"
                                 onClick={() => setShowInstructions(!showInstructions)}
-                                className="w-full flex items-center justify-between p-2.5 bg-slate-50 text-slate-700 hover:bg-slate-100/70 transition-colors text-left focus:outline-none"
+                                className="w-full flex items-center justify-between p-2.5 bg-slate-50/90 text-slate-700 hover:bg-slate-100/80 transition-colors text-left focus:outline-none cursor-pointer"
                               >
                                 <span className="text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
                                   <Info size={12} className={paymentForm.method === 'bkash' ? 'text-[#e2136e]' : 'text-[#ed1c24]'} />
-                                  পেমেন্ট নিয়ম ও জরুরি নোটিশ (Rules & Notice)
+                                  পেমেন্ট নির্দেশাবলী (Payment Instructions)
                                 </span>
                                 <span className="text-[9px] font-black text-slate-400">
                                   {showInstructions ? 'লুকান ▲' : 'দেখুন ▼'}
@@ -11713,14 +11725,14 @@ export default function App() {
                                          </p>
                                       </div>
                                       <div className="space-y-1.5 pl-1">
-                                        <p className="text-[8.5px] text-slate-655 font-bold leading-relaxed">
+                                        <p className="text-[8.5px] text-slate-600 font-bold leading-relaxed">
                                           ১. নাম্বারটি কপি করে আপনার {paymentForm.method === 'bkash' ? 'বিকাশ' : 'নগদ'} অ্যাপ থেকে <span className="font-extrabold text-slate-900">Send Money</span> করুন।
                                         </p>
-                                        <p className="text-[8.5px] text-slate-655 font-bold leading-relaxed">
+                                        <p className="text-[8.5px] text-slate-600 font-bold leading-relaxed">
                                           ২. পেমেন্ট শেষে প্রাপ্ত <span className="font-extrabold text-slate-900">TrxID</span> টি কপি করে নিচের বক্সে দিন।
                                         </p>
-                                        <p className="text-[8.5px] text-slate-655 font-bold leading-relaxed">
-                                          ৩. সঠিক তথ্য দিলে আপনি স্বয়ংক্রিয়ভাবে জিমেইল একাউন্টটি পেয়ে যাবেন।
+                                        <p className="text-[8.5px] text-slate-600 font-bold leading-relaxed">
+                                          ৩. সাবমিট বাটনে ক্লিক করলে এডমিন পেমেন্ট ভেরিফাই করে ওয়ালেট ব্যালেন্স যোগ করে দিবে।
                                         </p>
                                       </div>
                                     </div>
