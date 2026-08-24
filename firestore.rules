@@ -79,6 +79,8 @@ service cloud.firestore {
              (!('hasDeposited' in data) || (data.hasDeposited is bool)) &&
              (!('adsWatchedToday' in data) || data.adsWatchedToday is number) &&
              (!('lastAdWatchedDate' in data) || (data.lastAdWatchedDate is string && data.lastAdWatchedDate.size() <= 20) || data.lastAdWatchedDate == null) &&
+             (!('fcmToken' in data) || (data.fcmToken is string && data.fcmToken.size() <= 1024) || data.fcmToken == null) &&
+             (!('pushEnabled' in data) || (data.pushEnabled is bool)) &&
              (!('createdAt' in data) || (data.createdAt is timestamp)) &&
              (!('updatedAt' in data) || (data.updatedAt is timestamp));
     }
@@ -278,7 +280,7 @@ service cloud.firestore {
               incoming().diff(existing()).affectedKeys().hasOnly([
                 'displayName', 'photoURL', 'phone', 'bkashNumber', 'nagadNumber',
                 'firstName', 'lastName', 'age', 'address', 'hasSeenWelcome',
-                'updatedAt', 'referredBy', 'hasTransacted'
+                'updatedAt', 'referredBy', 'hasTransacted', 'fcmToken', 'pushEnabled'
               ]) ||
               // Action: Claim ad earnings reward which increments earningsBalance, totalEarned, and sets adsWatchedToday/lastAdWatchedDate
               incoming().diff(existing()).affectedKeys().hasOnly([

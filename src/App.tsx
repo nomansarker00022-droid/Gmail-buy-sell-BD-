@@ -1343,6 +1343,7 @@ export default function App() {
   const [sellListingToEdit, setSellListingToEdit] = useState<any>(null);
   const [showPaymentModal, setShowPaymentModal] = useState<{show: boolean, price: number, listingId?: string}>({ show: false, price: 0 });
   const [paymentForm, setPaymentForm] = useState({ senderNumber: '', trxId: '', method: 'bkash' as 'bkash' | 'nagad' });
+  const [copiedNumber, setCopiedNumber] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isDepositCompleted, setIsDepositCompleted] = useState(false);
   const [showDepositArea, setShowDepositArea] = useState(false);
@@ -1350,10 +1351,15 @@ export default function App() {
   const [purchasedCreds, setPurchasedCreds] = useState<{gmail: string, pass: string, recovery?: string, twoFactor?: string} | null>(null);
 
   useEffect(() => {
-    if (showPaymentModal.show && showPaymentModal.listingId === 'deposit') {
-      setDepositModalView('payment_form');
+    if (showPaymentModal.show) {
+      if (showPaymentModal.listingId === 'deposit') {
+        setDepositModalView('payment_form');
+        setPaymentForm(prev => ({ ...prev, senderNumber: '', trxId: '' }));
+      } else if (showPaymentModal.price > 0) {
+        setPaymentForm(prev => ({ ...prev, senderNumber: `${showPaymentModal.price}`, trxId: '' }));
+      }
     }
-  }, [showPaymentModal.show, showPaymentModal.listingId]);
+  }, [showPaymentModal.show, showPaymentModal.listingId, showPaymentModal.price]);
 
   const handleClosePaymentModal = () => {
     setShowPaymentModal({ show: false, price: 0 });
@@ -1885,6 +1891,18 @@ export default function App() {
 
   const [withdrawMode, setWithdrawMode] = useState<'referral' | 'earnings'>('referral');
   const [legalModal, setLegalModal] = useState<'privacy' | 'terms' | 'refund' | 'about' | 'abuse' | null>(null);
+  const [welcomeToast, setWelcomeToast] = useState<string | null>(null);
+  const welcomeToastTimerRef = useRef<any>(null);
+
+  const triggerWelcomeToast = (text = 'Welcome registration Successfully') => {
+    setWelcomeToast(text);
+    if (welcomeToastTimerRef.current) {
+      clearTimeout(welcomeToastTimerRef.current);
+    }
+    welcomeToastTimerRef.current = setTimeout(() => {
+      setWelcomeToast(null);
+    }, 4000);
+  };
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
   const [welcomeForm, setWelcomeForm] = useState({
     firstName: '',
@@ -2140,30 +2158,42 @@ export default function App() {
 
     const requestPermission = async () => {
       try {
+        if (typeof window === 'undefined' || !('Notification' in window)) {
+          return;
+        }
+        if (Notification.permission === 'denied') {
+          return;
+        }
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
-          // Get token - VAPID key is usually required. 
-          // If you have one, put it here: getToken(messaging, { vapidKey: 'YOUR_VAPID_KEY' })
-          const token = await getToken(messaging);
-          if (token) {
-            console.log('FCM Token generated:', token);
-            await updateDoc(doc(db, 'profiles', user.uid), {
-              fcmToken: token,
-              pushEnabled: true
-            });
+          try {
+            const token = await getToken(messaging);
+            if (token) {
+              await updateDoc(doc(db, 'profiles', user.uid), {
+                fcmToken: token,
+                pushEnabled: true,
+                updatedAt: serverTimestamp()
+              });
+            }
+          } catch (tokenErr: any) {
+            console.warn('FCM Token generation/storage notice:', tokenErr?.message || tokenErr);
           }
         }
-      } catch (err) {
-        console.error('FCM Registration failed:', err);
+      } catch (err: any) {
+        console.warn('FCM Registration notice:', err?.message || err);
       }
     };
 
     requestPermission();
 
-    const unsubscribe = onMessage(messaging, (payload) => {
-      console.log('Foreground message received:', payload);
-      // You can show a custom toast here if needed
-    });
+    let unsubscribe = () => {};
+    try {
+      unsubscribe = onMessage(messaging, (payload) => {
+        console.log('Foreground message received:', payload);
+      });
+    } catch (msgErr) {
+      console.warn('FCM onMessage listener notice:', msgErr);
+    }
 
     return () => unsubscribe();
   }, [user]);
@@ -2420,6 +2450,8 @@ export default function App() {
   const [showPassword, setShowPassword] = useState(false);
   
   // Form states
+  const [regFirstName, setRegFirstName] = useState('');
+  const [regLastName, setRegLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -2744,11 +2776,6 @@ export default function App() {
               setUserProfile(data);
               localStorage.setItem(cacheKey, JSON.stringify(data));
               
-              // Trigger welcome popup if not seen yet
-              if (!data.hasSeenWelcome) {
-                setShowWelcomePopup(true);
-              }
-              
               // Only update form if it was empty or first time
               if (!profileForm.displayName && data.displayName) {
                 setProfileForm(prev => ({
@@ -2778,7 +2805,7 @@ export default function App() {
                 referredBy: referredBy || null,
                 successfulReferrals: 0,
                 hasTransacted: false,
-                hasSeenWelcome: false, // Explicitly set for welcome popup logic
+                hasSeenWelcome: true,
                 photoURL: currentUser.photoURL || null,
                 displayName: currentUser.displayName || null,
                 createdAt: serverTimestamp()
@@ -2786,7 +2813,7 @@ export default function App() {
               
               await setDoc(profileRef, newProfile);
               setUserProfile(newProfile);
-              setShowWelcomePopup(true);
+              triggerWelcomeToast('Welcome registration Successfully');
 
               if (referredBy) {
                 sendNotification(referredBy, `অভিনন্দন! আপনার রেফারেল লিংক থেকে একজন নতুন ইউজার জয়েন করেছে।`, 'info');
@@ -3108,8 +3135,10 @@ export default function App() {
           totalSales: 0,
           totalOrders: 0,
           role: isAdminEmail ? 'admin' : 'user',
+          hasSeenWelcome: true,
           createdAt: serverTimestamp()
         });
+        triggerWelcomeToast('Welcome registration Successfully');
         setOtpStep(false);
         setUserOtp('');
       } catch (regErr: any) {
@@ -3271,6 +3300,11 @@ export default function App() {
     e.preventDefault();
     setError(null);
 
+    if (!regFirstName.trim()) {
+      setError('দয়া করে আপনার First Name লিখুন।');
+      return;
+    }
+
     if (password.length < 6) {
       setError('পাসওয়ার্ডটি অন্তত ৬ অক্ষরের হতে হবে।');
       return;
@@ -3297,21 +3331,28 @@ export default function App() {
       const numericId = Math.floor(10000 + Math.random() * 90000).toString();
 
       const isAdminEmail = newUser.email && SYSTEM_ADMINS.includes(newUser.email);
+      const fullName = (regFirstName.trim() + ' ' + regLastName.trim()).trim();
 
       await setDoc(doc(db, 'profiles', newUser.uid), {
         uid: newUser.uid,
         numericId: numericId,
         email: newUser.email,
-        displayName: email.split('@')[0],
+        displayName: fullName || email.split('@')[0],
+        firstName: regFirstName.trim(),
+        lastName: regLastName.trim() || '',
         balance: 0,
         earningsBalance: 0,
         totalSales: 0,
         totalOrders: 0,
         role: isAdminEmail ? 'admin' : 'user',
+        hasSeenWelcome: true,
         createdAt: serverTimestamp()
       });
+      triggerWelcomeToast('Welcome registration Successfully');
       setOtpStep(false);
       setUserOtp('');
+      setRegFirstName('');
+      setRegLastName('');
     } catch (err: any) {
       console.error('Register error:', err);
       if (err.code === 'auth/email-already-in-use' || (err.message && err.message.includes('email-already-in-use'))) {
@@ -3339,6 +3380,8 @@ export default function App() {
     setNotifications([]);
     _setChatMessages([]);
     _setUserInboxThreads([]);
+    setRegFirstName('');
+    setRegLastName('');
     setWelcomeForm({
       firstName: '',
       lastName: '',
@@ -6195,71 +6238,79 @@ export default function App() {
   if (user) {
     const hasDeposited = userProfile?.hasDeposited || (userProfile?.balance !== undefined && userProfile.balance > 0);
     return (
-      <div className="min-h-screen bg-slate-100 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 via-slate-100 to-slate-200 flex justify-center items-start font-sans selection:bg-red-505/10 text-slate-800 lg:p-6 lg:gap-8 overflow-x-hidden relative">
-        {/* Decorative background glow elements */}
-        <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-red-500/5 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-[#071927] to-[#04241d] flex justify-center items-start font-sans selection:bg-emerald-500/30 text-slate-800 lg:p-6 lg:gap-8 overflow-x-hidden relative">
+        {/* Dynamic Green & Blue Ambient Glow Orbs */}
+        <div className="absolute -top-28 -left-28 w-[500px] h-[500px] bg-gradient-to-br from-blue-600/30 via-indigo-600/20 to-transparent rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute -bottom-28 -right-28 w-[520px] h-[520px] bg-gradient-to-tl from-emerald-500/30 via-teal-500/20 to-transparent rounded-full blur-[130px] pointer-events-none" />
+        <div className="absolute top-1/3 -right-20 w-[350px] h-[350px] bg-teal-400/15 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-1/3 -left-20 w-[350px] h-[350px] bg-blue-500/15 rounded-full blur-[100px] pointer-events-none" />
+        
+        {/* Decorative Grid Texture Overlay */}
+        <div className="absolute inset-0 bg-[radial-gradient(#38bdf818_1px,transparent_1px)] [background-size:28px_28px] pointer-events-none" />
+        
+        {/* Subtle Geometric Design Rings in Background Space */}
+        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full border border-blue-500/10 pointer-events-none" />
+        <div className="absolute -bottom-40 -left-40 w-[600px] h-[600px] rounded-full border border-emerald-500/10 pointer-events-none" />
 
         {/* Left Desktop Sidebar Widget for v4.0 */}
-        <div className="hidden lg:flex w-[320px] shrink-0 flex-col gap-4 self-stretch justify-start py-4">
+        <div className="hidden lg:flex w-[320px] shrink-0 flex-col gap-4 self-stretch justify-start py-4 relative z-10">
           {/* Brand Card */}
-          <div className="bg-white border border-slate-200/80 p-6 rounded-[2rem] space-y-4 shadow-sm relative overflow-hidden text-slate-800 flex flex-col justify-between shrink-0">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="bg-slate-900/75 backdrop-blur-xl border border-blue-500/25 p-6 rounded-[2rem] space-y-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden text-white flex flex-col justify-between shrink-0">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
             <div className="space-y-4 font-sans text-left">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 bg-gradient-to-tr from-rose-500 to-red-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-red-500/30 ring-4 ring-white/5 relative overflow-hidden shrink-0">
-                  <div className="absolute inset-0 bg-gradient-to-tr from-red-50 to-white opacity-25" />
+                <div className="w-11 h-11 bg-gradient-to-tr from-blue-600 via-teal-500 to-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30 ring-4 ring-white/10 relative overflow-hidden shrink-0">
                   <Mail size={22} strokeWidth={2.5} />
                 </div>
                 <div>
-                  <h1 className="font-display text-lg font-black tracking-tight text-slate-900 flex items-center gap-1.5 leading-none">
-                    TopMail Sell <span className="text-[9px] font-black tracking-[0.1em] text-yellow-500 bg-yellow-400/10 px-2 py-0.5 rounded-full border border-yellow-400/20">BD</span>
+                  <h1 className="font-display text-lg font-black tracking-tight text-white flex items-center gap-1.5 leading-none">
+                    TopMail Sell <span className="text-[9px] font-black tracking-[0.1em] text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-400/30">BD</span>
                   </h1>
-                  <p className="text-[9px] font-black tracking-[0.15em] text-red-500 uppercase mt-0.5">V4.0 ULTIMATE</p>
+                  <p className="text-[9px] font-black tracking-[0.15em] text-blue-400 uppercase mt-0.5">V4.0 ULTIMATE</p>
                 </div>
               </div>
               
-              <p className="text-[11.5px] text-slate-500 leading-relaxed font-sans font-medium">
+              <p className="text-[11.5px] text-slate-300 leading-relaxed font-sans font-medium">
                 Bangladesh's most trusted secure digital escrow and verification network. Built for instant transactions and complete user privacy.
               </p>
             </div>
 
-            <div className="h-px bg-slate-100" />
+            <div className="h-px bg-white/10" />
             
             <div className="space-y-3">
-              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-                <span className="flex items-center gap-1.5"><Shield size={13} className="text-red-500 font-extrabold" /> Security Protocol</span>
-                <span className="text-emerald-600 font-bold">256-Bit AES</span>
+              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300">
+                <span className="flex items-center gap-1.5"><Shield size={13} className="text-blue-400 font-extrabold" /> Security Protocol</span>
+                <span className="text-emerald-400 font-bold">256-Bit AES</span>
               </div>
-              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-                <span className="flex items-center gap-1.5"><Zap size={13} className="text-yellow-650 font-extrabold" /> Escrow Engine</span>
-                <span className="text-slate-700 font-bold">Smart Wallet v4</span>
+              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300">
+                <span className="flex items-center gap-1.5"><Zap size={13} className="text-amber-400 font-extrabold" /> Escrow Engine</span>
+                <span className="text-slate-200 font-bold">Smart Wallet v4</span>
               </div>
-              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-                <span className="flex items-center gap-1.5"><Activity size={13} className="text-cyan-600 font-extrabold" /> Gateway Route</span>
-                <span className="text-slate-700 font-bold">Cloud Cluster</span>
+              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300">
+                <span className="flex items-center gap-1.5"><Activity size={13} className="text-teal-400 font-extrabold" /> Gateway Route</span>
+                <span className="text-slate-200 font-bold">Cloud Cluster</span>
               </div>
             </div>
           </div>
 
           {/* Stats Card */}
-          <div className="bg-white border border-slate-200/80 p-6 rounded-[2rem] space-y-4 shadow-sm relative overflow-hidden text-slate-800 flex flex-col shrink-0 text-left">
+          <div className="bg-slate-900/75 backdrop-blur-xl border border-emerald-500/25 p-6 rounded-[2rem] space-y-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden text-white flex flex-col shrink-0 text-left">
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Ecosystem Statistics</h3>
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl">
-                <div className="text-[8px] font-bold uppercase tracking-widest text-[#64748B] leading-none">Escrow Deals</div>
-                <div className="text-lg font-display font-black text-emerald-600 mt-1">55,000+</div>
+              <div className="bg-white/5 border border-white/10 p-3 rounded-2xl">
+                <div className="text-[8px] font-bold uppercase tracking-widest text-slate-400 leading-none">Escrow Deals</div>
+                <div className="text-lg font-display font-black text-emerald-400 mt-1">55,000+</div>
                 <div className="text-[7.5px] font-bold text-slate-400 uppercase mt-0.5 leading-none">Verified Success</div>
               </div>
-              <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl">
-                <div className="text-[8px] font-bold uppercase tracking-widest text-[#64748B] leading-none">Active Clients</div>
-                <div className="text-lg font-display font-black text-red-600 mt-1">4,850+</div>
+              <div className="bg-white/5 border border-white/10 p-3 rounded-2xl">
+                <div className="text-[8px] font-bold uppercase tracking-widest text-slate-400 leading-none">Active Clients</div>
+                <div className="text-lg font-display font-black text-blue-400 mt-1">4,850+</div>
                 <div className="text-[7.5px] font-bold text-slate-400 uppercase mt-0.5 leading-none">Daily Payout</div>
               </div>
             </div>
-            <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-2xl flex items-center gap-2.5">
-              <Sparkles size={16} className="text-emerald-600 shrink-0" />
-              <p className="text-[10px] text-emerald-800 leading-relaxed font-semibold">
+            <div className="bg-emerald-500/10 border border-emerald-500/25 p-3 rounded-2xl flex items-center gap-2.5">
+              <Sparkles size={16} className="text-emerald-400 shrink-0" />
+              <p className="text-[10px] text-emerald-200 leading-relaxed font-semibold">
                 v4.0 integrates instant ledger tracking for automated user payouts & OTP delivery.
               </p>
             </div>
@@ -6268,7 +6319,7 @@ export default function App() {
 
         {/* Centralized Mobile App Screen Container */}
         <div 
-          className="w-full lg:max-w-[780px] min-h-screen lg:min-h-[85vh] relative flex flex-col shadow-[0_24px_50px_rgba(0,0,0,0.06)] rounded-none lg:rounded-[2.5rem] overflow-x-hidden border-0 lg:border lg:border-slate-100 shrink-0 flex-1"
+          className="w-full lg:max-w-[780px] min-h-screen lg:min-h-[85vh] relative flex flex-col shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6)] rounded-none lg:rounded-[2.5rem] overflow-x-hidden border-0 lg:border lg:border-white/20 shrink-0 flex-1 z-10"
           style={{ backgroundColor: homeBgColor }}
         >
           {/* Sidebar Overlay */}
@@ -6887,100 +6938,102 @@ export default function App() {
                       </a>
                     </div>
 
-                    {/* Custom Translucent Escrow & Support Protection Board - Grid Integrated Info Row */}
-                    <div className="w-full z-10 mt-1 pt-2.5 border-t border-white/10 flex items-center justify-center gap-2 sm:gap-4 flex-nowrap text-white/95">
+                    {/* Custom Translucent Escrow & Support Protection Board - Grid Integrated Info Row with Green & Blue Shield Frame */}
+                    <div className="w-full z-10 mt-1 pt-2.5 pb-1 px-3 rounded-2xl bg-gradient-to-r from-blue-900/40 via-emerald-900/30 to-blue-900/40 border border-emerald-400/30 shadow-[0_0_15px_rgba(16,185,129,0.15)] flex items-center justify-center gap-2 sm:gap-4 flex-nowrap text-white/95 backdrop-blur-md">
                       <button
                         type="button"
                         onClick={() => setLegalModal('refund')}
-                        className="flex items-center gap-1 text-[9px] xs:text-[11px] font-black font-sans shrink-0 whitespace-nowrap cursor-pointer hover:text-[#00E5FF] transition-colors focus:outline-none group active:scale-95"
+                        className="flex items-center gap-1.5 text-[9px] xs:text-[11px] font-black font-sans shrink-0 whitespace-nowrap cursor-pointer hover:text-[#00E5FF] transition-all focus:outline-none group active:scale-95 py-0.5"
                         title="Escrow Instruction & Policy"
                       >
-                        <ShieldCheck className="text-[#00E5FF] drop-shadow-[0_0_5px_rgba(0,229,255,0.4)] shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:scale-110 transition-transform" strokeWidth={2.5} />
-                        <span className="hover:underline decoration-[#00E5FF] underline-offset-2">Escrow Instruction</span>
+                        <ShieldCheck className="text-[#00E5FF] drop-shadow-[0_0_8px_rgba(0,229,255,0.7)] shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:scale-110 transition-transform" strokeWidth={2.5} />
+                        <span className="hover:underline decoration-[#00E5FF] underline-offset-2 font-bold">Escrow Protected</span>
                       </button>
                       
-                      <span className="text-white/20 select-none">|</span>
+                      <span className="h-3.5 w-[2px] bg-gradient-to-b from-blue-400 via-teal-300 to-emerald-400 opacity-60 rounded-full select-none" />
                       
-                      <div className="flex items-center gap-1 text-[9px] xs:text-[11px] font-black font-sans shrink-0 whitespace-nowrap">
-                        <Zap className="text-[#FFC72C] fill-[#FFC72C] drop-shadow-[0_0_5px_rgba(255,199,44,0.4)] shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.5} />
-                        <span>bKash / Nagad / Rocket</span>
+                      <div className="flex items-center gap-1.5 text-[9px] xs:text-[11px] font-black font-sans shrink-0 whitespace-nowrap py-0.5">
+                        <Zap className="text-[#FFC72C] fill-[#FFC72C] drop-shadow-[0_0_6px_rgba(255,199,44,0.6)] shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.5} />
+                        <span className="font-bold text-white">bKash / Nagad / Rocket</span>
                       </div>
                       
-                      <span className="text-white/20 select-none">|</span>
+                      <span className="h-3.5 w-[2px] bg-gradient-to-b from-emerald-400 via-teal-300 to-blue-400 opacity-60 rounded-full select-none" />
                       
-                      <div className="flex items-center gap-1 text-[9px] xs:text-[11px] font-black font-sans shrink-0 whitespace-nowrap">
-                        <Headphones className="text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.4)] shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.5} />
-                        <span>24/7 Support</span>
+                      <div className="flex items-center gap-1.5 text-[9px] xs:text-[11px] font-black font-sans shrink-0 whitespace-nowrap py-0.5">
+                        <Headphones className="text-emerald-300 drop-shadow-[0_0_6px_rgba(52,211,153,0.6)] shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.5} />
+                        <span className="font-bold text-emerald-300">24/7 Support</span>
                       </div>
                     </div>
                   </section>
                   
-                {/* 5-Column Mini Quick Navigation Icons Block */}
-                <div className="grid grid-cols-5 gap-2 sm:gap-4 mb-6 select-none shrink-0 relative z-10 font-sans">
-                  {/* Card 1: Gmail বিক্রি */}
-                  <button 
-                    onClick={() => { setView('seller-center'); setShowSellNotice(true); }}
-                    className="bg-[#FFF4F4] border border-[#FFE2E4] hover:bg-[#FFE5E5] pt-2 pb-1.5 px-1 xs:pt-3 xs:pb-2.5 xs:px-2 sm:pt-4.5 sm:pb-4 sm:px-3.5 rounded-2xl flex flex-col items-center justify-center text-center transition-all duration-300 active:scale-95 group shadow-[0_4px_12px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_20px_rgba(239,68,68,0.06)] cursor-pointer h-full min-h-[82px] xs:min-h-[100px] sm:min-h-[126px]"
-                  >
-                    <div className="w-[36px] h-[36px] xs:w-[46px] xs:h-[46px] sm:w-[58px] sm:h-[58px] md:w-[64px] md:h-[64px] rounded-full bg-[#EA3829] flex items-center justify-center text-white mb-1.5 sm:mb-2 shrink-0 transition-transform duration-300 group-hover:scale-105 shadow-[0_6px_16px_rgba(234,56,41,0.3)]">
-                      <Mail className="text-white w-5 h-5 xs:w-[22px] xs:h-[22px] sm:w-[28px] sm:h-[28px] md:w-[32px] md:h-[32px]" strokeWidth={2.4} />
-                    </div>
-                    <span className="text-[8.5px] xs:text-[10px] sm:text-[12.5px] md:text-[14px] font-black text-[#1E293B] tracking-tight leading-none text-center whitespace-nowrap mt-1">Gmail বিক্রি</span>
-                  </button>
+                {/* 5-Column Mini Quick Navigation Icons Block with Green & Blue Frame & Space Highlights */}
+                <div className="p-2 sm:p-3 rounded-3xl bg-gradient-to-r from-blue-500/[0.08] via-teal-500/[0.06] to-emerald-500/[0.08] border border-blue-400/30 hover:border-emerald-400/40 shadow-[0_4px_20px_rgba(37,99,235,0.06)] mb-6 select-none shrink-0 relative z-10 font-sans transition-all">
+                  <div className="grid grid-cols-5 gap-1.5 xs:gap-2 sm:gap-3 p-1 rounded-2xl bg-gradient-to-b from-blue-50/40 via-teal-50/30 to-emerald-50/40 border border-blue-200/50">
+                    {/* Card 1: Gmail বিক্রি */}
+                    <button 
+                      onClick={() => { setView('seller-center'); setShowSellNotice(true); }}
+                      className="bg-white/95 hover:bg-white border border-rose-200/80 hover:border-emerald-500/40 pt-2 pb-1.5 px-1 xs:pt-3 xs:pb-2.5 xs:px-2 sm:pt-4 sm:pb-3.5 sm:px-3 rounded-2xl flex flex-col items-center justify-center text-center transition-all duration-300 active:scale-95 group shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_20px_rgba(16,185,129,0.15)] cursor-pointer h-full min-h-[82px] xs:min-h-[100px] sm:min-h-[120px]"
+                    >
+                      <div className="w-[36px] h-[36px] xs:w-[44px] xs:h-[44px] sm:w-[54px] sm:h-[54px] md:w-[60px] md:h-[60px] rounded-full bg-[#EA3829] flex items-center justify-center text-white mb-1.5 sm:mb-2 shrink-0 transition-transform duration-300 group-hover:scale-105 shadow-[0_6px_16px_rgba(234,56,41,0.3)]">
+                        <Mail className="text-white w-5 h-5 xs:w-[22px] xs:h-[22px] sm:w-[26px] sm:h-[26px] md:w-[30px] md:h-[30px]" strokeWidth={2.4} />
+                      </div>
+                      <span className="text-[8.5px] xs:text-[10px] sm:text-[12px] md:text-[13.5px] font-black text-[#1E293B] tracking-tight leading-none text-center whitespace-nowrap mt-1">Gmail বিক্রি</span>
+                    </button>
 
-                  {/* Card 2: Gmail কিনুন */}
-                  <button 
-                    onClick={() => setView('gmail-market')}
-                    className="bg-[#F0F6FF] border border-[#D2E3FC] hover:bg-[#E5EEFF] pt-2 pb-1.5 px-1 xs:pt-3 xs:pb-2.5 xs:px-2 sm:pt-4.5 sm:pb-4 sm:px-3.5 rounded-2xl flex flex-col items-center justify-center text-center transition-all duration-300 active:scale-95 group shadow-[0_4px_12px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_20px_rgba(59,130,246,0.06)] cursor-pointer h-full min-h-[82px] xs:min-h-[100px] sm:min-h-[126px]"
-                  >
-                    <div className="w-[36px] h-[36px] xs:w-[46px] xs:h-[46px] sm:w-[58px] sm:h-[58px] md:w-[64px] md:h-[64px] rounded-full bg-[#1A73E8] flex items-center justify-center text-white mb-1.5 sm:mb-2 shrink-0 transition-transform duration-300 group-hover:scale-105 shadow-[0_6px_16px_rgba(26,115,232,0.3)]">
-                      <ShoppingCart className="text-white w-5 h-5 xs:w-[22px] xs:h-[22px] sm:w-[28px] sm:h-[28px] md:w-[32px] md:h-[32px]" strokeWidth={2.4} />
-                    </div>
-                    <span className="text-[8.5px] xs:text-[10px] sm:text-[12.5px] md:text-[14px] font-black text-[#1E293B] tracking-tight leading-none text-center whitespace-nowrap mt-1 font-sans">Gmail কিনুন</span>
-                  </button>
+                    {/* Card 2: Gmail কিনুন */}
+                    <button 
+                      onClick={() => setView('gmail-market')}
+                      className="bg-white/95 hover:bg-white border border-blue-200/80 hover:border-blue-500/40 pt-2 pb-1.5 px-1 xs:pt-3 xs:pb-2.5 xs:px-2 sm:pt-4 sm:pb-3.5 sm:px-3 rounded-2xl flex flex-col items-center justify-center text-center transition-all duration-300 active:scale-95 group shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_20px_rgba(59,130,246,0.15)] cursor-pointer h-full min-h-[82px] xs:min-h-[100px] sm:min-h-[120px]"
+                    >
+                      <div className="w-[36px] h-[36px] xs:w-[44px] xs:h-[44px] sm:w-[54px] sm:h-[54px] md:w-[60px] md:h-[60px] rounded-full bg-[#1A73E8] flex items-center justify-center text-white mb-1.5 sm:mb-2 shrink-0 transition-transform duration-300 group-hover:scale-105 shadow-[0_6px_16px_rgba(26,115,232,0.3)]">
+                        <ShoppingCart className="text-white w-5 h-5 xs:w-[22px] xs:h-[22px] sm:w-[26px] sm:h-[26px] md:w-[30px] md:h-[30px]" strokeWidth={2.4} />
+                      </div>
+                      <span className="text-[8.5px] xs:text-[10px] sm:text-[12px] md:text-[13.5px] font-black text-[#1E293B] tracking-tight leading-none text-center whitespace-nowrap mt-1 font-sans">Gmail কিনুন</span>
+                    </button>
 
-                  {/* Card 3: Facebook */}
-                  <button 
-                    onClick={() => { setSelectedCategoryFilter('Facebook'); setView('facebook-accounts-list'); }}
-                    className="bg-[#F0F3FF] border border-[#DBE2FC] hover:bg-[#E8ECFF] pt-2 pb-1.5 px-1 xs:pt-3 xs:pb-2.5 xs:px-2 sm:pt-4.5 sm:pb-4 sm:px-3.5 rounded-2xl flex flex-col items-center justify-center text-center transition-all duration-300 active:scale-95 group shadow-[0_4px_12px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_20px_rgba(79,70,229,0.06)] cursor-pointer h-full min-h-[82px] xs:min-h-[100px] sm:min-h-[126px]"
-                  >
-                    <div className="w-[36px] h-[36px] xs:w-[46px] xs:h-[46px] sm:w-[58px] sm:h-[58px] md:w-[64px] md:h-[64px] rounded-full bg-[#1877F2] flex items-center justify-center text-white mb-1.5 sm:mb-2 shrink-0 transition-transform duration-300 group-hover:scale-105 shadow-[0_6px_16px_rgba(24,119,242,0.3)]">
-                      <Facebook className="text-white w-5 h-5 xs:w-[22px] xs:h-[22px] sm:w-[28px] sm:h-[28px] md:w-[32px] md:h-[32px]" strokeWidth={2.4} />
-                    </div>
-                    <span className="text-[8.5px] xs:text-[10px] sm:text-[12.5px] md:text-[14px] font-black text-[#1E293B] tracking-tight leading-none text-center whitespace-nowrap mt-1">Facebook</span>
-                  </button>
+                    {/* Card 3: Facebook */}
+                    <button 
+                      onClick={() => { setSelectedCategoryFilter('Facebook'); setView('facebook-accounts-list'); }}
+                      className="bg-white/95 hover:bg-white border border-indigo-200/80 hover:border-blue-500/40 pt-2 pb-1.5 px-1 xs:pt-3 xs:pb-2.5 xs:px-2 sm:pt-4 sm:pb-3.5 sm:px-3 rounded-2xl flex flex-col items-center justify-center text-center transition-all duration-300 active:scale-95 group shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_20px_rgba(79,70,229,0.15)] cursor-pointer h-full min-h-[82px] xs:min-h-[100px] sm:min-h-[120px]"
+                    >
+                      <div className="w-[36px] h-[36px] xs:w-[44px] xs:h-[44px] sm:w-[54px] sm:h-[54px] md:w-[60px] md:h-[60px] rounded-full bg-[#1877F2] flex items-center justify-center text-white mb-1.5 sm:mb-2 shrink-0 transition-transform duration-300 group-hover:scale-105 shadow-[0_6px_16px_rgba(24,119,242,0.3)]">
+                        <Facebook className="text-white w-5 h-5 xs:w-[22px] xs:h-[22px] sm:w-[26px] sm:h-[26px] md:w-[30px] md:h-[30px]" strokeWidth={2.4} />
+                      </div>
+                      <span className="text-[8.5px] xs:text-[10px] sm:text-[12px] md:text-[13.5px] font-black text-[#1E293B] tracking-tight leading-none text-center whitespace-nowrap mt-1">Facebook</span>
+                    </button>
 
-                  {/* Card 4: Task Earn */}
-                  <button 
-                    onClick={() => setShowAdsEarnModal(true)}
-                    className="bg-[#F2FAF4] border border-[#D7EBDC] hover:bg-[#E1F2E5] pt-2 pb-1.5 px-1 xs:pt-3 xs:pb-2.5 xs:px-2 sm:pt-4.5 sm:pb-4 sm:px-3.5 rounded-2xl flex flex-col items-center justify-center text-center transition-all duration-300 active:scale-95 group shadow-[0_4px_12px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_20px_rgba(16,185,129,0.06)] cursor-pointer h-full min-h-[82px] xs:min-h-[100px] sm:min-h-[126px]"
-                  >
-                    <div className="w-[36px] h-[36px] xs:w-[46px] xs:h-[46px] sm:w-[58px] sm:h-[58px] md:w-[64px] md:h-[64px] rounded-full bg-[#03AF5A] flex items-center justify-center text-white mb-1.5 sm:mb-2 shrink-0 transition-transform duration-300 group-hover:scale-105 shadow-[0_6px_16px_rgba(3,175,90,0.3)]">
-                      <CheckCircle className="text-white w-5 h-5 xs:w-[22px] xs:h-[22px] sm:w-[28px] sm:h-[28px] md:w-[32px] md:h-[32px]" strokeWidth={2.4} />
-                    </div>
-                    <span className="text-[8.5px] xs:text-[10px] sm:text-[12.5px] md:text-[14px] font-black text-[#1E293B] tracking-tight leading-none text-center whitespace-nowrap mt-1">Task Earn</span>
-                  </button>
+                    {/* Card 4: Task Earn */}
+                    <button 
+                      onClick={() => setShowAdsEarnModal(true)}
+                      className="bg-white/95 hover:bg-white border border-emerald-200/80 hover:border-emerald-500/40 pt-2 pb-1.5 px-1 xs:pt-3 xs:pb-2.5 xs:px-2 sm:pt-4 sm:pb-3.5 sm:px-3 rounded-2xl flex flex-col items-center justify-center text-center transition-all duration-300 active:scale-95 group shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_20px_rgba(16,185,129,0.15)] cursor-pointer h-full min-h-[82px] xs:min-h-[100px] sm:min-h-[120px]"
+                    >
+                      <div className="w-[36px] h-[36px] xs:w-[44px] xs:h-[44px] sm:w-[54px] sm:h-[54px] md:w-[60px] md:h-[60px] rounded-full bg-[#03AF5A] flex items-center justify-center text-white mb-1.5 sm:mb-2 shrink-0 transition-transform duration-300 group-hover:scale-105 shadow-[0_6px_16px_rgba(3,175,90,0.3)]">
+                        <CheckCircle className="text-white w-5 h-5 xs:w-[22px] xs:h-[22px] sm:w-[26px] sm:h-[26px] md:w-[30px] md:h-[30px]" strokeWidth={2.4} />
+                      </div>
+                      <span className="text-[8.5px] xs:text-[10px] sm:text-[12px] md:text-[13.5px] font-black text-[#1E293B] tracking-tight leading-none text-center whitespace-nowrap mt-1">Task Earn</span>
+                    </button>
 
-                  {/* Card 5: Deposit */}
-                  <button 
-                    onClick={() => handleDepositTrigger()}
-                    className="bg-[#F4F8F4] border border-[#D1DCD3] hover:bg-[#E1EADF] pt-2 pb-1.5 px-1 xs:pt-3 xs:pb-2.5 xs:px-2 sm:pt-4.5 sm:pb-4 sm:px-3.5 rounded-2xl flex flex-col items-center justify-center text-center transition-all duration-300 active:scale-95 group shadow-[0_4px_12px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_20px_rgba(36,117,42,0.06)] cursor-pointer h-full min-h-[82px] xs:min-h-[100px] sm:min-h-[126px]"
-                  >
-                    <div className="w-[36px] h-[36px] xs:w-[46px] xs:h-[46px] sm:w-[58px] sm:h-[58px] md:w-[64px] md:h-[64px] rounded-full bg-[#24752A] flex items-center justify-center text-white mb-1.5 sm:mb-2 shrink-0 transition-transform duration-300 group-hover:scale-105 shadow-[0_6px_16px_rgba(3,117,42,0.3)]">
-                      <Wallet className="text-white w-5 h-5 xs:w-[22px] xs:h-[22px] sm:w-[28px] sm:h-[28px] md:w-[32px] md:h-[32px]" strokeWidth={2.4} />
-                    </div>
-                    <span className="text-[8.5px] xs:text-[10px] sm:text-[12.5px] md:text-[14px] font-black text-[#1E293B] tracking-tight leading-none text-center whitespace-nowrap mt-1">Deposit</span>
-                  </button>
+                    {/* Card 5: Deposit */}
+                    <button 
+                      onClick={() => handleDepositTrigger()}
+                      className="bg-white/95 hover:bg-white border border-teal-200/80 hover:border-teal-500/40 pt-2 pb-1.5 px-1 xs:pt-3 xs:pb-2.5 xs:px-2 sm:pt-4 sm:pb-3.5 sm:px-3 rounded-2xl flex flex-col items-center justify-center text-center transition-all duration-300 active:scale-95 group shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_20px_rgba(20,184,166,0.15)] cursor-pointer h-full min-h-[82px] xs:min-h-[100px] sm:min-h-[120px]"
+                    >
+                      <div className="w-[36px] h-[36px] xs:w-[44px] xs:h-[44px] sm:w-[54px] sm:h-[54px] md:w-[60px] md:h-[60px] rounded-full bg-[#24752A] flex items-center justify-center text-white mb-1.5 sm:mb-2 shrink-0 transition-transform duration-300 group-hover:scale-105 shadow-[0_6px_16px_rgba(3,117,42,0.3)]">
+                        <Wallet className="text-white w-5 h-5 xs:w-[22px] xs:h-[22px] sm:w-[26px] sm:h-[26px] md:w-[30px] md:h-[30px]" strokeWidth={2.4} />
+                      </div>
+                      <span className="text-[8.5px] xs:text-[10px] sm:text-[12px] md:text-[13.5px] font-black text-[#1E293B] tracking-tight leading-none text-center whitespace-nowrap mt-1">Deposit</span>
+                    </button>
+                  </div>
                 </div>
 
-                {/* Community Group & Channel Direct Join Links (Above Adsterra) */}
-                <div className="flex flex-col gap-2.5 my-4">
+                {/* Community Group & Channel Direct Join Links with Green & Blue Frame Accent */}
+                <div className="flex flex-col gap-2.5 my-5 p-2.5 sm:p-3 rounded-3xl bg-gradient-to-r from-emerald-500/[0.08] via-blue-500/[0.06] to-teal-500/[0.08] border border-emerald-500/30 shadow-[0_4px_16px_rgba(16,185,129,0.06)] relative z-10">
                   {/* 1. Admin Messenger */}
                   <a
                     href="https://m.me/ebashraful.eamin"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between p-3 sm:p-3.5 bg-gradient-to-r from-[#006AFF]/15 to-[#A855F7]/10 hover:from-[#006AFF]/25 hover:to-[#A855F7]/20 border border-[#006AFF]/30 rounded-2xl shadow-sm transition-all duration-300 active:scale-[0.98] group cursor-pointer"
+                    className="flex items-center justify-between p-3 sm:p-3.5 bg-white/95 hover:bg-white border border-[#006AFF]/30 hover:border-[#006AFF]/60 rounded-2xl shadow-sm transition-all duration-300 active:scale-[0.98] group cursor-pointer"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-[#006AFF] via-[#0084FF] to-[#A855F7] text-white flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(0,106,255,0.3)] group-hover:scale-105 transition-transform">
@@ -7007,7 +7060,7 @@ export default function App() {
                     target="_blank"
                     rel="noopener noreferrer"
                     referrerPolicy="no-referrer"
-                    className="flex items-center justify-between p-3 sm:p-3.5 bg-gradient-to-r from-[#229ED9]/15 to-[#0088cc]/10 hover:from-[#229ED9]/25 hover:to-[#0088cc]/20 border border-[#229ED9]/30 rounded-2xl shadow-sm transition-all duration-300 active:scale-[0.98] group cursor-pointer"
+                    className="flex items-center justify-between p-3 sm:p-3.5 bg-white/95 hover:bg-white border border-[#229ED9]/30 hover:border-[#229ED9]/60 rounded-2xl shadow-sm transition-all duration-300 active:scale-[0.98] group cursor-pointer"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-[#0088cc] to-[#229ED9] text-white flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(34,158,217,0.3)] group-hover:scale-105 transition-transform">
@@ -7033,7 +7086,7 @@ export default function App() {
                     href="https://www.facebook.com/share/g/1GGkiNRdZd/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between p-3 sm:p-3.5 bg-gradient-to-r from-[#1877F2]/15 to-[#0084FF]/10 hover:from-[#1877F2]/25 hover:to-[#0084FF]/20 border border-[#1877F2]/30 rounded-2xl shadow-sm transition-all duration-300 active:scale-[0.98] group cursor-pointer"
+                    className="flex items-center justify-between p-3 sm:p-3.5 bg-white/95 hover:bg-white border border-[#1877F2]/30 hover:border-[#1877F2]/60 rounded-2xl shadow-sm transition-all duration-300 active:scale-[0.98] group cursor-pointer"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#1877F2] text-white flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(24,119,242,0.3)] group-hover:scale-105 transition-transform">
@@ -7077,22 +7130,22 @@ export default function App() {
                     monetagStickyTagId={monetagStickyTagId}
                   />
                 ) : (
-                  <div className="bg-[#0D1321] text-white rounded-2xl border border-slate-900 p-3.5 relative overflow-hidden my-4 text-left select-none shadow-sm block">
-                    <div className="flex justify-between items-center text-[7.5px] font-black uppercase text-slate-400 tracking-wider mb-2 border-b border-white/5 pb-1.5">
-                      <span className="flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                  <div className="bg-[#0D1321] text-white rounded-2xl border border-blue-500/30 p-3.5 relative overflow-hidden my-4 text-left select-none shadow-[0_10px_30px_rgba(0,0,0,0.2)] block">
+                    <div className="flex justify-between items-center text-[7.5px] font-black uppercase text-slate-400 tracking-wider mb-2 border-b border-white/10 pb-1.5">
+                      <span className="flex items-center gap-1 text-emerald-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                         ADSTERRA NETWORK PREMIUM SPONSOR
                       </span>
-                      <span className="bg-slate-800 text-slate-300 px-1 py-0.5 rounded text-[7px]">Secure Ad</span>
+                      <span className="bg-blue-900/60 border border-blue-500/30 text-blue-300 px-1.5 py-0.5 rounded text-[7px] font-bold">Secure Ad</span>
                     </div>
                     <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
                       <div className="space-y-1 min-w-0 flex-1">
                         <h4 className="text-[11px] font-black leading-tight text-white tracking-tight">Trade with over $5,000 in Deposit Bonuses</h4>
-                        <p className="text-[8.5px] text-slate-400 font-medium">Create your account with a trusted world broker XM today.</p>
+                        <p className="text-[8.5px] text-slate-300 font-medium">Create your account with a trusted world broker XM today.</p>
                       </div>
                       <button 
                         onClick={() => window.open('https://directlink.adsterra.com', '_blank')}
-                        className="bg-[#00B56C] hover:bg-[#00B56C]/90 text-black text-[8.5px] font-black px-3.5 py-1.5 rounded-lg shrink-0 transition-all uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer"
+                        className="bg-gradient-to-r from-emerald-500 to-teal-400 hover:brightness-110 text-slate-950 text-[8.5px] font-black px-3.5 py-1.5 rounded-lg shrink-0 transition-all uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer"
                       >
                         Download Now
                       </button>
@@ -7100,8 +7153,8 @@ export default function App() {
                   </div>
                 )}
 
-                {/* Orange Claim Bonus Ribbon */}
-                <div className="bg-gradient-to-r from-[#FF523B] to-[#FF7E40] text-white p-3.5 rounded-[1.25rem] flex items-center justify-between shadow-sm relative overflow-hidden my-4">
+                {/* Orange Claim Bonus Ribbon with Green & Blue Border Ring */}
+                <div className="bg-gradient-to-r from-[#FF523B] via-[#FF6F3C] to-[#FF7E40] text-white p-3.5 rounded-[1.25rem] flex items-center justify-between shadow-md border border-orange-400/30 relative overflow-hidden my-4">
                   <div className="flex items-center gap-2.5 z-10">
                     <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
                       <Gift className="text-white animate-bounce" size={16} />
@@ -7119,19 +7172,28 @@ export default function App() {
                   </button>
                 </div>
 
-                {/* Vertical Category Custom Outline Row Section */}
-                <section className="flex flex-col gap-3.5 mb-6">
+                {/* Section Title with Green & Blue Accent Bar */}
+                <div className="flex items-center gap-2 pt-2 text-left">
+                  <div className="w-1.5 h-4 rounded-full bg-gradient-to-b from-blue-500 to-emerald-500" />
+                  <h3 className="font-display text-xs sm:text-sm font-black tracking-tight text-slate-800 uppercase">
+                    সার্ভিস ক্যাটাগরি ও মার্কেটপ্লেস
+                  </h3>
+                  <div className="flex-1 h-px bg-gradient-to-r from-blue-500/20 via-emerald-500/20 to-transparent ml-2" />
+                </div>
+
+                {/* Vertical Category Custom Outline Row Section with Green & Blue Border & Glow Accents */}
+                <section className="flex flex-col gap-3.5 mb-6 relative z-10">
                   {/* 1. LIVE MARKET Card */}
-                  <div className="bg-[#FFF9EE] border border-[#FFE7C8]/70 rounded-[1.8rem] p-5 flex items-start gap-4 transition-all w-full text-left relative overflow-hidden shadow-sm">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/5 rounded-full blur-2xl pointer-events-none" />
-                    <div className="w-11 h-11 rounded-full bg-[#FFF0D4] border border-[#FFE8A3] flex items-center justify-center shrink-0 text-orange-500 shadow-sm">
+                  <div className="bg-gradient-to-br from-white via-[#FFF9EE] to-emerald-50/20 border border-emerald-500/30 hover:border-emerald-500/50 rounded-[1.8rem] p-5 flex items-start gap-4 transition-all w-full text-left relative overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(16,185,129,0.12)]">
+                    <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#FFF0D4] to-[#FFE5B4] border border-emerald-500/30 flex items-center justify-center shrink-0 text-orange-600 shadow-sm">
                       <Store size={20} strokeWidth={2.5} />
                     </div>
                     
                     <div className="flex-1 space-y-2 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[8.5px] font-black tracking-widest text-orange-600 uppercase">LIVE MARKET</span>
-                        <span className="bg-orange-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider leading-none">NEW</span>
+                        <span className="text-[8.5px] font-black tracking-widest text-emerald-700 uppercase bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">LIVE MARKET</span>
+                        <span className="bg-gradient-to-r from-orange-500 to-amber-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider leading-none shadow-xs">NEW</span>
                       </div>
                       <h3 className="text-xs sm:text-sm font-black text-slate-800 leading-none">Digital Account বেচুন/কিনুন</h3>
                       <p className="text-[10px] md:text-xs text-slate-500 font-semibold leading-relaxed">
@@ -7140,30 +7202,30 @@ export default function App() {
                       <div className="flex items-center gap-2 pt-1">
                         <button 
                           onClick={() => { setSelectedCategoryFilter('All'); setView('facebook-market'); }}
-                          className="bg-white border border-[#FFD0B3] hover:bg-[#FFF5EE] px-4 py-1.5 rounded-full text-[9px] font-black text-orange-600 tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-3xs"
+                          className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-4 py-1.5 rounded-full text-[9px] font-black tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
                         >
-                          দেখুন <ArrowRight size={10} className="text-orange-500 shrink-0" />
+                          দেখুন <ArrowRight size={10} className="text-white shrink-0" />
                         </button>
                         <button 
                           onClick={() => setView('facebook-create-post')}
-                          className="bg-white border border-slate-200 hover:bg-slate-50 px-4 py-1.5 rounded-full text-[9px] font-black text-slate-600 tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-3xs"
+                          className="bg-white border border-blue-200 hover:bg-blue-50/50 px-4 py-1.5 rounded-full text-[9px] font-black text-blue-600 tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-3xs"
                         >
-                          <Plus size={10} strokeWidth={3} className="shrink-0 text-slate-400" /> Post
+                          <Plus size={10} strokeWidth={3} className="shrink-0 text-blue-500" /> Post
                         </button>
                       </div>
                     </div>
                   </div>
 
                   {/* 2. GMAIL ACCOUNTS Card */}
-                  <div className="bg-[#FFF5F5] border border-[#FFE3E3] rounded-[1.8rem] p-5 flex items-start gap-4 transition-all w-full text-left relative overflow-hidden shadow-sm">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full blur-2xl pointer-events-none" />
-                    <div className="w-11 h-11 rounded-full bg-[#FFEAEB] border border-[#FFD1D2] flex items-center justify-center shrink-0 text-red-500 shadow-sm">
+                  <div className="bg-gradient-to-br from-white via-[#FFF5F5] to-blue-50/20 border border-blue-500/30 hover:border-blue-500/50 rounded-[1.8rem] p-5 flex items-start gap-4 transition-all w-full text-left relative overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(59,130,246,0.12)]">
+                    <div className="absolute top-0 right-0 w-28 h-28 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#FFEAEB] to-[#FFD5D8] border border-blue-500/30 flex items-center justify-center shrink-0 text-red-500 shadow-sm">
                       <Mail size={20} strokeWidth={2.5} />
                     </div>
                     
                     <div className="flex-1 space-y-2 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[8.5px] font-black tracking-widest text-red-500 uppercase">GMAIL ACCOUNTS</span>
+                        <span className="text-[8.5px] font-black tracking-widest text-blue-700 uppercase bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">GMAIL ACCOUNTS</span>
                       </div>
                       <h3 className="text-xs sm:text-sm font-black text-slate-800 leading-none">Buy & Sell Gmail</h3>
                       <p className="text-[10px] md:text-xs text-slate-500 font-semibold leading-relaxed">
@@ -7172,13 +7234,13 @@ export default function App() {
                       <div className="flex items-center gap-2 pt-1">
                         <button 
                           onClick={() => setView('gmail-market')}
-                          className="bg-white border border-red-200 hover:bg-red-50/50 px-4 py-1.5 rounded-full text-[9px] font-black text-red-500 tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-3xs"
+                          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-1.5 rounded-full text-[9px] font-black tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
                         >
-                          কিনুন <ArrowRight size={10} className="shrink-0 text-red-500" />
+                          কিনুন <ArrowRight size={10} className="shrink-0 text-white" />
                         </button>
                         <button 
                           onClick={() => { setView('seller-center'); setShowSellNotice(true); }}
-                          className="bg-white border border-slate-200 hover:bg-slate-50 px-4 py-1.5 rounded-full text-[9px] font-black text-slate-600 tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-3xs"
+                          className="bg-white border border-emerald-300 hover:bg-emerald-50/50 px-4 py-1.5 rounded-full text-[9px] font-black text-emerald-700 tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-3xs"
                         >
                           বিক্রি করুন
                         </button>
@@ -7187,15 +7249,15 @@ export default function App() {
                   </div>
 
                   {/* 3. FACEBOOK ACCOUNTS Card */}
-                  <div className="bg-[#F2F6FF] border border-[#E1ECFF] rounded-[1.8rem] p-5 flex items-start gap-4 transition-all w-full text-left relative overflow-hidden shadow-sm">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl pointer-events-none" />
-                    <div className="w-11 h-11 rounded-full bg-[#E5EFFF] border border-[#CDDFFF] flex items-center justify-center shrink-0 text-blue-600 shadow-sm">
+                  <div className="bg-gradient-to-br from-white via-[#F2F6FF] to-teal-50/20 border border-teal-500/30 hover:border-teal-500/50 rounded-[1.8rem] p-5 flex items-start gap-4 transition-all w-full text-left relative overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(20,184,166,0.12)]">
+                    <div className="absolute top-0 right-0 w-28 h-28 bg-teal-500/10 rounded-full blur-2xl pointer-events-none" />
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#E5EFFF] to-[#D0E2FF] border border-teal-500/30 flex items-center justify-center shrink-0 text-blue-600 shadow-sm">
                       <Facebook size={20} strokeWidth={2.5} />
                     </div>
                     
                     <div className="flex-1 space-y-2 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[8.5px] font-black tracking-widest text-blue-600 uppercase">FACEBOOK ACCOUNTS</span>
+                        <span className="text-[8.5px] font-black tracking-widest text-teal-700 uppercase bg-teal-500/10 px-2 py-0.5 rounded-md border border-teal-500/20">FACEBOOK ACCOUNTS</span>
                       </div>
                       <h3 className="text-xs sm:text-sm font-black text-slate-800 leading-none">Buy & Sell Facebook</h3>
                       <p className="text-[10px] md:text-xs text-slate-500 font-semibold leading-relaxed">
@@ -7204,13 +7266,13 @@ export default function App() {
                       <div className="flex items-center gap-2 pt-1">
                         <button 
                           onClick={() => { setSelectedCategoryFilter('Facebook'); setView('facebook-accounts-list'); }}
-                          className="bg-white border border-blue-200 hover:bg-blue-50/50 px-4 py-1.5 rounded-full text-[9px] font-black text-blue-600 tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-3xs"
+                          className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white px-4 py-1.5 rounded-full text-[9px] font-black tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
                         >
-                          কিনুন <ArrowRight size={10} className="shrink-0 text-blue-500" />
+                          কিনুন <ArrowRight size={10} className="shrink-0 text-white" />
                         </button>
                         <button 
                           onClick={() => setView('facebook-sell-center')}
-                          className="bg-white border border-slate-200 hover:bg-slate-50 px-4 py-1.5 rounded-full text-[9px] font-black text-slate-600 tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-3xs"
+                          className="bg-white border border-blue-300 hover:bg-blue-50/50 px-4 py-1.5 rounded-full text-[9px] font-black text-blue-700 tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-3xs"
                         >
                           বিক্রি করুন
                         </button>
@@ -7219,15 +7281,15 @@ export default function App() {
                   </div>
 
                   {/* 4. INSTAGRAM ACCOUNTS Card */}
-                  <div className="bg-[#FFF0F6] border border-[#FFE3F0] rounded-[1.8rem] p-5 flex items-start gap-4 transition-all w-full text-left relative overflow-hidden shadow-sm">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-pink-500/5 rounded-full blur-2xl pointer-events-none" />
-                    <div className="w-11 h-11 rounded-full bg-[#FFEAF3] border border-[#FFD1E6] flex items-center justify-center shrink-0 text-pink-500 shadow-sm">
+                  <div className="bg-gradient-to-br from-white via-[#FFF0F6] to-indigo-50/20 border border-blue-500/25 hover:border-blue-500/45 rounded-[1.8rem] p-5 flex items-start gap-4 transition-all w-full text-left relative overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(59,130,246,0.12)]">
+                    <div className="absolute top-0 right-0 w-28 h-28 bg-pink-500/10 rounded-full blur-2xl pointer-events-none" />
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#FFEAF3] to-[#FFD6E8] border border-pink-400/30 flex items-center justify-center shrink-0 text-pink-500 shadow-sm">
                       <Camera size={20} strokeWidth={2.5} />
                     </div>
                     
                     <div className="flex-1 space-y-2 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[8.5px] font-black tracking-widest text-[#FF1493] uppercase">INSTAGRAM ACCOUNTS</span>
+                        <span className="text-[8.5px] font-black tracking-widest text-[#FF1493] uppercase bg-pink-500/10 px-2 py-0.5 rounded-md border border-pink-500/20">INSTAGRAM ACCOUNTS</span>
                       </div>
                       <h3 className="text-xs sm:text-sm font-black text-slate-800 leading-none">Buy & Sell Instagram</h3>
                       <p className="text-[10px] md:text-xs text-slate-500 font-semibold leading-relaxed">
@@ -7236,13 +7298,13 @@ export default function App() {
                       <div className="flex items-center gap-2 pt-1">
                         <button 
                           onClick={() => handleShowComingSoon('Instagram')}
-                          className="bg-white border border-pink-200 hover:bg-pink-50/50 px-4 py-1.5 rounded-full text-[9px] font-black text-pink-600 tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-3xs"
+                          className="bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white px-4 py-1.5 rounded-full text-[9px] font-black tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
                         >
-                          কিনুন <ArrowRight size={10} className="shrink-0 text-pink-500" />
+                          কিনুন <ArrowRight size={10} className="shrink-0 text-white" />
                         </button>
                         <button 
                           onClick={() => handleShowComingSoon('Instagram')}
-                          className="bg-white border border-slate-200 hover:bg-slate-50 px-4 py-1.5 rounded-full text-[9px] font-black text-slate-600 tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-3xs"
+                          className="bg-white border border-emerald-300 hover:bg-emerald-50/50 px-4 py-1.5 rounded-full text-[9px] font-black text-emerald-700 tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-3xs"
                         >
                           বিক্রি করুন
                         </button>
@@ -7251,15 +7313,15 @@ export default function App() {
                   </div>
 
                   {/* 5. TELEGRAM OTP Card */}
-                  <div className="bg-[#F0FAFF] border border-[#E0F3FF] rounded-[1.8rem] p-5 flex items-start gap-4 transition-all w-full text-left relative overflow-hidden shadow-sm">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none" />
-                    <div className="w-11 h-11 rounded-full bg-[#E6F6FF] border border-[#CDEBFF] flex items-center justify-center shrink-0 text-cyan-600 shadow-sm">
+                  <div className="bg-gradient-to-br from-white via-[#F0FAFF] to-emerald-50/20 border border-cyan-500/30 hover:border-cyan-500/50 rounded-[1.8rem] p-5 flex items-start gap-4 transition-all w-full text-left relative overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(6,182,212,0.12)]">
+                    <div className="absolute top-0 right-0 w-28 h-28 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#E6F6FF] to-[#CCEFFF] border border-cyan-500/30 flex items-center justify-center shrink-0 text-cyan-600 shadow-sm">
                       <Send size={18} strokeWidth={2.5} className="-ml-0.5 mt-0.5" />
                     </div>
                     
                     <div className="flex-1 space-y-2 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[8.5px] font-black tracking-widest text-cyan-600 uppercase">TELEGRAM OTP</span>
+                        <span className="text-[8.5px] font-black tracking-widest text-cyan-700 uppercase bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20">TELEGRAM OTP</span>
                       </div>
                       <h3 className="text-xs sm:text-sm font-black text-slate-800 leading-none">Buy & Sell Telegram OTP</h3>
                       <p className="text-[10px] md:text-xs text-slate-500 font-semibold leading-relaxed">
@@ -7268,13 +7330,13 @@ export default function App() {
                       <div className="flex items-center gap-2 pt-1">
                         <button 
                           onClick={() => handleShowComingSoon('Telegram OTP')}
-                          className="bg-white border border-cyan-200 hover:bg-cyan-50/50 px-4 py-1.5 rounded-full text-[9px] font-black text-cyan-600 tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-3xs"
+                          className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white px-4 py-1.5 rounded-full text-[9px] font-black tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
                         >
-                          কিনুন <ArrowRight size={10} className="shrink-0 text-cyan-500" />
+                          কিনুন <ArrowRight size={10} className="shrink-0 text-white" />
                         </button>
                         <button 
                           onClick={() => handleShowComingSoon('Telegram OTP')}
-                          className="bg-white border border-slate-200 hover:bg-slate-50 px-4 py-1.5 rounded-full text-[9px] font-black text-slate-600 tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-3xs"
+                          className="bg-white border border-teal-300 hover:bg-teal-50/50 px-4 py-1.5 rounded-full text-[9px] font-black text-teal-700 tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-3xs"
                         >
                           বিক্রি করুন
                         </button>
@@ -7283,15 +7345,15 @@ export default function App() {
                   </div>
 
                   {/* 6. WHATSAPP OTP Card */}
-                  <div className="bg-[#EFFFFA] border border-[#D3FDF1] rounded-[1.8rem] p-5 flex items-start gap-4 transition-all w-full text-left relative overflow-hidden shadow-sm">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
-                    <div className="w-11 h-11 rounded-full bg-[#E1FCF1] border border-[#BCFCE0] flex items-center justify-center shrink-0 text-emerald-600 shadow-sm">
+                  <div className="bg-gradient-to-br from-white via-[#EFFFFA] to-blue-50/20 border border-emerald-500/35 hover:border-emerald-500/60 rounded-[1.8rem] p-5 flex items-start gap-4 transition-all w-full text-left relative overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(16,185,129,0.15)]">
+                    <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#E1FCF1] to-[#C7FAE5] border border-emerald-500/30 flex items-center justify-center shrink-0 text-emerald-600 shadow-sm">
                       <MessageSquare size={18} strokeWidth={2.5} />
                     </div>
                     
                     <div className="flex-1 space-y-2 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[8.5px] font-black tracking-widest text-emerald-600 uppercase">WHATSAPP OTP</span>
+                        <span className="text-[8.5px] font-black tracking-widest text-emerald-700 uppercase bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">WHATSAPP OTP</span>
                       </div>
                       <h3 className="text-xs sm:text-sm font-black text-slate-800 leading-none">Buy & Sell WhatsApp OTP</h3>
                       <p className="text-[10px] md:text-xs text-slate-500 font-semibold leading-relaxed">
@@ -7300,31 +7362,37 @@ export default function App() {
                       <div className="flex items-center gap-2 pt-1">
                         <button 
                           onClick={() => handleShowComingSoon('WhatsApp OTP')}
-                          className="bg-white border border-emerald-200 hover:bg-emerald-50/50 px-4 py-1.5 rounded-full text-[9px] font-black text-emerald-600 tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-3xs"
+                          className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-4 py-1.5 rounded-full text-[9px] font-black tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
                         >
-                          কিনুন <ArrowRight size={10} className="shrink-0 text-emerald-500" />
+                          কিনুন <ArrowRight size={10} className="shrink-0 text-white" />
                         </button>
                         <button 
                           onClick={() => handleShowComingSoon('WhatsApp OTP')}
-                          className="bg-white border border-slate-200 hover:bg-slate-50 px-4 py-1.5 rounded-full text-[9px] font-black text-slate-600 tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-3xs"
+                          className="bg-white border border-blue-300 hover:bg-blue-50/50 px-4 py-1.5 rounded-full text-[9px] font-black text-blue-700 tracking-wider flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-3xs"
                         >
                           বিক্রি করুন
                         </button>
                       </div>
                     </div>
                   </div>
-                </section>                {/* Statistics Section */}
-                <section className="mb-6">
-                  <div className="flex flex-col gap-1.5 mb-3 text-left">
-                    <h3 className="font-display text-xs font-black tracking-tight text-slate-800 uppercase">Our Statistics</h3>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Real-time marketplace insights</p>
+                </section>
+
+                {/* Statistics Section with Green & Blue Framing & Accents */}
+                <section className="mb-6 relative z-10">
+                  <div className="flex items-center gap-2 mb-3 text-left">
+                    <div className="w-1.5 h-4 rounded-full bg-gradient-to-b from-emerald-500 to-blue-500" />
+                    <div>
+                      <h3 className="font-display text-xs font-black tracking-tight text-slate-800 uppercase">Our Statistics</h3>
+                      <p className="text-[9.5px] font-bold text-emerald-600 uppercase tracking-widest leading-none">Real-time marketplace insights</p>
+                    </div>
+                    <div className="flex-1 h-px bg-gradient-to-r from-emerald-500/20 via-blue-500/20 to-transparent ml-2" />
                   </div>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 p-2 rounded-2xl bg-gradient-to-r from-blue-500/[0.06] via-teal-500/[0.04] to-emerald-500/[0.06] border border-blue-200/60 shadow-xs">
                     {/* Total Users */}
-                    <div className="bg-white rounded-xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)] p-3.5 flex flex-col justify-between transition-all hover:shadow-md hover:border-red-100/50 text-left">
+                    <div className="bg-white/95 rounded-xl border border-red-200/70 hover:border-red-400 shadow-[0_2px_8px_rgba(0,0,0,0.02)] p-3.5 flex flex-col justify-between transition-all hover:shadow-md text-left">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Total Users</span>
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Total Users</span>
                         <div className="w-6.5 h-6.5 bg-red-50 rounded-lg flex items-center justify-center text-red-500">
                           <Users size={12} />
                         </div>
@@ -7336,9 +7404,9 @@ export default function App() {
                     </div>
 
                     {/* Total Orders */}
-                    <div className="bg-white rounded-xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)] p-3.5 flex flex-col justify-between transition-all hover:shadow-md hover:border-emerald-100/50 text-left">
+                    <div className="bg-white/95 rounded-xl border border-emerald-200/70 hover:border-emerald-500 shadow-[0_2px_8px_rgba(0,0,0,0.02)] p-3.5 flex flex-col justify-between transition-all hover:shadow-md text-left">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Total Orders</span>
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Total Orders</span>
                         <div className="w-6.5 h-6.5 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-500">
                           <ShoppingBag size={12} />
                         </div>
@@ -7350,9 +7418,9 @@ export default function App() {
                     </div>
 
                     {/* Success Rate */}
-                    <div className="bg-white rounded-xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)] p-3.5 flex flex-col justify-between transition-all hover:shadow-md hover:border-sky-100/50 text-left">
+                    <div className="bg-white/95 rounded-xl border border-sky-200/70 hover:border-blue-500 shadow-[0_2px_8px_rgba(0,0,0,0.02)] p-3.5 flex flex-col justify-between transition-all hover:shadow-md text-left">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Success Rate</span>
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Success Rate</span>
                         <div className="w-6.5 h-6.5 bg-sky-50 rounded-lg flex items-center justify-center text-sky-500">
                           <CheckCircle2 size={12} />
                         </div>
@@ -7365,10 +7433,10 @@ export default function App() {
 
                     {/* Live Support */}
                     <div 
-                      className="bg-white rounded-xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)] p-3.5 flex flex-col justify-between text-left"
+                      className="bg-white/95 rounded-xl border border-teal-200/70 hover:border-emerald-500 shadow-[0_2px_8px_rgba(0,0,0,0.02)] p-3.5 flex flex-col justify-between text-left"
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Live Support</span>
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Live Support</span>
                         <div className="w-6.5 h-6.5 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600">
                           <Headphones size={12} />
                         </div>
@@ -7380,19 +7448,19 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Partnership Network Row */}
-                  <div className="mt-3 bg-white rounded-2xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)] p-3.5 text-left">
+                  {/* Partnership Network Row with Green & Blue Frame Accent */}
+                  <div className="mt-3 bg-gradient-to-r from-blue-500/[0.06] via-white to-emerald-500/[0.06] rounded-2xl border border-blue-200/70 shadow-xs p-3.5 text-left">
                     <div className="flex items-center justify-between mb-2.5">
                       <div className="flex items-center gap-1.5">
                         <Handshake size={14} className="text-blue-600" />
                         <span className="text-[10px] sm:text-xs font-black text-slate-800 uppercase tracking-wider">Official Partnerships</span>
                       </div>
-                      <span className="text-[8px] sm:text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100/60 uppercase tracking-wider">Verified Network</span>
+                      <span className="text-[8px] sm:text-[9px] font-black text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full border border-emerald-300/60 uppercase tracking-wider">Verified Network</span>
                     </div>
 
                     <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-6 gap-2">
                       {/* Google */}
-                      <div className="flex items-center justify-center gap-1.5 bg-slate-50/80 hover:bg-slate-100/80 border border-slate-200/60 rounded-xl px-2.5 py-2 transition-all group">
+                      <div className="flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 border border-blue-200/60 hover:border-emerald-400 rounded-xl px-2.5 py-2 transition-all group shadow-3xs">
                         <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                           <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -7403,7 +7471,7 @@ export default function App() {
                       </div>
 
                       {/* Meta */}
-                      <div className="flex items-center justify-center gap-1.5 bg-slate-50/80 hover:bg-slate-100/80 border border-slate-200/60 rounded-xl px-2.5 py-2 transition-all group">
+                      <div className="flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 border border-blue-200/60 hover:border-blue-400 rounded-xl px-2.5 py-2 transition-all group shadow-3xs">
                         <svg className="w-4 h-4 shrink-0 text-[#0668E1]" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M16.82 5c-1.72 0-3.15.82-4.82 2.76C10.33 5.82 8.9 5 7.18 5 3.93 5 1.5 7.57 1.5 11c0 4.14 3.51 7.99 8.24 7.99 1.65 0 2.94-.52 4.26-2.01 1.32 1.49 2.61 2.01 4.26 2.01 4.73 0 8.24-3.85 8.24-7.99C22.5 7.57 20.07 5 16.82 5zm-9.64 12c-3.11 0-5.18-2.52-5.18-5.5 0-2.31 1.56-4 3.68-4 1.32 0 2.37.66 3.73 2.27L7.87 11.8c-.28.36-.6.58-.93.58-.33 0-.64-.2-.88-.54l-.4-.57a.75.75 0 0 0-1.23.86l.4.57c.5.7 1.22 1.13 2.11 1.13.92 0 1.68-.48 2.39-1.39l1.83-2.35c1.36-1.61 2.41-2.27 3.73-2.27 2.12 0 3.68 1.69 3.68 4 0 2.98-2.07 5.5-5.18 5.5-1.22 0-2.2-.41-3.32-1.63L12 13.88l-1.5 2.19C9.38 16.59 8.4 17 7.18 17z"/>
                         </svg>
@@ -7411,7 +7479,7 @@ export default function App() {
                       </div>
 
                       {/* YouTube */}
-                      <div className="flex items-center justify-center gap-1.5 bg-slate-50/80 hover:bg-slate-100/80 border border-slate-200/60 rounded-xl px-2.5 py-2 transition-all group">
+                      <div className="flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 border border-blue-200/60 hover:border-emerald-400 rounded-xl px-2.5 py-2 transition-all group shadow-3xs">
                         <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                           <path fill="#FF0000" d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814z"/>
                           <path fill="#FFFFFF" d="M9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
@@ -7420,7 +7488,7 @@ export default function App() {
                       </div>
 
                       {/* Telegram */}
-                      <div className="flex items-center justify-center gap-1.5 bg-slate-50/80 hover:bg-slate-100/80 border border-slate-200/60 rounded-xl px-2.5 py-2 transition-all group">
+                      <div className="flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 border border-blue-200/60 hover:border-cyan-400 rounded-xl px-2.5 py-2 transition-all group shadow-3xs">
                         <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                           <path fill="#229ED9" d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.562 8.161c-.18 1.897-.962 6.502-1.359 8.627-.168.9-.5 1.201-.82 1.23-.697.064-1.226-.461-1.901-.903-1.056-.692-1.653-1.123-2.678-1.799-1.185-.781-.417-1.21.258-1.911.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.139-5.062 3.345-.479.329-.913.489-1.302.481-.428-.008-1.252-.241-1.865-.44-.752-.244-1.349-.374-1.297-.789.027-.216.324-.437.892-.663 3.498-1.524 5.831-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635.099-.002.321.023.465.14.121.098.155.232.171.326.016.094.037.308.02.484z"/>
                         </svg>
@@ -7428,15 +7496,15 @@ export default function App() {
                       </div>
 
                       {/* Twitter X */}
-                      <div className="flex items-center justify-center gap-1.5 bg-slate-50/80 hover:bg-slate-100/80 border border-slate-200/60 rounded-xl px-2.5 py-2 transition-all group">
+                      <div className="flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 border border-blue-200/60 hover:border-slate-400 rounded-xl px-2.5 py-2 transition-all group shadow-3xs">
                         <svg className="w-3.5 h-3.5 shrink-0 text-slate-900" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                         </svg>
-                        <span className="text-[10px] sm:text-[11px] font-black text-slate-700 group-hover:text-slate-900">Twitter X</span>
+                        <span className="text-[10px] sm:text-[11px] font-black text-slate-700 group-hover:text-slate-900">X (Twitter)</span>
                       </div>
 
                       {/* Monetag */}
-                      <div className="flex items-center justify-center gap-1.5 bg-slate-50/80 hover:bg-slate-100/80 border border-slate-200/60 rounded-xl px-2.5 py-2 transition-all group">
+                      <div className="flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 border border-blue-200/60 hover:border-blue-400 rounded-xl px-2.5 py-2 transition-all group shadow-3xs">
                         <div className="w-4 h-4 rounded-md bg-[#2563EB] text-white flex items-center justify-center text-[9px] font-black tracking-tighter shrink-0 shadow-xs">
                           M
                         </div>
@@ -7445,6 +7513,25 @@ export default function App() {
                     </div>
                   </div>
                 </section>
+
+                {/* Bottom Trust & Security Banner with Green & Blue Styled Design */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-900/10 via-teal-900/10 to-emerald-900/10 border border-emerald-500/20 text-center space-y-2 relative overflow-hidden backdrop-blur-xs">
+                  <div className="flex items-center justify-center gap-2 text-xs font-black text-slate-700">
+                    <ShieldCheck size={16} className="text-emerald-600" />
+                    <span>১০০% বিশ্বস্ত ও সিকিউর এসক্রো প্ল্যাটফর্ম</span>
+                    <Zap size={14} className="text-blue-600" />
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-medium">
+                    সকল প্রকার লেনদেন স্বয়ংক্রিয় ভেরিফিকেশন ও এডমিন তত্ত্বাবধানে পরিচালিত হয়
+                  </p>
+                  <div className="flex items-center justify-center gap-3 pt-1 text-[9px] font-bold text-slate-400">
+                    <span className="text-emerald-700">✓ Instant Delivery</span>
+                    <span>•</span>
+                    <span className="text-blue-700">✓ 24/7 Escrow Protection</span>
+                    <span>•</span>
+                    <span className="text-teal-700">✓ Safe Payout</span>
+                  </div>
+                </div>
 
               </>
             ) : view === 'gmail-market' ? (
@@ -11277,77 +11364,11 @@ export default function App() {
                                     {item.type || 'Fresh New'}
                                   </p>
                                   {item.description && (
-                                    <p className="text-[10px] text-slate-500 font-medium leading-tight mt-1 line-clamp-2">
+                                    <p className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">
                                       {item.description}
                                     </p>
                                   )}
                                 </div>
-                              </div>
-
-                              <div className="text-right shrink-0">
-                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">মূল্য / Payout</span>
-                                {(() => {
-                                  const priceObj = gmailPrices[item.type];
-                                  const displayPrice = priceObj?.seller ? parseFloat(priceObj.seller) : item.price;
-                                  return (
-                                    <p className="text-base font-black text-slate-900">৳{displayPrice || '0'}</p>
-                                  );
-                                })()}
-                                {(item.paymentStatus === 'Paid' || item.payoutTrxId) && (
-                                  <div className="mt-1">
-                                    <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase tracking-wider inline-block">
-                                      Paid
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Dispute / Issue message box */}
-                            {item.status === 'Dispute' && (
-                              <div className="bg-red-50/80 border border-red-100 rounded-xl p-3 flex flex-col gap-2">
-                                <p className="text-[10px] font-bold text-red-700 leading-normal">
-                                  ⚠️ বায়ার বা এডমিন জানিয়েছেন আপনার এই জিমেইলটির তথ্য ভুল (পাসওয়ার্ড, রিকভারি বা টু-ফ্যাক্টর কাজ করছে না)। অনুগ্রহ করে সঠিক তথ্য দিয়ে এখনই আপডেট করুন।
-                                </p>
-                                {item.buyerDisputeReason && (
-                                  <p className="text-[9.5px] font-medium text-red-600 bg-white/60 p-2 rounded-lg border border-red-100/50">
-                                    <span className="font-bold">কারণ:</span> {item.buyerDisputeReason}
-                                  </p>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Action Row */}
-                            <div className="flex items-center justify-between border-t border-slate-50 pt-3 mt-1">
-                              <span className="text-[9px] font-mono text-slate-400">ID: {item.id.substring(0, 8)}...</span>
-                              <div className="flex gap-2">
-                                {/* Dispute or Pending can be edited */}
-                                {(item.status === 'Dispute' || item.status === 'SellRequest' || item.status === 'Available') && (
-                                  <button
-                                    type="button"
-                                    onClick={() => openSellerEditModal(item.id)}
-                                    className={`px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer ${
-                                      item.status === 'Dispute'
-                                        ? 'bg-red-600 hover:bg-red-700 text-white shadow-sm shadow-red-900/10'
-                                        : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-100'
-                                    }`}
-                                  >
-                                    <Edit size={10} />
-                                    {item.status === 'Dispute' ? 'তথ্য ঠিক করুন' : 'Edit Details'}
-                                  </button>
-                                )}
-
-                                {/* Show date info */}
-                                {item.createdAt && (
-                                  <span className="text-[9px] text-slate-400 flex items-center gap-1">
-                                    <Clock size={10} />
-                                    {new Date(item.createdAt.seconds * 1000).toLocaleDateString('bn-BD', {
-                                      day: 'numeric',
-                                      month: 'short',
-                                      year: '2-digit'
-                                    })}
-                                  </span>
-                                )}
                               </div>
                             </div>
                           </motion.div>
@@ -11355,491 +11376,398 @@ export default function App() {
                       })}
                     </div>
                   )}
-                </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </main>
 
-          {/* Payment Modal */}
-          <AnimatePresence>
-            {showPaymentModal.show && (
-              <>
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={handleClosePaymentModal}
-                  className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100]"
-                />
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.9, y: 30 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, y: 30 }}
-                  transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                  className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] max-w-[360px] bg-white rounded-[2rem] shadow-2xl z-[101] overflow-hidden border border-slate-100 flex flex-col"
-                >
-                  {/* Modal Header */}
-                  <div className={`p-4 text-white flex items-center justify-between ${showPaymentModal.listingId === 'deposit' ? (paymentForm.method === 'bkash' ? 'bg-[#e2136e]' : 'bg-[#ed1c24]') : 'bg-slate-900'}`}>
-                    <div className="flex items-center gap-2">
-                      <Wallet size={16} className="text-white shrink-0 animate-pulse" />
-                      <span className="text-[11px] font-black uppercase tracking-widest text-white font-sans">
-                        {showPaymentModal.listingId === 'deposit' ? 'Deposit Balance' : 'Checkout Payment'}
-                      </span>
-                    </div>
-                    <button 
-                      onClick={handleClosePaymentModal}
-                      className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors cursor-pointer"
-                    >
-                      <X size={14} className="text-white" />
-                    </button>
-                  </div>
-
-                  {/* Modal Body */}
-                  <div className="p-4 space-y-3.5 max-h-[80vh] overflow-y-auto custom-scrollbar">
-                    <AnimatePresence mode="wait">
-                      {purchasedCreds ? (
-                        <motion.div 
-                          key="success"
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.95 }}
-                          className="space-y-4 pt-1"
-                        >
-                          <div className="text-center py-3 bg-[#E8F5E9] rounded-2xl border-2 border-[#C8E6C9] mb-3 shadow-sm">
-                             <p className="text-[#2E7D32] font-black uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 font-sans">
-                               <CheckCircle size={18} />
-                               PAYMENT VERIFIED
-                             </p>
-                          </div>
-                          
-                          <div className="p-4 bg-[#0F172A] rounded-2xl space-y-4 shadow-2xl relative overflow-hidden border border-slate-800">
-                             <div className="absolute top-0 right-0 p-4 opacity-5">
-                                <ShieldCheck size={60} className="text-white" />
-                             </div>
-                             
-                             <div className="space-y-2.5 relative z-10">
-                              <div className="space-y-1 text-left">
-                                <span className="text-[8px] text-white/30 uppercase font-black tracking-widest block font-sans">Purchased Gmail</span>
-                                <div className="flex items-center justify-between bg-white/5 p-2 rounded-xl border border-white/10">
-                                  <p className="font-mono font-bold text-white text-xs truncate mr-2 select-all">{purchasedCreds.gmail}</p>
-                                  <button type="button" onClick={() => { navigator.clipboard.writeText(purchasedCreds.gmail); alert('Gmail Copied!'); }} className="w-6.5 h-6.5 rounded-lg bg-white/10 flex items-center justify-center text-[#FFEB3B] hover:scale-110 transition-all cursor-pointer"><Copy size={11}/></button>
-                                </div>
-                              </div>
-
-                              <div className="space-y-1 text-left">
-                                <span className="text-[8px] text-white/30 uppercase font-black tracking-widest block font-sans">Account Password</span>
-                                <div className="flex items-center justify-between bg-white/5 p-2 rounded-xl border border-white/10">
-                                  <p className="font-mono font-bold text-[#FFEB3B] text-xs truncate mr-2 select-all">{purchasedCreds.pass}</p>
-                                  <button type="button" onClick={() => { navigator.clipboard.writeText(purchasedCreds.pass); alert('Password Copied!'); }} className="w-6.5 h-6.5 rounded-lg bg-white/10 flex items-center justify-center text-white hover:scale-110 transition-all cursor-pointer"><Copy size={11}/></button>
-                                </div>
-                              </div>
-
-                              {purchasedCreds.recovery && (
-                                <div className="space-y-1 text-left">
-                                  <span className="text-[8px] text-white/30 uppercase font-black tracking-widest block font-sans">Recovery Email</span>
-                                  <div className="flex items-center justify-between bg-white/5 p-2 rounded-xl border border-white/10">
-                                    <p className="font-mono font-bold text-green-300 text-xs truncate mr-2 select-all">{purchasedCreds.recovery}</p>
-                                    <button type="button" onClick={() => { navigator.clipboard.writeText(purchasedCreds.recovery!); alert('Recovery Copied!'); }} className="w-6.5 h-6.5 rounded-lg bg-white/10 flex items-center justify-center text-white hover:scale-110 transition-all cursor-pointer"><Copy size={11}/></button>
-                                  </div>
-                                </div>
-                              )}
-
-                              {purchasedCreds.twoFactor && (
-                                <div className="space-y-1 text-left">
-                                  <span className="text-[8px] text-white/30 uppercase font-black tracking-widest block font-sans">2FA / Authenticator</span>
-                                  <div className="flex items-center justify-between bg-white/5 p-2 rounded-xl border border-white/10">
-                                    <p className="font-mono font-bold text-blue-300 text-xs truncate mr-2 select-all">{purchasedCreds.twoFactor}</p>
-                                    <button type="button" onClick={() => { navigator.clipboard.writeText(purchasedCreds.twoFactor!); alert('2FA Copied!'); }} className="w-6.5 h-6.5 rounded-lg bg-white/10 flex items-center justify-center text-white hover:scale-110 transition-all cursor-pointer"><Copy size={11}/></button>
-                                  </div>
-                                </div>
-                              )}
-                             </div>
-
-                             <div className="bg-white/5 p-2.5 rounded-xl flex items-center gap-2 border border-white/5 text-left">
-                                <AlertCircle size={12} className="text-yellow-300/80 shrink-0" />
-                                <p className="text-[8.5px] text-white/50 font-medium leading-tight">
-                                   You can find your credentials under "Bought" tab or logs at any time.
-                                </p>
-                             </div>
-                          </div>
-
-                          <button 
-                            type="button"
-                            onClick={() => {
-                              setShowPaymentModal({ show: false, price: 0 });
-                              setPurchasedCreds(null);
-                              setView('gmail-market');
-                              setMarketTab('Bought');
-                            }}
-                            className="w-full py-3 rounded-xl bg-[#2E7D32] text-white font-black text-xs uppercase tracking-[0.15em] hover:bg-[#1B5E20] transition-all shadow-[0_10px_30px_rgba(46,125,50,0.3)] active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
-                          >
-                            FINISH & VIEW ACCOUNT
-                          </button>
-                        </motion.div>
-                      ) : (
-                        <motion.div 
-                          key="form"
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.95 }}
-                          className="space-y-3"
-                        >
-                          {showPaymentModal.listingId !== 'deposit' && (
-                            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-left space-y-2">
-                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block pl-0.5">Order Summary</span>
-                              
-                              <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 font-sans">
-                                <span>আইটেম মূল্য (Total Price):</span>
-                                <span className="text-slate-900 font-extrabold">৳{showPaymentModal.price.toFixed(2)}</span>
-                              </div>
-                              
-                              <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 border-t border-slate-200/40 pt-2 font-sans">
-                                <span className="flex items-center gap-1 text-slate-600">
-                                  <Wallet size={12} className="text-blue-500" />
-                                  আপনার ডেপোজিট ব্যালেন্স:
-                                </span>
-                                <span className={`font-black ${userProfile && userProfile.balance >= showPaymentModal.price ? 'text-emerald-600' : 'text-rose-500'}`}>
-                                  ৳{userProfile?.balance?.toFixed(2) || '0.00'}
-                                </span>
-                              </div>
-
-                              {userProfile && userProfile.balance >= showPaymentModal.price ? (
-                                <div className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-xl border border-emerald-100/50 flex items-center gap-1">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                                  জিমেইল কিনতে আপনার ব্যালেন্স পর্যাপ্ত আছে।
-                                </div>
-                              ) : (
-                                <div className="text-[9px] font-bold text-rose-600 bg-rose-50 px-2 py-1 rounded-xl border border-rose-100/50 flex items-center gap-1">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></div>
-                                  আপনার ডেপোজিট ব্যালেন্স কম আছে।
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {showPaymentModal.listingId !== 'deposit' && (
-                            <div className="space-y-2">
-                              {userProfile && userProfile.balance >= showPaymentModal.price ? (
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    if (showPaymentModal.listingId === 'bulk') {
-                                      await executeBulkBuy();
-                                    } else {
-                                      const listing = marketListings.find(l => l.id === showPaymentModal.listingId);
-                                      if (listing) {
-                                        await buyListing(listing);
-                                      } else {
-                                        alert("আইটেমটি পাওয়া যায়নি!");
-                                      }
-                                    }
-                                  }}
-                                  disabled={isSubmitting}
-                                  className="w-full bg-[#2E7D32] hover:bg-[#1B5E20] text-white py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-md shadow-green-100"
-                                >
-                                  {isSubmitting ? (
-                                    <RefreshCw size={14} className="animate-spin" />
-                                  ) : (
-                                    <>
-                                      <CheckCircle size={14} />
-                                      Wallet Balance দিয়ে কিনুন (মূল্য: ৳{showPaymentModal.price.toFixed(2)})
-                                    </>
-                                  )}
-                                </button>
-                              ) : (
-                                <div className="bg-amber-50 border border-amber-100 p-3.5 rounded-xl text-left space-y-2.5">
-                                  <p className="text-[9.5px] font-bold text-amber-850 leading-normal flex items-start gap-1.5 font-sans">
-                                    <AlertCircle size={12} className="shrink-0 mt-0.5 text-amber-600 animate-pulse" />
-                                    <span>
-                                      আপনার ওয়ালেট ব্যালেন্স পর্যাপ্ত নয়! (আপনার ব্যালেন্স: ৳{userProfile?.balance?.toFixed(2) || '0.00'}, প্রয়োজনীয় মূল্য: ৳{showPaymentModal.price.toFixed(2)})। জিমেইল কিনতে চাইলে দয়া করে আগে ব্যালেন্স ডেপোজিট করুন।
-                                    </span>
-                                  </p>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const hasAnyDeposit = userPayments && userPayments.some((p: any) => p.listingId === 'deposit' || p.isDeposit || p.type === 'deposit');
-                                      if (hasAnyDeposit) {
-                                        setShowPaymentModal({ show: false, price: 0 });
-                                        setView('transactions');
-                                        setTimeout(() => {
-                                          const historyEl = document.getElementById('recent-history-section');
-                                          if (historyEl) {
-                                            historyEl.classList.add('ring-2', 'ring-emerald-500/50');
-                                            setTimeout(() => {
-                                              historyEl.classList.remove('ring-2', 'ring-emerald-500/50');
-                                            }, 2000);
-                                          }
-                                        }, 150);
-                                      } else {
-                                        setView('profile');
-                                        setShowDepositArea(true);
-                                        setShowPaymentModal({ show: true, price: 100, listingId: 'deposit' });
-                                      }
-                                    }}
-                                    className="w-full bg-red-650 hover:bg-red-750 text-white py-2 rounded-xl text-[9.5px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md font-sans"
-                                  >
-                                    <Wallet size={11} />
-                                    টাকা ডেপোজিট করুন (Deposit Balance)
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                        {showPaymentModal.listingId === 'deposit' && (
-                          <div className="space-y-1.5 text-left bg-slate-50/80 p-2.5 rounded-2xl border border-slate-200/60 shadow-2xs animate-in fade-in duration-300">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block pl-0.5">Quick Select Amount</span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {[50, 100, 200, 500, 1000].map((amt) => (
-                                <button
-                                  key={amt}
-                                  type="button"
-                                  onClick={() => {
-                                    setShowPaymentModal(prev => ({ ...prev, price: amt }));
-                                    setPaymentForm(prev => ({ ...prev, senderNumber: String(amt) }));
-                                  }}
-                                  className={`px-3 py-1.5 rounded-xl text-[10.5px] font-black transition-all active:scale-95 border cursor-pointer flex items-center gap-1 ${showPaymentModal.price === amt 
-                                    ? (paymentForm.method === 'bkash' ? 'bg-[#e2136e] border-[#e2136e] text-white shadow-md shadow-[#e2136e]/20' : 'bg-[#ed1c24] border-[#ed1c24] text-white shadow-md shadow-[#ed1c24]/20')
-                                    : 'bg-white hover:bg-slate-100/80 border-slate-200/80 text-slate-700 shadow-2xs'}`}
-                                >
-                                  <span>৳{amt}</span>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Payment Selection Tab (Only for Deposits) */}
-                        {showPaymentModal.listingId === 'deposit' && (
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between px-0.5">
-                              <span className="text-[9.5px] font-black text-slate-500 uppercase tracking-wider">পেমেন্ট মেথড সিলেক্ট করুন</span>
-                              <span className="text-[8.5px] font-black px-2.5 py-0.5 rounded-full border shadow-2xs text-emerald-600 bg-emerald-50 border-emerald-200">
-                                মিনিমাম ডিপোজিট 50.TK
-                              </span>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setPaymentForm(prev => ({ ...prev, method: 'bkash', trxId: '' }));
-                                  setPaymentError(null);
-                                }}
-                                className={`p-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all relative overflow-hidden cursor-pointer border ${paymentForm.method === 'bkash' ? 'bg-gradient-to-b from-pink-50 to-pink-100/60 border-[#e2136e] shadow-md shadow-[#e2136e]/15 ring-2 ring-[#e2136e]/20' : 'bg-white hover:bg-slate-50 border-slate-200/80 text-slate-600 shadow-2xs'}`}
-                              >
-                                <div className="h-6 flex items-center justify-center">
-                                  <img src="https://www.logo.wine/a/logo/BKash/BKash-Logo.wine.svg" alt="bKash" className="h-6 w-auto object-contain filter brightness-105" />
-                                </div>
-                                <span className={`text-[10px] font-black uppercase tracking-wider ${paymentForm.method === 'bkash' ? 'text-[#e2136e]' : 'text-slate-600'}`}>bKash</span>
-                                {paymentForm.method === 'bkash' && (
-                                  <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#e2136e]" />
-                                )}
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setPaymentForm(prev => ({ ...prev, method: 'nagad', trxId: '' }));
-                                  setPaymentError(null);
-                                }}
-                                className={`p-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all relative overflow-hidden cursor-pointer border ${paymentForm.method === 'nagad' ? 'bg-gradient-to-b from-red-50 to-red-100/60 border-[#ed1c24] shadow-md shadow-[#ed1c24]/15 ring-2 ring-[#ed1c24]/20' : 'bg-white hover:bg-slate-50 border-slate-200/80 text-slate-600 shadow-2xs'}`}
-                              >
-                                <div className="h-6 flex items-center justify-center">
-                                  <img src="https://www.logo.wine/a/logo/Nagad/Nagad-Logo.wine.svg" alt="Nagad" className="h-6 w-auto object-contain filter brightness-105" />
-                                </div>
-                                <span className={`text-[10px] font-black uppercase tracking-wider ${paymentForm.method === 'nagad' ? 'text-[#ed1c24]' : 'text-slate-600'}`}>Nagad</span>
-                                {paymentForm.method === 'nagad' && (
-                                  <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#ed1c24]" />
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {showPaymentModal.listingId === 'deposit' && (
-                          <>
-                            {/* Realistic Official Account Card */}
-                            <div className={`p-3.5 rounded-2xl border relative overflow-hidden transition-all shadow-sm ${paymentForm.method === 'bkash' ? 'bg-gradient-to-br from-[#e2136e] via-[#c1105b] to-[#990a46] text-white border-pink-400/30' : 'bg-gradient-to-br from-[#ed1c24] via-[#c11218] to-[#960a0e] text-white border-red-400/30'}`}>
-                              <div className="absolute top-0 right-0 -mt-6 -mr-6 w-24 h-24 bg-white/10 rounded-full blur-lg pointer-events-none" />
-                              <div className="relative z-10 flex items-center justify-between">
-                                <div className="space-y-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[8.5px] font-black uppercase tracking-widest bg-black/20 text-white px-2 py-0.5 rounded-md border border-white/20">
-                                      {paymentForm.method === 'bkash' ? 'bKash Personal' : 'Nagad Personal'}
-                                    </span>
-                                    <span className="text-[8.5px] font-bold text-white/80 uppercase">Send Money</span>
-                                  </div>
-                                  <p className="text-xl font-black tracking-wider font-mono select-all pt-0.5">
-                                    {paymentForm.method === 'bkash' ? '01857902383' : '01410731308'}
-                                  </p>
-                                </div>
-                                <button 
-                                  type="button"
-                                  onClick={() => {
-                                    const num = paymentForm.method === 'bkash' ? '01857902383' : '01410731308';
-                                    navigator.clipboard.writeText(num);
-                                    alert("Number copied!");
-                                  }}
-                                  className="px-3 py-1.5 rounded-xl bg-white text-slate-900 font-extrabold text-[10.5px] hover:bg-white/95 transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer shrink-0"
-                                >
-                                  <Copy size={12} className={paymentForm.method === 'bkash' ? 'text-[#e2136e]' : 'text-[#ed1c24]'} />
-                                  <span>Copy</span>
-                                </button>
-                              </div>
-                            </div>
-                            
-                            {/* Collapsible Rules & Instructions Card */}
-                            <div className="border border-slate-200/70 rounded-2xl overflow-hidden shadow-2xs bg-white">
-                              <button
-                                type="button"
-                                onClick={() => setShowInstructions(!showInstructions)}
-                                className="w-full flex items-center justify-between p-2.5 bg-slate-50/90 text-slate-700 hover:bg-slate-100/80 transition-colors text-left focus:outline-none cursor-pointer"
-                              >
-                                <span className="text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
-                                  <Info size={12} className={paymentForm.method === 'bkash' ? 'text-[#e2136e]' : 'text-[#ed1c24]'} />
-                                  পেমেন্ট নির্দেশাবলী (Payment Instructions)
-                                </span>
-                                <span className="text-[9px] font-black text-slate-400">
-                                  {showInstructions ? 'লুকান ▲' : 'দেখুন ▼'}
-                                </span>
-                              </button>
-                              
-                              <AnimatePresence initial={false}>
-                                {showInstructions && (
-                                  <motion.div
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: 'auto', opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    transition={{ duration: 0.2 }}
-                                  >
-                                    <div className={`p-3 space-y-2 border-t border-slate-100 transition-colors ${paymentForm.method === 'bkash' ? 'bg-pink-50/20' : 'bg-red-50/20'}`}>
-                                      <div className={`${paymentForm.method === 'bkash' ? 'bg-[#e2136e]' : 'bg-[#ed1c24]'} text-white p-2.5 rounded-xl shadow-md`}>
-                                         <div className="flex items-center gap-1.5 mb-1">
-                                            <AlertCircle size={12} className="animate-pulse" />
-                                            <p className="text-[9px] font-black uppercase tracking-widest">জরুরী নোটিশ</p>
-                                         </div>
-                                         <p className="text-[8.5px] font-bold leading-relaxed">
-                                            সঠিক TrxID দিন। ভুল আইডি দিলে আপনার পেমেন্ট রিজেক্ট হয়ে যাবে। পেমেন্টে কোনো সমস্যা হলে আমাদের সাথে সরাসরি সাপোর্ট বক্স এ যোগাযোগ করুন।
-                                         </p>
-                                      </div>
-                                      <div className="space-y-1.5 pl-1">
-                                        <p className="text-[8.5px] text-slate-600 font-bold leading-relaxed">
-                                          ১. নাম্বারটি কপি করে আপনার {paymentForm.method === 'bkash' ? 'বিকাশ' : 'নগদ'} অ্যাপ থেকে <span className="font-extrabold text-slate-900">Send Money</span> করুন।
-                                        </p>
-                                        <p className="text-[8.5px] text-slate-600 font-bold leading-relaxed">
-                                          ২. পেমেন্ট শেষে প্রাপ্ত <span className="font-extrabold text-slate-900">TrxID</span> টি কপি করে নিচের বক্সে দিন।
-                                        </p>
-                                        <p className="text-[8.5px] text-slate-600 font-bold leading-relaxed">
-                                          ৩. সাবমিট বাটনে ক্লিক করলে এডমিন পেমেন্ট ভেরিফাই করে ওয়ালেট ব্যালেন্স যোগ করে দিবে।
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2">
-                              {/* Amount input */}
-                              <div className="space-y-1 group">
-                                <label className={`text-[9.5px] font-black text-slate-400 uppercase tracking-widest ml-1 transition-colors ${paymentForm.method === 'bkash' ? 'group-focus-within:text-[#e2136e]' : 'group-focus-within:text-[#ed1c24]'}`}>
-                                  Amount লিখুন
-                                </label>
-                                <div className="relative">
-                                  <div className={`absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400 transition-colors ${paymentForm.method === 'bkash' ? 'group-focus-within:text-[#e2136e]' : 'group-focus-within:text-[#ed1c24]'}`}>
-                                    <Wallet size={12} />
-                                  </div>
-                                  <input 
-                                    type="text" 
-                                    placeholder={showPaymentModal.listingId === 'deposit' ? "Min 50.TK" : "Type Amount"}
-                                    value={paymentForm.senderNumber}
-                                    onChange={(e) => {
-                                      const val = e.target.value;
-                                      setPaymentForm(prev => ({...prev, senderNumber: val}));
-                                      if (showPaymentModal.listingId === 'deposit') {
-                                        const numericVal = Number(val) || 0;
-                                        setShowPaymentModal(prev => ({ ...prev, price: numericVal }));
-                                      }
-                                    }}
-                                    className={`w-full bg-slate-50 border border-slate-200 rounded-xl pl-7 pr-1.5 py-2.5 text-[11px] font-bold focus:outline-none focus:ring-4 transition-all ${paymentForm.method === 'bkash' ? 'focus:ring-[#e2136e]/10 focus:border-[#e2136e]' : 'focus:ring-[#ed1c24]/10 focus:border-[#ed1c24]'}`}
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="space-y-1 group">
-                                <label className={`text-[9.5px] font-black text-slate-400 uppercase tracking-widest ml-1 transition-colors ${paymentForm.method === 'bkash' ? 'group-focus-within:text-[#e2136e]' : 'group-focus-within:text-[#ed1c24]'}`}>
-                                  Transaction ID (TrxID)
-                                </label>
-                                <div className="relative">
-                                  <div className={`absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400 transition-colors ${paymentForm.method === 'bkash' ? 'group-focus-within:text-[#e2136e]' : 'group-focus-within:text-[#ed1c24]'}`}>
-                                    <BadgeCheck size={12} />
-                                  </div>
-                                  <input 
-                                    type="text" 
-                                    placeholder="Type Transaction ID"
-                                    value={paymentForm.trxId}
-                                    onChange={(e) => setPaymentForm({...paymentForm, trxId: e.target.value})}
-                                    className={`w-full bg-slate-50 border border-slate-200 rounded-xl pl-7 pr-1.5 py-2.5 text-[11px] font-bold focus:outline-none focus:ring-4 transition-all ${paymentForm.method === 'bkash' ? 'focus:ring-[#e2136e]/10 focus:border-[#e2136e]' : 'focus:ring-[#ed1c24]/10 focus:border-[#ed1c24]'}`}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="pt-1 relative">
-                              <AnimatePresence>
-                                 {paymentError && (
-                                   <motion.div 
-                                     initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                                     exit={{ opacity: 0, scale: 0.8, y: 10 }}
-                                     className="absolute -top-16 left-0 right-0 z-50 flex justify-center pointer-events-none"
-                                   >
-                                     <div className="bg-slate-900 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center gap-3 border border-white/10 backdrop-blur-md">
-                                       <div className="w-6 h-6 rounded-full bg-rose-500 flex items-center justify-center">
-                                          <X size={12} className="text-white" />
-                                       </div>
-                                       {paymentError}
-                                     </div>
-                                    </motion.div>
-                                  )}
-                              </AnimatePresence>
-
-                              <button 
-                                onClick={verifyPayment}
-                                disabled={isVerifying}
-                                className={`w-full py-3.5 rounded-xl text-white font-black text-[10px] uppercase tracking-[0.2em] transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-lg disabled:opacity-70 ${paymentForm.method === 'bkash' ? 'bg-[#e2136e] hover:bg-[#d11264] shadow-[#e2136e]/20' : 'bg-[#ed1c24] hover:bg-[#d11218] shadow-[#ed1c24]/20'}`}
-                              >
-                                {isVerifying ? (
-                                  <RefreshCw size={16} className="animate-spin" />
-                                ) : (
-                                  'Submit'
-                                )}
-                              </button>
-                            </div>
-
-                            <div className="flex items-center justify-center gap-4 py-0.5">
-                               <div className="flex items-center gap-1 text-slate-400">
-                                  <Shield size={10} />
-                                  <span className="text-[8px] font-black uppercase tracking-widest">Secure</span>
-                               </div>
-                               <div className="w-px h-2 bg-slate-200" />
-                               <div className="flex items-center gap-1 text-slate-400">
-                                  <Star size={10} fill="currentColor" />
-                                  <span className="text-[8px] font-black uppercase tracking-widest">Rapid</span>
-                               </div>
-                            </div>
-                          </>
-                        )}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
               </motion.div>
-            </>
-          )}
-        </AnimatePresence>
+            )}
+          </AnimatePresence>
+        </main>
+        {/* Payment Modal */}
+        <AnimatePresence>
+          {showPaymentModal.show && (
+            <>
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowPaymentModal({ show: false, price: 0 })}
+                className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100]"
+              />
+
+              <div className="fixed inset-0 z-[101] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                  className="bg-white border border-slate-200/90 shadow-2xl rounded-3xl w-[94%] sm:w-full max-w-[430px] text-center relative overflow-hidden my-auto max-h-[92vh] flex flex-col justify-between"
+                >
+                  {/* Official Gateway Top Brand Header */}
+                  <div className={`p-4 sm:p-4.5 text-white relative overflow-hidden transition-all duration-300 ${
+                    paymentForm.method === 'bkash' 
+                      ? 'bg-gradient-to-r from-[#D12053] via-[#E2136E] to-[#B31355]' 
+                      : 'bg-gradient-to-r from-[#C71B22] via-[#ED1C24] to-[#F73827]'
+                  }`}>
+                    {/* Background subtle watermark design */}
+                    <div className="absolute -right-6 -bottom-6 w-28 h-28 bg-white/10 rounded-full blur-xl pointer-events-none" />
+                    <div className="absolute left-1/3 -top-6 w-20 h-20 bg-black/10 rounded-full blur-lg pointer-events-none" />
+                    
+                    <div className="relative z-10 flex items-center justify-between">
+                      <div className="flex items-center gap-3 text-left">
+                        <div className="w-10 h-10 rounded-2xl bg-white p-1.5 flex items-center justify-center shadow-md shrink-0">
+                          {paymentForm.method === 'bkash' ? (
+                            <img src="https://www.logo.wine/a/logo/BKash/BKash-Logo.wine.svg" alt="bKash" className="w-full h-full object-contain" />
+                          ) : (
+                            <img src="https://www.logo.wine/a/logo/Nagad/Nagad-Logo.wine.svg" alt="Nagad" className="w-full h-full object-contain" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <h3 className="font-display font-black text-white text-sm sm:text-base leading-tight tracking-tight">
+                              {paymentForm.method === 'bkash' ? 'bKash Payment Gateway' : 'Nagad Payment Gateway'}
+                            </h3>
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-white/20 text-white text-[8px] font-bold">
+                              <ShieldCheck size={10} /> Official
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-white/90 font-medium">
+                            {showPaymentModal.listingId === 'deposit' ? 'অ্যাকাউন্ট ব্যালেন্স ডিপোজিট' : 'মার্চেন্ট অর্ডার পেমেন্ট'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={() => setShowPaymentModal({ show: false, price: 0 })}
+                        className="w-8 h-8 rounded-full bg-black/20 hover:bg-black/35 text-white flex items-center justify-center transition-all active:scale-90 cursor-pointer shrink-0"
+                        title="Close"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+
+                    {/* Amount & Merchant Overview Strip */}
+                    <div className="mt-3 pt-2.5 border-t border-white/20 flex items-center justify-between text-left">
+                      <div>
+                        <span className="text-[9px] uppercase tracking-wider text-white/75 font-bold block">
+                          {showPaymentModal.listingId === 'deposit' ? 'প্রদেয় ডিপোজিট পরিমাণ' : 'মোট প্রদেয় মূল্য'}
+                        </span>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-xl font-black tracking-tight text-white font-mono">
+                            ৳ {showPaymentModal.listingId === 'deposit' 
+                                ? (paymentForm.senderNumber && !isNaN(Number(paymentForm.senderNumber)) && Number(paymentForm.senderNumber) > 0 
+                                    ? Number(paymentForm.senderNumber) 
+                                    : '0') 
+                                : showPaymentModal.price.toFixed(2)}
+                          </span>
+                          <span className="text-[10px] font-bold text-white/80">BDT</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[9px] uppercase tracking-wider text-white/75 font-bold block">চার্জ (Fee)</span>
+                        <span className="text-[11px] font-black text-emerald-300 bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-400/30">
+                          ৳0.00 Free
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 sm:p-5 space-y-3.5 text-left overflow-y-auto pr-1 custom-scrollbar">
+                    {/* Method Selector Tabs */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between px-0.5">
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                          <CreditCard size={12} className="text-slate-400" />
+                          পেমেন্ট মাধ্যম নির্বাচন করুন
+                        </span>
+                        {showPaymentModal.listingId === 'deposit' && (
+                          <span className="text-[8.5px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            মিনিমাম ডিপোজিট ৫০ টাকা
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2.5">
+                        {/* bKash Tab */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPaymentForm(prev => ({ ...prev, method: 'bkash', trxId: '' }));
+                            setPaymentError(null);
+                          }}
+                          className={`p-3 rounded-2xl flex items-center gap-2.5 transition-all relative overflow-hidden cursor-pointer border ${
+                            paymentForm.method === 'bkash' 
+                              ? 'bg-gradient-to-r from-pink-50 to-pink-100/70 border-[#e2136e] shadow-md shadow-[#e2136e]/15 ring-2 ring-[#e2136e]/20' 
+                              : 'bg-white hover:bg-slate-50 border-slate-200/90 text-slate-600 shadow-2xs'
+                          }`}
+                        >
+                          <div className="w-8 h-8 rounded-xl bg-white border border-slate-100 p-1 flex items-center justify-center shrink-0 shadow-2xs">
+                            <img src="https://www.logo.wine/a/logo/BKash/BKash-Logo.wine.svg" alt="bKash" className="w-full h-full object-contain" />
+                          </div>
+                          <div className="text-left">
+                            <p className={`text-[12px] font-black leading-tight ${paymentForm.method === 'bkash' ? 'text-[#e2136e]' : 'text-slate-700'}`}>bKash</p>
+                            <p className="text-[9px] font-bold text-slate-400">বিকাশ পার্সোনাল</p>
+                          </div>
+                          {paymentForm.method === 'bkash' && (
+                            <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#e2136e]" />
+                          )}
+                        </button>
+
+                        {/* Nagad Tab */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPaymentForm(prev => ({ ...prev, method: 'nagad', trxId: '' }));
+                            setPaymentError(null);
+                          }}
+                          className={`p-3 rounded-2xl flex items-center gap-2.5 transition-all relative overflow-hidden cursor-pointer border ${
+                            paymentForm.method === 'nagad' 
+                              ? 'bg-gradient-to-r from-red-50 to-red-100/70 border-[#ed1c24] shadow-md shadow-[#ed1c24]/15 ring-2 ring-[#ed1c24]/20' 
+                              : 'bg-white hover:bg-slate-50 border-slate-200/90 text-slate-600 shadow-2xs'
+                          }`}
+                        >
+                          <div className="w-8 h-8 rounded-xl bg-white border border-slate-100 p-1 flex items-center justify-center shrink-0 shadow-2xs">
+                            <img src="https://www.logo.wine/a/logo/Nagad/Nagad-Logo.wine.svg" alt="Nagad" className="w-full h-full object-contain" />
+                          </div>
+                          <div className="text-left">
+                            <p className={`text-[12px] font-black leading-tight ${paymentForm.method === 'nagad' ? 'text-[#ed1c24]' : 'text-slate-700'}`}>Nagad</p>
+                            <p className="text-[9px] font-bold text-slate-400">নগদ পার্সোনাল</p>
+                          </div>
+                          {paymentForm.method === 'nagad' && (
+                            <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#ed1c24]" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Official Account Number Card with 1-Click Copy */}
+                    <div className={`p-3.5 rounded-2xl border relative overflow-hidden transition-all shadow-sm ${
+                      paymentForm.method === 'bkash' 
+                        ? 'bg-gradient-to-br from-[#e2136e] via-[#c1105b] to-[#990a46] text-white border-pink-400/30' 
+                        : 'bg-gradient-to-br from-[#ed1c24] via-[#c11218] to-[#960a0e] text-white border-red-400/30'
+                    }`}>
+                      <div className="absolute top-0 right-0 -mt-6 -mr-6 w-24 h-24 bg-white/10 rounded-full blur-lg pointer-events-none" />
+                      <div className="relative z-10 flex items-center justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[8.5px] font-black uppercase tracking-widest bg-black/25 text-white px-2 py-0.5 rounded-md border border-white/20">
+                              {paymentForm.method === 'bkash' ? 'bKash Personal' : 'Nagad Personal'}
+                            </span>
+                            <span className="text-[8.5px] font-extrabold text-amber-300 uppercase flex items-center gap-0.5">
+                              <Zap size={10} /> Send Money
+                            </span>
+                          </div>
+                          <p className="text-xl sm:text-2xl font-black tracking-wider font-mono select-all pt-0.5 text-white drop-shadow-xs">
+                            {paymentForm.method === 'bkash' ? '01857902383' : '01410731308'}
+                          </p>
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            const num = paymentForm.method === 'bkash' ? '01857902383' : '01410731308';
+                            navigator.clipboard.writeText(num);
+                            setCopiedNumber(true);
+                            setTimeout(() => setCopiedNumber(false), 2000);
+                          }}
+                          className={`px-3.5 py-2 rounded-xl font-black text-[11px] transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                            copiedNumber 
+                              ? 'bg-emerald-500 text-white ring-2 ring-emerald-300' 
+                              : 'bg-white text-slate-900 hover:bg-white/95'
+                          }`}
+                        >
+                          {copiedNumber ? (
+                            <>
+                              <Check size={14} className="text-white animate-bounce" />
+                              <span>কপি হয়েছে!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy size={13} className={paymentForm.method === 'bkash' ? 'text-[#e2136e]' : 'text-[#ed1c24]'} />
+                              <span>Copy</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Collapsible Payment Instruction Guide */}
+                    <div className="border border-slate-200/80 rounded-2xl overflow-hidden shadow-2xs bg-white">
+                      <button
+                        type="button"
+                        onClick={() => setShowInstructions(!showInstructions)}
+                        className="w-full flex items-center justify-between p-2.5 bg-slate-50/90 text-slate-700 hover:bg-slate-100/80 transition-colors text-left focus:outline-none cursor-pointer"
+                      >
+                        <span className="text-[9.5px] font-black uppercase tracking-wider flex items-center gap-1.5">
+                          <Info size={13} className={paymentForm.method === 'bkash' ? 'text-[#e2136e]' : 'text-[#ed1c24]'} />
+                          কিভাবে পেমেন্ট করবেন? (৩টি সহজ ধাপ)
+                        </span>
+                        <span className="text-[9px] font-bold text-slate-400">
+                          {showInstructions ? 'লুকান ▲' : 'নির্দেশনা ▼'}
+                        </span>
+                      </button>
+                      
+                      <AnimatePresence initial={false}>
+                        {showInstructions && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <div className={`p-3 space-y-2.5 border-t border-slate-100 transition-colors ${paymentForm.method === 'bkash' ? 'bg-pink-50/30' : 'bg-red-50/30'}`}>
+                              <div className="grid grid-cols-1 gap-1.5 text-[9.5px]">
+                                <div className="flex items-start gap-2 bg-white p-2 rounded-xl border border-slate-100">
+                                  <span className={`w-4 h-4 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0 ${paymentForm.method === 'bkash' ? 'bg-[#e2136e]' : 'bg-[#ed1c24]'}`}>১</span>
+                                  <p className="text-slate-600 font-medium leading-tight">
+                                    আপনার {paymentForm.method === 'bkash' ? 'বিকাশ' : 'নগদ'} অ্যাপে গিয়ে <strong className="text-slate-900 font-black">Send Money</strong> অপশন সিলেক্ট করুন।
+                                  </p>
+                                </div>
+                                <div className="flex items-start gap-2 bg-white p-2 rounded-xl border border-slate-100">
+                                  <span className={`w-4 h-4 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0 ${paymentForm.method === 'bkash' ? 'bg-[#e2136e]' : 'bg-[#ed1c24]'}`}>২</span>
+                                  <p className="text-slate-600 font-medium leading-tight">
+                                    উপরের নম্বরে কাঙ্ক্ষিত পরিমাণ টাকা সেন্ড মানি করুন।
+                                  </p>
+                                </div>
+                                <div className="flex items-start gap-2 bg-white p-2 rounded-xl border border-slate-100">
+                                  <span className={`w-4 h-4 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0 ${paymentForm.method === 'bkash' ? 'bg-[#e2136e]' : 'bg-[#ed1c24]'}`}>৩</span>
+                                  <p className="text-slate-600 font-medium leading-tight">
+                                    পেমেন্ট শেষে পাওয়া <strong className="text-slate-900 font-black">TrxID</strong> এবং <strong className="text-slate-900 font-black">টাকার পরিমাণ (Amount)</strong> নিচে দিয়ে সাবমিট বাটনে ক্লিক করুন।
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    {/* Amount & TrxID Input Fields */}
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {/* Amount Field */}
+                      <div className="space-y-1 group text-left">
+                        <div className="flex items-center justify-between ml-1">
+                          <label className={`text-[9.5px] font-black uppercase tracking-wider transition-colors ${
+                            paymentForm.method === 'bkash' ? 'group-focus-within:text-[#e2136e] text-slate-500' : 'group-focus-within:text-[#ed1c24] text-slate-500'
+                          }`}>
+                            Amount (টাকার পরিমাণ)
+                          </label>
+                        </div>
+                        <div className="relative">
+                          <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none font-bold text-sm transition-colors ${
+                            paymentForm.method === 'bkash' ? 'group-focus-within:text-[#e2136e] text-slate-400' : 'group-focus-within:text-[#ed1c24] text-slate-400'
+                          }`}>
+                            ৳
+                          </div>
+                          <input 
+                            type="number" 
+                            placeholder=""
+                            value={paymentForm.senderNumber}
+                            onChange={(e) => setPaymentForm(prev => ({...prev, senderNumber: e.target.value}))}
+                            className={`w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-2.5 py-2.5 text-[12px] font-mono font-bold focus:bg-white focus:outline-none focus:ring-3 transition-all ${
+                              paymentForm.method === 'bkash' 
+                                ? 'focus:ring-[#e2136e]/15 focus:border-[#e2136e]' 
+                                : 'focus:ring-[#ed1c24]/15 focus:border-[#ed1c24]'
+                            }`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* TrxID Field */}
+                      <div className="space-y-1 group text-left">
+                        <div className="flex items-center justify-between ml-1">
+                          <label className={`text-[9.5px] font-black uppercase tracking-wider transition-colors ${
+                            paymentForm.method === 'bkash' ? 'group-focus-within:text-[#e2136e] text-slate-500' : 'group-focus-within:text-[#ed1c24] text-slate-500'
+                          }`}>
+                            TrxID
+                          </label>
+                          {paymentForm.trxId && (
+                            <span className={`text-[8.5px] font-bold ${
+                              (paymentForm.method === 'bkash' && paymentForm.trxId.length === 10) || (paymentForm.method === 'nagad' && paymentForm.trxId.length === 8)
+                                ? 'text-emerald-600 font-extrabold'
+                                : 'text-slate-400'
+                            }`}>
+                              {paymentForm.trxId.length}/{paymentForm.method === 'bkash' ? 10 : 8}
+                            </span>
+                          )}
+                        </div>
+                        <div className="relative">
+                          <div className={`absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none transition-colors ${
+                            paymentForm.method === 'bkash' ? 'group-focus-within:text-[#e2136e] text-slate-400' : 'group-focus-within:text-[#ed1c24] text-slate-400'
+                          }`}>
+                            <BadgeCheck size={14} />
+                          </div>
+                          <input 
+                            type="text" 
+                            placeholder=""
+                            value={paymentForm.trxId}
+                            onChange={(e) => setPaymentForm({...paymentForm, trxId: e.target.value.toUpperCase()})}
+                            className={`w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-2.5 py-2.5 text-[12px] font-mono font-bold uppercase tracking-wider focus:bg-white focus:outline-none focus:ring-3 transition-all ${
+                              paymentForm.method === 'bkash' 
+                                ? 'focus:ring-[#e2136e]/15 focus:border-[#e2136e]' 
+                                : 'focus:ring-[#ed1c24]/15 focus:border-[#ed1c24]'
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Error and Verification Button Section */}
+                    <div className="pt-1 relative">
+                      <AnimatePresence>
+                        {paymentError && (
+                          <motion.div 
+                            initial={{ opacity: 0, scale: 0.9, y: 15 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                            className="mb-2 bg-rose-50 border border-rose-200 text-rose-700 px-3.5 py-2 rounded-xl text-[10px] font-bold flex items-center gap-2"
+                          >
+                            <AlertCircle size={14} className="shrink-0 text-rose-600" />
+                            <span>{paymentError}</span>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      <button 
+                        onClick={verifyPayment}
+                        disabled={isVerifying}
+                        className={`w-full py-3.5 rounded-2xl text-white font-black text-[11px] uppercase tracking-wider transition-all active:scale-[0.98] flex items-center justify-center gap-2.5 shadow-lg disabled:opacity-70 cursor-pointer ${
+                          paymentForm.method === 'bkash' 
+                            ? 'bg-gradient-to-r from-[#D12053] to-[#E2136E] hover:from-[#c11a49] hover:to-[#d01164] shadow-[#e2136e]/25' 
+                            : 'bg-gradient-to-r from-[#C71B22] to-[#ED1C24] hover:from-[#b9151c] hover:to-[#db131b] shadow-[#ed1c24]/25'
+                        }`}
+                      >
+                        {isVerifying ? (
+                          <>
+                            <RefreshCw size={16} className="animate-spin" />
+                            <span>ভেরিফাই করা হচ্ছে...</span>
+                          </>
+                        ) : (
+                          <>
+                            <ShieldCheck size={16} />
+                            <span>পেমেন্ট সাবমিট করুন (Confirm Payment)</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Trust & Security Footnote */}
+                    <div className="flex items-center justify-center gap-3 pt-1 text-slate-400">
+                      <div className="flex items-center gap-1">
+                        <Lock size={10} className="text-emerald-500" />
+                        <span className="text-[8.5px] font-bold uppercase tracking-wider">256-Bit SSL Encrypted</span>
+                      </div>
+                      <div className="w-1 h-1 rounded-full bg-slate-300" />
+                      <div className="flex items-center gap-1">
+                        <Zap size={10} className="text-amber-500" />
+                        <span className="text-[8.5px] font-bold uppercase tracking-wider">Instant Verification</span>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+                </>
+              )}
+            </AnimatePresence>
+
+
 
         <AnimatePresence>
           {showReportModal?.show && (
@@ -12267,127 +12195,33 @@ export default function App() {
                   )}
                 </AnimatePresence>
  
-        {/* Welcome Popup Modal */}
+        {/* Welcome Registration Success Toast */}
         <AnimatePresence>
-          {showWelcomePopup && (
-            <>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[60]"
-              />
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-[400px] bg-white rounded-3xl shadow-2xl p-6 z-[70] overflow-hidden flex flex-col max-h-[85vh]"
-              >
-                <button 
-                  onClick={handleCloseWelcome}
-                  className="absolute top-4 right-4 p-2 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors z-20 animate-in fade-in"
-                >
-                  <X size={18} className="text-slate-400" />
-                </button>
-                <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-red-500 via-purple-500 to-pink-500 z-10" />
-                
-                <div className="flex-1 overflow-y-auto pr-1 -mr-2 scrollbar-none space-y-4 pt-2">
-                  <div className="text-center space-y-2 mb-4">
-                    <h2 className="text-xl font-black text-slate-900 tracking-tight">Welcome to TopMail Sell BD</h2>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">সম্পূর্ণ ভেরিফাইড মার্কেটপ্লেস এ আপনাকে স্বাগতম। অনুগ্রহ করে প্রোফাইলটি সম্পূর্ণ করুন।</p>
-                  </div>
-
-                  {/* Photo Upload */}
-                  <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                    <div 
-                      onClick={() => welcomeFileInputRef.current?.click()}
-                      className="w-16 h-16 rounded-2xl bg-white border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer overflow-hidden group hover:border-red-400 transition-all shadow-sm"
-                    >
-                      {welcomeForm.photoURL || userProfile?.photoURL ? (
-                        <img src={welcomeForm.photoURL || userProfile?.photoURL} className="w-full h-full object-cover" />
-                      ) : (
-                        <Camera className="text-slate-300 group-hover:text-red-400" size={24} />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-black text-slate-800 mb-0.5">প্রোফাইল ছবি দিন</p>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">গুগল থেকে নিতে পারেন অথবা আপলোড করুন</p>
-                      <input 
-                        type="file"
-                        ref={welcomeFileInputRef}
-                        onChange={handleWelcomePhotoUpload}
-                        accept="image/*"
-                        className="hidden"
-                      />
-                    </div>
-                    <div className="text-right shrink-0">
-                       <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-1">User ID</p>
-                       <span className="text-[10px] font-mono font-black text-red-600 bg-red-50 px-2 py-1 rounded-lg border border-red-100">#{userProfile?.numericId || '...'}</span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">First Name</label>
-                      <input 
-                        type="text"
-                        value={welcomeForm.firstName}
-                        onChange={(e) => setWelcomeForm(prev => ({ ...prev, firstName: e.target.value }))}
-                        placeholder="Enter first name"
-                        className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-red-500 transition-all text-xs font-bold"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Last Name <span className="text-[8px] opacity-60">Optional</span></label>
-                      <input 
-                        type="text"
-                        value={welcomeForm.lastName}
-                        onChange={(e) => setWelcomeForm(prev => ({ ...prev, lastName: e.target.value }))}
-                        placeholder="Enter last name"
-                        className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-red-500 transition-all text-xs font-bold"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Age (বয়স) <span className="text-[8px] opacity-60">Optional</span></label>
-                    <input 
-                      type="number"
-                      value={welcomeForm.age}
-                      onChange={(e) => setWelcomeForm(prev => ({ ...prev, age: e.target.value }))}
-                      placeholder="Enter age"
-                      className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-red-500 transition-all text-xs font-bold"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Address (ঠিকানা) <span className="text-[8px] opacity-60">Optional</span></label>
-                    <textarea 
-                      value={welcomeForm.address}
-                      onChange={(e) => setWelcomeForm(prev => ({ ...prev, address: e.target.value }))}
-                      placeholder="Enter address"
-                      rows={2}
-                      className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-100 focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-red-500 transition-all text-xs font-bold resize-none"
-                    />
-                  </div>
-
-                  <button 
-                    onClick={handleWelcomeSubmit}
-                    disabled={isSubmitting}
-                    className="w-full py-3.5 mt-1 bg-slate-900 text-white rounded-2xl font-black text-[12px] uppercase tracking-[0.2em] shadow-lg shadow-slate-200 hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center gap-2 group"
-                  >
-                    {isSubmitting ? (
-                      <RefreshCw className="animate-spin" size={16} />
-                    ) : (
-                      <>
-                        Submit Profile
-                        <ArrowRight size={16} className="group-hover:translate-x-1.5 transition-transform" />
-                      </>
-                    )}
-                  </button>
+          {welcomeToast && (
+            <motion.div
+              initial={{ opacity: 0, y: -40, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="fixed top-5 left-1/2 -translate-x-1/2 z-[300] max-w-[92vw] w-auto pointer-events-auto select-none"
+            >
+              <div className="bg-slate-900/95 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-emerald-500/30 backdrop-blur-md">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
+                  <CheckCircle size={18} strokeWidth={2.5} />
                 </div>
-              </motion.div>
-            </>
+                <div className="flex flex-col pr-1">
+                  <span className="text-[13px] font-black text-white tracking-tight">
+                    {welcomeToast}
+                  </span>
+                </div>
+                <button 
+                  onClick={() => setWelcomeToast(null)}
+                  className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors ml-1"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
 
@@ -13018,123 +12852,198 @@ export default function App() {
           </div>
         </nav>
 
-        <footer className="bg-white border-t border-slate-100 mt-20 py-16 pb-32">
-          <div className="max-w-7xl mx-auto px-4 md:px-8 grid grid-cols-1 md:grid-cols-4 gap-12">
-            <div className="space-y-6">
-              <div 
-                onClick={() => {
-                  setView('marketplace');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
-              >
-                <span className="font-display font-black text-2xl tracking-tighter text-[#0D1B3E]">TopMail Sell<span className="text-[#0D1B3E]/80"> BD</span></span>
+        <footer className="relative bg-gradient-to-b from-slate-50/90 via-white to-blue-50/30 border-t border-slate-200/80 mt-20 pt-16 pb-36 overflow-hidden">
+          {/* Top Gradient Divider Line with Blue to Green Glow */}
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-600 via-teal-400 to-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+
+          {/* Background Ambient Green & Blue Atmospheric Glow Layers */}
+          <div className="absolute -top-16 left-10 w-80 h-80 bg-gradient-to-br from-blue-500/10 via-sky-400/5 to-transparent rounded-full blur-[90px] pointer-events-none" />
+          <div className="absolute top-1/2 right-10 w-96 h-96 bg-gradient-to-tl from-emerald-500/10 via-teal-400/5 to-transparent rounded-full blur-[100px] pointer-events-none" />
+          <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-gradient-to-tr from-teal-500/8 via-blue-500/8 to-transparent rounded-full blur-[90px] pointer-events-none" />
+          
+          {/* Subtle Dot Grid Texture Overlay */}
+          <div className="absolute inset-0 bg-[radial-gradient(#2563eb12_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
+
+          {/* Side Decorative Tech Accent Lines */}
+          <div className="absolute top-0 bottom-0 left-0 w-1 bg-gradient-to-b from-blue-600 via-sky-400 to-transparent pointer-events-none" />
+          <div className="absolute top-0 bottom-0 right-0 w-1 bg-gradient-to-b from-emerald-500 via-teal-400 to-transparent pointer-events-none" />
+
+          <div className="max-w-7xl mx-auto px-4 md:px-8 relative z-10">
+            {/* Top Row: Brand & Quick Trust Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-10 pb-12 border-b border-blue-100/70">
+              
+              {/* Brand Col */}
+              <div className="space-y-5 md:col-span-1">
+                <div 
+                  onClick={() => {
+                    setView('marketplace');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="flex items-center gap-3 cursor-pointer group inline-flex"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-teal-500 to-emerald-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
+                    <Mail size={20} strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <span className="font-display font-black text-xl tracking-tight text-[#0D1B3E] block leading-none">
+                      TopMail Sell <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-emerald-600">BD</span>
+                    </span>
+                    <span className="text-[9px] font-extrabold tracking-widest text-emerald-600 uppercase mt-0.5 block">
+                      Trusted Escrow Platform
+                    </span>
+                  </div>
+                </div>
+                
+                <p className="text-slate-600 text-xs leading-relaxed font-medium">
+                  বাংলাদেশর সবচেয়ে বিশ্বস্ত ডিজিটাল মেইল বায় ও সেল এসক্রো প্ল্যাটফর্ম। নিরাপদ লেনদেন ও ইনস্ট্যান্ট ভেরিফিকেশন।
+                </p>
+
+                {/* Micro Trust Badges */}
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50/90 border border-blue-200/70 text-blue-700 text-[10px] font-bold">
+                    <ShieldCheck size={13} className="text-blue-600" />
+                    <span>256-Bit AES</span>
+                  </div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50/90 border border-emerald-200/70 text-emerald-700 text-[10px] font-bold">
+                    <Zap size={13} className="text-emerald-600" />
+                    <span>Instant Escrow</span>
+                  </div>
+                </div>
               </div>
-              <p className="text-slate-500 text-sm leading-relaxed font-medium">
-                Empowering the digital marketplace in Bangladesh with secure account handling and verified transactions.
-              </p>
+
+              {/* Links Sections */}
+              {[
+                { 
+                  title: 'Marketplace', 
+                  badgeColor: 'border-blue-500/40 text-blue-700 bg-blue-50/80',
+                  dotColor: 'bg-blue-500',
+                  links: [
+                    { label: 'Gmail Market (জিমেইল মার্কেট)', action: () => setView('gmail-market') },
+                    { label: 'Sell Gmail (জিমেইল বিক্রয়)', action: () => setView('seller-center') },
+                    { label: 'Live Market (লাইভ মার্কেট)', action: () => { setSelectedCategoryFilter('All'); setView('facebook-market'); } },
+                    { label: 'Seller Dashboard', action: () => setView('seller-center') }
+                  ] 
+                },
+                { 
+                  title: 'Support & Help', 
+                  badgeColor: 'border-emerald-500/40 text-emerald-700 bg-emerald-50/80',
+                  dotColor: 'bg-emerald-500',
+                  links: [
+                    { label: 'Direct Helpline: 01857902383', href: 'tel:01857902383', highlight: true },
+                    { label: 'Telegram Community Support', action: () => setView('social-links') },
+                    { label: 'Official Facebook Group', action: () => setView('social-links') },
+                    { label: 'Admin Messenger Chat', action: () => setView('social-links') }
+                  ] 
+                },
+                { 
+                  title: 'Legal & Policy', 
+                  badgeColor: 'border-teal-500/40 text-teal-700 bg-teal-50/80',
+                  dotColor: 'bg-teal-500',
+                  links: [
+                    { label: 'About Us (আমাদের সম্পর্কে)', action: () => setLegalModal('about') },
+                    { label: 'Privacy Policy', action: () => setLegalModal('privacy') },
+                    { label: 'Terms & Conditions', action: () => setLegalModal('terms') },
+                    { label: 'Refund & Escrow Policy', action: () => setLegalModal('refund') },
+                    { label: 'Compliance & Abuse Safety', action: () => setLegalModal('abuse') }
+                  ] 
+                }
+              ].map((section) => (
+                <div key={section.title} className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${section.dotColor}`} />
+                    <h5 className="font-black text-[#0D1B3E] uppercase text-[11px] tracking-wider font-sans">
+                      {section.title}
+                    </h5>
+                  </div>
+                  <ul className="space-y-2.5">
+                    {section.links.map((link, idx) => (
+                      <li key={idx}>
+                        {link.action ? (
+                          <button 
+                            onClick={() => { link.action(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
+                            className="text-xs text-slate-600 hover:text-emerald-600 hover:translate-x-1 transition-all font-semibold text-left block w-full group flex items-center gap-1.5"
+                          >
+                            <span className="text-blue-500/60 group-hover:text-emerald-500 transition-colors text-[10px]">›</span>
+                            <span>{link.label}</span>
+                          </button>
+                        ) : (
+                          <a 
+                            href={link.href} 
+                            target={link.href?.startsWith('http') ? '_blank' : undefined}
+                            rel={link.href?.startsWith('http') ? 'noopener noreferrer' : undefined}
+                            className={`text-xs font-semibold block transition-all hover:translate-x-1 flex items-center gap-1.5 ${
+                              link.highlight 
+                                ? 'text-emerald-700 font-bold bg-emerald-50/80 border border-emerald-200/80 px-2.5 py-1.5 rounded-lg hover:bg-emerald-100/80' 
+                                : 'text-slate-600 hover:text-emerald-600'
+                            }`}
+                          >
+                            <span className="text-emerald-500 text-[10px]">›</span>
+                            <span>{link.label}</span>
+                          </a>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
-            {[
-              { 
-                title: 'Marketplace', 
-                links: [
-                  { label: 'Gmail Market', action: () => setView('gmail-market') },
-                  { label: 'Sell Gmail', action: () => setView('seller-center') }
-                ] 
-              },
-              { 
-                title: 'Support', 
-                links: [
-                  { label: 'Contact Us (01857902383)', href: 'tel:01857902383' }
-                ] 
-              },
-              { 
-                title: 'Company', 
-                links: [
-                  { label: 'About Us', action: () => setLegalModal('about') },
-                  { label: 'Privacy Policy', action: () => setLegalModal('privacy') },
-                  { label: 'Terms & Conditions', action: () => setLegalModal('terms') },
-                  { label: 'Refund Policy', action: () => setLegalModal('refund') },
-                  { label: 'Google Compliance & Abuse Policy', action: () => setLegalModal('abuse') }
-                ] 
-              }
-            ].map((section) => (
-              <div key={section.title} className="space-y-6">
-                <h5 className="font-bold text-slate-400 uppercase text-[10px] tracking-widest">{section.title}</h5>
-                <ul className="space-y-3">
-                  {section.links.map((link, idx) => (
-                    <li key={idx}>
-                      {link.action ? (
-                        <button 
-                          onClick={() => { link.action(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
-                          className="text-sm text-slate-600 hover:text-[#2E7D32] transition-colors font-medium text-left block w-full"
-                        >
-                          {link.label}
-                        </button>
-                      ) : (
-                        <a 
-                          href={link.href} 
-                          target={link.href?.startsWith('http') ? '_blank' : undefined}
-                          rel={link.href?.startsWith('http') ? 'noopener noreferrer' : undefined}
-                          className="text-sm text-slate-600 hover:text-[#2E7D32] transition-colors font-medium block"
-                        >
-                          {link.label}
-                        </a>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+
+            {/* Disclaimer & Trust Info Box in Green & Blue Framing */}
+            <div className="mt-10 p-5 rounded-2xl bg-gradient-to-r from-blue-50/60 via-white to-emerald-50/60 border border-blue-200/60 shadow-xs space-y-4">
+              <div className="text-center max-w-4xl mx-auto space-y-2.5">
+                <p className="text-[11px] text-slate-600 font-medium leading-relaxed">
+                  <strong className="text-[#0D1B3E]">Legal Disclaimer:</strong> topmail-sell-bd.vercel.app is an independent peer-to-peer advertising, brokering, and escrow index for virtual email items. We do not create, manage, or issue email accounts. We are not affiliated with, authorized, maintained, sponsored, or endorsed by Google LLC, Gmail, or any of their affiliates or subsidiaries.
+                </p>
+                <p className="text-[10.5px] text-slate-500 font-medium leading-relaxed">
+                  <strong className="text-emerald-800">Anti-Fraud Protection:</strong> Buyers must secure all purchased credentials immediately upon delivery. We strictly prohibit any unauthorized activities. All transactions are protected by smart escrow guidelines.
+                </p>
               </div>
-            ))}
-          </div>
-          <div className="max-w-7xl mx-auto px-4 md:px-8 mt-12 pt-8 border-t border-slate-50 space-y-6">
-            <div className="text-center max-w-3xl mx-auto space-y-4">
-              <p className="text-[11px] text-slate-400 font-medium leading-relaxed">
-                <strong>Legal Disclaimer:</strong> topmail-sell-bd.vercel.app is an independent peer-to-peer advertising, brokering, and escrow index for virtual email items. We do not create, manage, or issue email accounts. We are not affiliated with, authorized, maintained, sponsored, or endorsed by Google LLC, Gmail, or any of their affiliates or subsidiaries. All trademarks, logos, and brand names are the properties of their respective owners.
-              </p>
-              <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
-                <strong>Anti-Fraud Notice:</strong> Buyers must secure all purchased credentials immediately upon delivery. We strictly prohibit any illegal or unauthorized activities on our marketplace. Transactions are monitored under escrow guidelines to protect both parties.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-6 text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] pt-4 font-sans">
+
+              {/* Bottom Copyright & Live Support Strip */}
+              <div className="pt-4 border-t border-blue-100/70 flex flex-wrap items-center justify-between gap-4 text-[10.5px] font-bold text-slate-600">
                 <a 
                   href="tel:01857902383" 
-                  className="flex items-center gap-2 hover:text-[#2E7D32] transition-colors"
+                  className="flex items-center gap-2 text-emerald-700 bg-emerald-100/60 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-xl transition-all shadow-3xs"
                 >
-                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                  📞 Customer Service
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                  <span>📞 24/7 Helpline: 01857902383</span>
                 </a>
-              <span>&bull;</span>
-              <span>Secure 256-bit AES</span>
-              <span>&bull;</span>
-              <span>© {new Date().getFullYear()} topmail-sell-bd. All Rights Reserved</span>
+
+                <div className="flex items-center gap-4 text-slate-500 font-semibold">
+                  <span className="flex items-center gap-1 text-blue-700">
+                    <ShieldCheck size={14} className="text-blue-600" /> Secure 256-Bit Escrow
+                  </span>
+                  <span>•</span>
+                  <span>© {new Date().getFullYear()} TopMail Sell BD</span>
+                </div>
+              </div>
             </div>
           </div>
         </footer>
       </div>
 
       {/* Right Desktop Sidebar Widget */}
-      <div className="hidden lg:flex w-[320px] shrink-0 flex-col gap-4 self-stretch justify-start py-4">
-        <div className="bg-white border border-slate-200/80 p-6 rounded-[2rem] space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.03)] relative overflow-hidden text-slate-800 flex flex-col shrink-0 text-left">
+      <div className="hidden lg:flex w-[320px] shrink-0 flex-col gap-4 self-stretch justify-start py-4 relative z-10">
+        <div className="bg-slate-900/75 backdrop-blur-xl border border-emerald-500/25 p-6 rounded-[2rem] space-y-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden text-white flex flex-col shrink-0 text-left">
           <div className="flex items-center justify-between">
-            <h3 className="text-[10px] font-black text-red-600 uppercase tracking-[0.2em] leading-none">HELP desk</h3>
-            <div className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-[8.5px] font-black uppercase tracking-wider flex items-center gap-1 leading-none">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping shrink-0" />
+            <h3 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] leading-none">HELP desk</h3>
+            <div className="px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[8.5px] font-black uppercase tracking-wider flex items-center gap-1.5 leading-none">
+              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping shrink-0" />
               ONLINE
             </div>
           </div>
           
           <a 
             href="tel:01857902383" 
-            className="block group bg-emerald-50/5 hover:bg-emerald-50/20 border border-emerald-500/20 hover:border-emerald-500/40 p-4 rounded-2xl transition-all shadow-xs"
+            className="block group bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 hover:border-emerald-500/40 p-4 rounded-2xl transition-all shadow-xs"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-500/15 rounded-xl flex items-center justify-center text-emerald-605 group-hover:scale-110 transition-transform">
+              <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
                 <Phone size={18} strokeWidth={2.5} />
               </div>
               <div className="text-left font-sans">
-                <span className="block text-[8px] font-black tracking-widest text-[#2D8A4E] uppercase">Phone Support</span>
-                <span className="text-slate-950 text-xs font-bold leading-none block mt-1 hover:underline">01857902383</span>
+                <span className="block text-[8px] font-black tracking-widest text-emerald-300 uppercase">Phone Support</span>
+                <span className="text-white text-xs font-bold leading-none block mt-1 hover:underline">01857902383</span>
               </div>
             </div>
           </a>
@@ -13148,8 +13057,8 @@ export default function App() {
                 "Instant Cash Out Guarantee",
                 "Secure AES Encrypted Keyboards"
               ].map((std, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-[11px] text-slate-700 font-semibold leading-none font-sans">
-                  <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
+                <div key={idx} className="flex items-center gap-2 text-[11px] text-slate-300 font-semibold leading-none font-sans">
+                  <CheckCircle2 size={12} className="text-emerald-400 shrink-0" />
                   <span>{std}</span>
                 </div>
               ))}
@@ -13157,17 +13066,17 @@ export default function App() {
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200/80 p-6 rounded-[2rem] space-y-3.5 shadow-[0_8px_30px_rgba(0,0,0,0.03)] relative overflow-hidden text-slate-800 flex flex-col shrink-0 text-left">
+        <div className="bg-slate-900/75 backdrop-blur-xl border border-blue-500/25 p-6 rounded-[2rem] space-y-3.5 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden text-white flex flex-col shrink-0 text-left">
           <div className="flex items-center gap-2">
-            <Trophy size={16} className="text-yellow-600 shrink-0" />
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider leading-none">Trade Safety Guide</span>
+            <Trophy size={16} className="text-amber-400 shrink-0" />
+            <span className="text-[10px] font-black text-blue-300 uppercase tracking-wider leading-none">Trade Safety Guide</span>
           </div>
-          <p className="text-[11.5px] text-slate-600 leading-relaxed font-sans font-medium">
+          <p className="text-[11.5px] text-slate-300 leading-relaxed font-sans font-medium">
             লেনদেন জালিয়াতি এড়াতে সর্বদা ওয়েবসাইট Escrow ব্যবহার করুন। Admin-কে সরাসরি টেলিগ্রাম চুক্তির প্রমাণ প্রদান করতে পারেন।
           </p>
-          <div className="bg-red-500/5 border border-red-500/15 p-3 rounded-2xl flex items-start gap-2.5">
-            <AlertTriangle size={14} className="text-red-500 shrink-0 mt-0.5" />
-            <p className="text-[9.5px] text-red-800 leading-snug font-semibold">
+          <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-2xl flex items-start gap-2.5">
+            <AlertTriangle size={14} className="text-blue-400 shrink-0 mt-0.5" />
+            <p className="text-[9.5px] text-blue-200 leading-snug font-semibold">
               পাসওয়ার্ড বা রিকভারি ডাটা শেয়ার করার আগে পেমেন্ট ব্যালেন্স চেক করতে ভুলবেন না।
             </p>
           </div>
@@ -13182,6 +13091,7 @@ export default function App() {
       {/* Background soft light elements */}
       <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-red-500/[0.02] rounded-full blur-[125px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-emerald-500/[0.02] rounded-full blur-[125px] pointer-events-none" />
+
       <AnimatePresence mode="wait">
         <motion.div
           key={view}
@@ -13359,6 +13269,19 @@ export default function App() {
                     </>
                   )}
                 </button>
+
+                <div className="text-center pt-1">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setView('register');
+                      setError(null);
+                    }}
+                    className="text-sm font-bold text-[#2E7D32] hover:underline cursor-pointer transition-colors"
+                  >
+                    New Member
+                  </button>
+                </div>
               </form>
 
               <div className="space-y-6">
@@ -13379,51 +13302,18 @@ export default function App() {
                   </svg>
                   Sign in with Google
                 </button>
-
-                <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-left">
-                  <p className="text-[10px] text-amber-850 font-bold leading-relaxed">
-                    💡 <span className="text-[#DC2626]">টিপস:</span> যদি গুগল লগইনে সমস্যা হয় (যেমন popup closed error), তবে উপরে বা নিচে থাকা <span className="text-zinc-900 border-b border-zinc-900 w-fit">"Open in a new tab"</span> বাটনে ক্লিক করে অ্যাপটি নতুন ট্যাবে ওপেন করে গুগল লগইন করুন। অথবা সরাসরি ইমেল পাসওয়ার্ড দিয়ে লগইন করুন।
-                  </p>
-                </div>
-
-                <div className="text-center pt-2">
-                  <p className="text-sm text-slate-500 font-medium">
-                    New user? Just enter your email and password above to start.
-                  </p>
-                </div>
-
-                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-left">
-                  <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">
-                    ⚠️ Disclaimer: This is an independent peer-to-peer trading marketplace. We are not affiliated with, authorized, maintained, sponsored or endorsed by Google LLC or any of its affiliates.
-                  </p>
-                </div>
-              </div>
-
-              {/* System Footer */}
-              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] pt-4">
-                <a 
-                  href="https://t.me/topmailsellbd" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="flex items-center gap-2 hover:text-[#2E7D32] transition-colors"
-                >
-                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                  📞 Customer Service
-                </a>
-                <span className="hidden sm:inline opacity-30">&bull;</span>
-                <span>Secure 256-bit AES</span>
               </div>
             </div>
           )}
 
           {view === 'register' && (
-            <div className="space-y-10 relative z-10">
-              <div className="text-center space-y-3">
-                <div className="w-20 h-20 bg-gradient-to-tr from-[#2E7D32] to-[#4CAF50] rounded-[28px] flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-900/10 -rotate-3">
-                  <UserPlus className="text-white" size={36} />
+            <div className="space-y-6 relative z-10">
+              <div className="text-center space-y-2">
+                <div className="w-16 h-16 bg-[#2E7D32] rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md border-2 border-slate-50 text-white -rotate-2">
+                  <UserPlus size={28} />
                 </div>
-                <h1 className="font-display text-3xl font-extrabold tracking-tight text-slate-800 leading-tight">Create Account</h1>
-                <p className="text-slate-500 text-sm font-medium">Join the marketplace in seconds.</p>
+                <h1 className="font-display text-2xl sm:text-3xl font-black tracking-tight text-[#0D1B3E] leading-tight">Create Account</h1>
+                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest opacity-60">Join the marketplace in seconds</p>
               </div>
 
               {error && (
@@ -13433,10 +13323,41 @@ export default function App() {
                 </div>
               )}
 
-              <form onSubmit={handleRegister} className="space-y-6">
+              <form onSubmit={handleRegister} className="space-y-4">
                 {!otpStep ? (
                   <>
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">First Name</label>
+                        <div className="relative group">
+                          <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#2E7D32] transition-colors" size={16} />
+                          <input
+                            type="text"
+                            value={regFirstName}
+                            onChange={(e) => setRegFirstName(e.target.value)}
+                            placeholder="First name"
+                            required
+                            className="w-full pl-10 pr-3 py-3 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-4 focus:ring-green-100 focus:border-[#2E7D32] transition-all text-slate-800 placeholder:text-slate-300 text-xs font-medium"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">Last Name</label>
+                        <div className="relative group">
+                          <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#2E7D32] transition-colors" size={16} />
+                          <input
+                            type="text"
+                            value={regLastName}
+                            onChange={(e) => setRegLastName(e.target.value)}
+                            placeholder="Last name"
+                            className="w-full pl-10 pr-3 py-3 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-4 focus:ring-green-100 focus:border-[#2E7D32] transition-all text-slate-800 placeholder:text-slate-300 text-xs font-medium"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
                       <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">Email Address</label>
                       <div className="relative group">
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#2E7D32] transition-colors" size={18} />
@@ -13446,12 +13367,12 @@ export default function App() {
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="name@company.com"
                           required
-                          className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-4 focus:ring-green-100 focus:border-[#2E7D32] transition-all text-slate-800 placeholder:text-slate-300"
+                          className="w-full pl-12 pr-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-4 focus:ring-green-100 focus:border-[#2E7D32] transition-all text-slate-800 placeholder:text-slate-300 text-xs font-medium"
                         />
                       </div>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">Password</label>
                       <div className="relative group">
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#2E7D32] transition-colors" size={18} />
@@ -13461,24 +13382,24 @@ export default function App() {
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="••••••••"
                           required
-                          className="w-full pl-12 pr-12 py-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-4 focus:ring-green-100 focus:border-[#2E7D32] transition-all text-slate-800 placeholder:text-slate-300"
+                          className="w-full pl-12 pr-12 py-3 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-4 focus:ring-green-100 focus:border-[#2E7D32] transition-all text-slate-800 placeholder:text-slate-300 text-xs font-medium"
                         />
                       </div>
                     </div>
                   </>
                 ) : (
-                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    <div className="bg-green-50 p-6 rounded-3xl border border-green-100 text-center space-y-4">
+                  <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <div className="bg-green-50 p-5 rounded-3xl border border-green-100 text-center space-y-3">
                       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#2E7D32]">Security Verification</p>
                       <div className="flex flex-col items-center gap-2">
-                        <p className="text-sm text-slate-600 font-medium italic">Please enter the code shown below:</p>
-                        <div className="bg-white px-8 py-4 rounded-2xl text-4xl font-black text-[#2E7D32] tracking-[0.2em] shadow-sm animate-pulse border border-green-100">
+                        <p className="text-xs text-slate-600 font-medium">Please enter the code shown below:</p>
+                        <div className="bg-white px-6 py-2 rounded-xl text-3xl font-black text-[#2E7D32] tracking-[0.2em] shadow-xs animate-pulse border border-green-100">
                           {sentOtp}
                         </div>
                       </div>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">Enter Verification Code</label>
                       <div className="relative group">
                         <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#2E7D32] transition-colors" size={18} />
@@ -13486,9 +13407,9 @@ export default function App() {
                           type="text"
                           value={userOtp}
                           onChange={(e) => setUserOtp(e.target.value)}
-                          placeholder="Enter code here"
+                          placeholder="Enter code"
                           maxLength={sentOtp.length}
-                          className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-4 focus:ring-green-100 focus:border-[#2E7D32] transition-all text-slate-800 font-bold tracking-[1em] text-center"
+                          className="w-full pl-12 pr-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-4 focus:ring-green-100 focus:border-[#2E7D32] transition-all text-slate-800 font-bold tracking-[1em] text-center text-sm"
                         />
                       </div>
                     </div>
@@ -13506,23 +13427,23 @@ export default function App() {
                 <button 
                   type="submit"
                   disabled={loading || isSubmitting}
-                  className="w-full bg-[#2E7D32] hover:bg-[#256628] text-white font-bold py-4 rounded-2xl shadow-xl shadow-green-900/10 active:scale-[0.98] transition-all flex items-center justify-center gap-3 group disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="w-full bg-[#2E7D32] hover:bg-[#256628] text-white font-bold py-3.5 rounded-2xl shadow-xl shadow-green-900/10 active:scale-[0.98] transition-all flex items-center justify-center gap-3 group disabled:opacity-70 disabled:cursor-not-allowed text-sm"
                 >
                   {loading || isSubmitting ? (
-                     <RefreshCw className="animate-spin" size={20} />
+                     <RefreshCw className="animate-spin" size={18} />
                   ) : (
                      <>
                         {otpStep ? 'Complete Registration' : 'Register Securely'}
-                        <ArrowRight size={20} className="group-hover:translate-x-1.5 transition-transform" />
+                        <ArrowRight size={18} className="group-hover:translate-x-1.5 transition-transform" />
                      </>
                   )}
                 </button>
               </form>
 
-              <div className="text-center pt-2">
+              <div className="text-center pt-1">
                 <button 
                   onClick={() => setView('login')}
-                  className="text-sm font-bold text-[#2E7D32] hover:underline"
+                  className="text-xs font-bold text-[#2E7D32] hover:underline"
                 >
                   Already have an account? Login
                 </button>
@@ -13531,13 +13452,13 @@ export default function App() {
           )}
 
           {view === 'forgot' && (
-            <div className="space-y-10 relative z-10">
-              <div className="text-center space-y-3">
-                <div className="w-20 h-20 bg-gradient-to-tr from-[#2E7D32] to-[#4CAF50] rounded-[28px] flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-900/10">
-                  <Lock className="text-white" size={36} />
+            <div className="space-y-6 relative z-10">
+              <div className="text-center space-y-2">
+                <div className="w-16 h-16 bg-[#2E7D32] rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md border-2 border-slate-50 text-white">
+                  <Lock size={28} />
                 </div>
-                <h1 className="font-display text-3xl font-extrabold tracking-tight text-slate-800 leading-tight">পাসওয়ার্ড রিসেট</h1>
-                <p className="text-slate-500 text-sm font-medium">আপনার একাউন্টে ফিরে আসতে আমরা আপনাকে সাহায্য করব।</p>
+                <h1 className="font-display text-2xl sm:text-3xl font-black tracking-tight text-[#0D1B3E] leading-tight">পাসওয়ার্ড রিসেট</h1>
+                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest opacity-60">Account Recovery Assistance</p>
               </div>
 
               {error && (
@@ -13547,8 +13468,8 @@ export default function App() {
                 </div>
               )}
 
-              <form onSubmit={handleForgot} className="space-y-8">
-                <div className="space-y-2">
+              <form onSubmit={handleForgot} className="space-y-5">
+                <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">ইমেইল এড্রেস</label>
                   <div className="relative group">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#2E7D32] transition-colors" size={18} />
@@ -13558,7 +13479,7 @@ export default function App() {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="name@company.com"
                       required
-                      className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-4 focus:ring-green-100 focus:border-[#2E7D32] transition-all text-slate-800 placeholder:text-slate-300"
+                      className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-4 focus:ring-green-100 focus:border-[#2E7D32] transition-all text-slate-800 placeholder:text-slate-300 text-sm font-medium"
                     />
                   </div>
                 </div>
@@ -13566,7 +13487,7 @@ export default function App() {
                 <button 
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[#2E7D32] hover:bg-[#256628] text-white font-bold py-4 rounded-2xl shadow-xl shadow-green-900/10 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="w-full bg-[#2E7D32] hover:bg-[#256628] text-white font-bold py-3.5 rounded-2xl shadow-xl shadow-green-900/10 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed text-sm"
                 >
                   {loading ? (
                     <>
@@ -13579,10 +13500,10 @@ export default function App() {
                 </button>
               </form>
 
-              <div className="text-center">
+              <div className="text-center pt-1">
                 <button 
                   onClick={() => setView('login')}
-                  className="text-sm font-bold text-[#2E7D32] hover:underline"
+                  className="text-xs font-bold text-[#2E7D32] hover:underline"
                 >
                   লগইন এ ফিরে যান
                 </button>
@@ -13591,13 +13512,13 @@ export default function App() {
           )}
 
           {view === 'reset' && (
-            <div className="space-y-10 relative z-10">
-              <div className="text-center space-y-3">
-                <div className="w-20 h-20 bg-gradient-to-tr from-[#2E7D32] to-[#4CAF50] rounded-[28px] flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-900/10">
-                  <RefreshCw className="text-white" size={36} />
+            <div className="space-y-6 relative z-10">
+              <div className="text-center space-y-2">
+                <div className="w-16 h-16 bg-[#2E7D32] rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md border-2 border-slate-50 text-white">
+                  <RefreshCw size={28} />
                 </div>
-                <h1 className="font-display text-3xl font-extrabold tracking-tight text-slate-800 leading-tight">নতুন পাসওয়ার্ড</h1>
-                <p className="text-slate-500 text-sm font-medium">আপনার একাউন্টের জন্য একটি নতুন পাসওয়ার্ড সেট করুন।</p>
+                <h1 className="font-display text-2xl sm:text-3xl font-black tracking-tight text-[#0D1B3E] leading-tight">নতুন পাসওয়ার্ড</h1>
+                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest opacity-60">Set your new password</p>
               </div>
 
               {error && (
@@ -13607,8 +13528,8 @@ export default function App() {
                 </div>
               )}
 
-              <form onSubmit={handleResetPassword} className="space-y-6">
-                <div className="space-y-2">
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">নতুন পাসওয়ার্ড</label>
                   <div className="relative group">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#2E7D32] transition-colors" size={18} />
@@ -13618,12 +13539,12 @@ export default function App() {
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="••••••••"
                       required
-                      className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-4 focus:ring-green-100 focus:border-[#2E7D32] transition-all text-slate-800 placeholder:text-slate-300"
+                      className="w-full pl-12 pr-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-4 focus:ring-green-100 focus:border-[#2E7D32] transition-all text-slate-800 placeholder:text-slate-300 text-xs font-medium"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">পাসওয়ার্ড নিশ্চিত করুন</label>
                   <div className="relative group">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#2E7D32] transition-colors" size={18} />
@@ -13633,7 +13554,7 @@ export default function App() {
                       onChange={(e) => setConfirmNewPassword(e.target.value)}
                       placeholder="••••••••"
                       required
-                      className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-4 focus:ring-green-100 focus:border-[#2E7D32] transition-all text-slate-800 placeholder:text-slate-300"
+                      className="w-full pl-12 pr-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-4 focus:ring-green-100 focus:border-[#2E7D32] transition-all text-slate-800 placeholder:text-slate-300 text-xs font-medium"
                     />
                   </div>
                 </div>
@@ -13641,7 +13562,7 @@ export default function App() {
                 <button 
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[#2E7D32] hover:bg-[#256628] text-white font-bold py-4 rounded-2xl shadow-xl shadow-green-900/10 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="w-full bg-[#2E7D32] hover:bg-[#256628] text-white font-bold py-3.5 rounded-2xl shadow-xl shadow-green-900/10 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed text-sm"
                 >
                   {loading ? (
                     <>
@@ -13656,6 +13577,36 @@ export default function App() {
             </div>
           )}
         </motion.div>
+      </AnimatePresence>
+
+      {/* Welcome Registration Success Toast in Auth View */}
+      <AnimatePresence>
+        {welcomeToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="fixed top-5 left-1/2 -translate-x-1/2 z-[300] max-w-[92vw] w-auto pointer-events-auto select-none"
+          >
+            <div className="bg-slate-900/95 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-emerald-500/30 backdrop-blur-md">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
+                <CheckCircle size={18} strokeWidth={2.5} />
+              </div>
+              <div className="flex flex-col pr-1">
+                <span className="text-[13px] font-black text-white tracking-tight">
+                  {welcomeToast}
+                </span>
+              </div>
+              <button 
+                onClick={() => setWelcomeToast(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors ml-1"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );

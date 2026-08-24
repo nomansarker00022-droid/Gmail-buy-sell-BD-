@@ -25,10 +25,10 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes('remixed')) {
 const app = initializeApp(firebaseConfig);
 
 // Use initializeFirestore with memoryLocalCache to avoid IndexedDB issues in sandboxed iframes
-// and experimentalAutoDetectLongPolling for robust connectivity in proxy/iframe environments
+// and experimentalForceLongPolling for solid connectivity in proxy/iframe environments
 export const db = initializeFirestore(app, {
   localCache: memoryLocalCache(),
-  experimentalAutoDetectLongPolling: true,
+  experimentalForceLongPolling: true,
 }, (firebaseConfig as any).firestoreDatabaseId || '(default)');
 
 // Robust Auth initialization for iframes and cross-origin environments

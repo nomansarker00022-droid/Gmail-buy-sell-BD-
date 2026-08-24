@@ -24,6 +24,8 @@
         "totalSpent": { "type": "number" },
         "totalSales": { "type": "number" },
         "totalEarned": { "type": "number" },
+        "fcmToken": { "type": "string", "description": "Firebase Cloud Messaging device token for push notifications" },
+        "pushEnabled": { "type": "boolean", "description": "Push notification enabled state" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
